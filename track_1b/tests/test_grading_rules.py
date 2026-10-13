@@ -525,3 +525,46 @@ def test_review2_sent_and_cuera():
     assert _GZ2.locate("La baselgia da Sent Martin.")["kind"] == "none"
     assert _GZ2.locate("Il monument è situà a Cuera.")["bfs_now"] == [3901]
     assert _GZ2.locate("probabilmente in Danimarca")["kind"] == "abroad"
+
+
+# --- Review 3 (13 Oct): a third reviewer read 831 labels (all small rule groups + a random 150 per model) ---------
+@pytest.mark.parametrize("text,label", [
+    # a named landmark was missed: a lowercase place adjective, two capitalised short words mid-sentence
+    ("Musee gruérien", "incorrect"),
+    ("Chaplutta da Sur En", "incorrect"),
+    # a common noun was read as a name (a gloss in brackets, Romansh title case)
+    ("Rathaus (Stadtverwaltung)", "not_attempted"),
+    ("Uhrengebäude (Uhren-Turm)", "not_attempted"),
+    ("Chasa da la Parrocchia", "not_attempted"),
+    ("Chasa da la Posta", "not_attempted"),
+    ("Stazione Centrale", "not_attempted"),
+    ("Es ist eine Römisch Katholische Kirche.", "not_attempted"),
+    # proper names stay names
+    ("Hôtel de la Poste", "incorrect"),
+    ("Stazione Centrale di Milano", "incorrect"),
+])
+def test_review3_names(text, label):
+    assert grade_name(text, NAMES, gz=_GZ2, gold_canton="VD").label == label
+
+
+@pytest.mark.parametrize("text,weak,places,label", [
+    # the gold saint in another language or spelling needs the town, like any non-distinctive name
+    ("Die Kirche heißt Pfarrkirche St. Martin.", ["Katholische Kirche S. Martin"], ["Trun"], "not_attempted"),
+    ("Chiesa di San Martino", ["Katholische Kirche S. Martin"], ["Trun"], "not_attempted"),
+    ("Pfarrkirche St. Martin in Trun", ["Katholische Kirche S. Martin"], ["Trun"], "correct"),
+    ("Kirchlein St. Martin in Grindelwald, Schweiz", ["Katholische Kirche S. Martin"], ["Trun"], "incorrect"),
+    ("Das Gebäude ist die St. Antonius Kirche.", ["Pfarrkirche Sant’Antonio Abate"], ["Locarno"], "not_attempted"),
+    ("Baselgia da San Giachem", ["Katholische Kirche St. Jakob"], ["Cham"], "not_attempted"),
+    ("Chiesa di San Giovanni Battista", ["Église Saint-Jean-Baptiste"], ["Bulle"], "not_attempted"),
+    # the same saint plus another place or name is still wrong
+    ("Église Saint-Pierre de Neuilly-sur-Seine", ["St. Peter und Paul"], ["Zürich"], "incorrect"),
+    # Mary is not Mary Magdalene
+    ("Baselgia da Sontga Maria", ["Pfarrkirche Sainte-Marie-Madeleine"], ["Bas-Intyamon"], "incorrect"),
+])
+def test_review3_same_saint(text, weak, places, label):
+    assert grade_name(text, [], weak, places, gz=_GZ2, gold_canton="GR").label == label
+
+
+def test_review3_sursilvan_refusal():
+    assert grade_place("Vischnanca: Non inditgà; Chantun: Non inditgà", ["Thun"], ["Bern"], gz=_GZ2,
+                       gold_canton="BE").label == "not_attempted"

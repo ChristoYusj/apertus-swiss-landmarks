@@ -6,7 +6,7 @@
 > We built a four-language (FR/DE/IT/RM) benchmark of 2,766 questions about 264 Swiss heritage landmarks from the
 > federal inventory (KGS), stratified by language region and fame, with photo, text-only and trap variants and
 > per-item licences. Apertus 1.5 70B almost never recognises a landmark from its photo, and when it commits to a
-> name it is almost always wrong (334 of 335 committed names) ⟨code⟩. Whether it commits at all depends on the
+> name it is almost always wrong (328 of 329 committed names) ⟨code⟩. Whether it commits at all depends on the
 > question's language: on the same photos it mostly declines in French (9 % of name answers confidently wrong) but
 > answers in Romansh (52 % of names and 97 % of places wrong), where it also relocates half of all non-Graubünden
 > landmarks to Graubünden.
@@ -79,8 +79,9 @@ numbers, cantons and language regions; Wikimedia Commons for photos and their li
   or only type words are dropped. A name is *non-distinctive* if, after removing type words, saints' names and
   the town, nothing is left ("Kapelle St. Antonius", "Kunsthaus Zürich"): it then counts only together with the
   right town. The type-word list was audited by hand over all 786 tokens that occur in the names.
-- Place aliases: current, former and merged municipality names; town names shared by two municipalities
-  (e.g. Gossau) require the canton.
+- Place aliases: the names of the current municipality in all languages (a district, region or former
+  municipality is not the answer, 16 such Wikidata labels removed and logged); town names shared by two
+  municipalities (e.g. Gossau) require the canton.
 - Year: only preferred, unconflicted inception values with year precision (window ±5) or decade precision;
   museum founding dates are not used as build years.
 - An independent script re-checked 25 random landmarks against live Wikidata (25/25).
@@ -138,12 +139,12 @@ kept their label over four answers: the endpoint is not bit-for-bit deterministi
 
 | photo_main (n per cell = 264) | FR | IT | DE | RM |
 |---|---|---|---|---|
-| Name: not attempted (declines, or only a vague description) | 91 % | 75 % | 60 % | **47 %** |
-| Name: confidently wrong | 9 % | 25 % | 40 % | **52 %** |
+| Name: not attempted (declines, or only a vague description) | 91 % | 76 % | 61 % | **47 %** |
+| Name: confidently wrong | 9 % | 24 % | 39 % | **52 %** |
 | Place: confidently wrong | 2 % | 2 % | 30 % | **97 %** |
 
 Overall, name correct 0.1 %, place correct 0.8 %, year never answered (0 of 272). Among committed name answers
-99.7 % are wrong (334 of 335). The same instruction ("if you are not sure, say so") produces honest refusals in
+99.7 % are wrong (328 of 329). The same instruction ("if you are not sure, say so") produces honest refusals in
 French and confident fabrication in Romansh, on identical images. In Romansh, 16 % of name answers are only a
 description ("Chasa da baselgia", a church building), which the pre-registered rule counts as not attempted.
 
@@ -171,18 +172,18 @@ answers become "Château de Chillon". Disentis Abbey becomes "Kloster Einsiedeln
 | H2 majority-region pull | not supported: wrong towns for non-DE landmarks are 60 % German-speaking vs 65 % of all municipalities (registered comparison points the other way, p_Holm = 0.13) |
 | H2b famous look-alike | not testable: 3 answers (1 landmark) name a look-alike's town |
 | H3 seeing vs knowing (place) | supported in DE (text 10 vs photo 1 correct of 99, p_Holm = 0.02); FR same direction (8 vs 1, p_Holm = 0.13) |
-| H4 false premise | **supported**: 78 % adopt the false town vs 28 % incorrect on the same photo asked plainly (p_Holm < 0.0001); counting a wrongly named building as incorrect too (team rule), 82 % |
+| H4 false premise | **supported**: 78 % adopt the false town vs 24 % incorrect on the same photo asked plainly (p_Holm < 0.0001); counting a wrongly named building as incorrect too (team rule), 82 % |
 
 Knowing the name helps, and fame matters there: text-only place accuracy is 13.6 % for high-fame vs 3.7 % for
 low-fame landmarks, while from the photo both are ≈ 0 %. The bottleneck is visual recognition.
 
 ![Left: municipality correct with the name given vs from the photo, by fame (H3). Right: incorrect on the plain photo question vs with a false town in the question (H4).](docs/figures/fig3_know_vs_see.png){width=100%}
 
-**5. Smaller model.** Apertus 1.5 8B declines less (name: 36 % not attempted vs 68 % for 70B) and is
-confidently wrong more often in every language (name wrong: FR 69 %, IT 47 %, DE 64 %, RM 75 %). Its fame effect
+**5. Smaller model.** Apertus 1.5 8B declines less (name: 39 % not attempted vs 69 % for 70B) and is
+confidently wrong more often in every language (name wrong: FR 68 %, IT 45 %, DE 62 %, RM 69 %). Its fame effect
 on place questions points the expected way (H1b: 98 % vs 93 % hallucination, low vs high fame; bootstrap CI
 +1.0 to +9.7 pp) but is not significant after Holm (p_Holm = 0.08). Unlike 70B, 8B is not more misled by the
-false premise than by the plain question (68 % adopt the false town vs 78 % wrong on the control, n.s.): it is
+false premise than by the plain question (68 % adopt the false town vs 72 % wrong on the control, n.s.): it is
 already wrong on the plain question. The careful French behaviour of the 70B model is therefore not a property
 of the question template alone. ⟨code⟩
 
@@ -200,7 +201,8 @@ of the question template alone. ⟨code⟩
 - Post-run corrections to the code grader and item validity were made after seeing answers; each is
   documented with its effect in `CHANGELOG.md` and pinned by regression tests. Two independent reviews read every
   answer the code grader marked incorrect; the second one moved 109 (70B) and 356 (8B) labels, mostly refusals
-  phrased in ways the patterns did not know (all changed labels were read by hand).
+  phrased in ways the patterns did not know; a third read 831 labels and its fixes moved 14 (70B) and 29 (8B)
+  more (all changed labels were read by hand).
 
 ## Lessons Learnt and Recommendations
 - For Apertus: abstention behaviour is language-dependent; calibration training should include Romansh and

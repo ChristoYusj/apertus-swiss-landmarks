@@ -196,3 +196,32 @@ models. Its findings and what changed (`grading/rules.py`, `build/gazetteer.py`,
   (`stability --regrade`, no requests): unchanged, 99 % same label.
 - 51 regression tests with the real answers ("Review 2" in `test_grading_rules.py`); 38 of them fail on the
   previous grader. 205 tests pass.
+
+## Third independent review (13 Oct, night) and fixes
+A third reviewer (separate agent, read-only) re-graded all 5,532 stored labels (0 mismatches with the code), then
+read 831 labels: every label of the small rule groups (other_place_named, names_nothing, premise_*, hedged_*,
+right_canton_only, similar_but_different_name, ...) and a seeded random 150 per model. All premise_adopted labels
+(73), both hedged groups and all trap declines were confirmed. Findings and fixes (`grading/rules.py`):
+- **Named landmarks missed:** "Musee gruérien" (a lowercase place adjective after a building noun) and "Chaplutta
+  da Sur En" (two capitalised short words mid-sentence form a name) are now attempts, graded incorrect.
+- **Common nouns read as names:** the building-noun anchor no longer crosses a bracket or comma ("Rathaus
+  (Stadtverwaltung)"); a hyphenated word counts only if one part is a name ("Uhren-Turm"); the trigger-word audit
+  was repeated over EVERY claim branch (anchor, article, name+noun, quoted, preposition, town cue), both models,
+  and the common nouns found were added to `GENERIC_CAPS` (Fundaziun, Posta, Parrocchia, Muntogna, Stadtverwaltung,
+  Centrale, ...). `claim_evidence()` / `name_evidence()` now return the triggering word, so the audit is reproducible.
+- **The gold saint in another language:** "Pfarrkirche St. Martin" for "Katholische Kirche S. Martin" was graded
+  incorrect. Saints' names are now compared across languages (Antonius = Antonio, Giachem = Jakob, Jean-Baptiste =
+  Giovanni Battista; Mary Magdalene is not Mary) and the gold saint is treated like a non-distinctive name: with the
+  right town correct, with another town or another name incorrect, alone not attempted (as already for premises).
+- Missed refusal: Sursilvan "Non inditgà".
+- **Answer keys (place):** 16 Wikidata "located in" labels that are not names of the current gold municipality
+  (Kreis 1, Töss, Basel-Vorstädte, Region Surselva, Waltensburg/Vuorz, Ardez) were removed from `place_aliases`
+  (team-lead village rule) in `assemble.clean_place_aliases`, logged in `metadata/removed_place_aliases.jsonl`.
+  BFS register names stay (a border landmark lists both municipalities). Runs after the questions are built, so no
+  item changes; no stored label changed (verify V4 passes).
+- Decided, not changed: "Château de la Tour" stays vague (a building noun after "de la"), "Tour de la Roche" is a
+  name; "Sontga Maria" as a place answer is a (wrong) place; "Champ-Pittet, Kanton Waadt" is a locality = incorrect.
+- **Effect:** 70B 18 labels (10 incorrect -> not_attempted, 4 not_attempted -> incorrect, 4 rule only); 8B 31 (29
+  incorrect -> not_attempted, 2 rule only); all read by hand. 70B: H4 78 % vs 24 % (control lower), name wrong
+  FR 9 / IT 24 / DE 39 / RM 52 %; registered results unchanged (H3_de, H4 supported). Stability re-graded: unchanged.
+- 20 regression tests ("Review 3"; 14 fail on the previous grader) + 1 for the alias cleaning; 226 tests pass.

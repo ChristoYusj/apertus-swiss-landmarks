@@ -80,8 +80,48 @@ def assemble(work: Path) -> dict:
     pruned = prune_results(ds, {c["item_id"] for c in cases}, work / "removed_items.jsonl")
     from .gazetteer import build_gazetteer
     gazetteer = build_gazetteer(work, ds)
+    removed_aliases = clean_place_aliases(ds)
     return {"test_cases": len(cases), "landmarks": len(lms), "images_shipped": len(shipped), "problems": problems[:20],
-            "n_problems": len(problems), "responses_moved_to_excluded_items": pruned, "gazetteer": gazetteer}
+            "n_problems": len(problems), "responses_moved_to_excluded_items": pruned, "gazetteer": gazetteer,
+            "place_aliases_removed": removed_aliases}
+
+
+def clean_place_aliases(ds: Path) -> int:
+    """Team-lead village rule (13 Oct): only the gold municipality counts as the place. A Wikidata "located in"
+    label that is not a name of the current gold municipality (a city district "Kreis 1", a region "Surselva", a
+    former municipality "Ardez") is removed from place_aliases and logged in metadata/removed_place_aliases.jsonl.
+    BFS register names are always kept (a landmark on a border lists both municipalities). Runs after the questions
+    are built, so item-validity checks (which use the aliases) are unchanged."""
+    from ..grading.normalize import normalize, split_bilingual
+    gz = json.loads((ds / "metadata" / "gazetteer.json").read_text(encoding="utf-8"))
+    current = {}
+    for m in gz["municipalities"]:
+        if m["current"]:
+            current.setdefault(m["bfs"], set()).update(m["names"])
+    log_path = ds / "metadata" / "removed_place_aliases.jsonl"
+    log = {(r["qid"], r["text"]): r for r in map(json.loads, open(log_path, encoding="utf-8"))} if log_path.exists() else {}
+    path = ds / "data" / "landmarks.jsonl"
+    rows = [json.loads(l) for l in open(path, encoding="utf-8")]
+    for lm in rows:
+        names = current.get(int(lm["municipality_bfs"]), set())
+        keep = []
+        for a in lm["place_aliases"]:
+            forms = {normalize(a["text"])} | {normalize(x) for x in split_bilingual(a["text"])}
+            if a["source"] == "bfs:name" or forms & names:
+                keep.append(a)
+            else:
+                log[(lm["qid"], a["text"])] = {"qid": lm["qid"], "municipality": lm["municipality_name"], "text": a["text"],
+                                               "source": a["source"], "reason": "not a name of the current gold municipality"}
+        lm["place_aliases"] = keep
+        kept = {a["text"] for a in keep}
+        lm["ambiguous_place_aliases"] = [a for a in lm.get("ambiguous_place_aliases", []) if a in kept]
+    with open(path, "w", encoding="utf-8", newline="\n") as f:
+        for lm in rows:
+            f.write(json.dumps(lm, ensure_ascii=False) + "\n")
+    with open(log_path, "w", encoding="utf-8", newline="\n") as f:
+        for r in sorted(log.values(), key=lambda r: (r["qid"], r["text"])):
+            f.write(json.dumps(r, ensure_ascii=False) + "\n")
+    return len(log)
 
 
 def _read_rows(path: Path) -> list[tuple[dict, str]] | None:

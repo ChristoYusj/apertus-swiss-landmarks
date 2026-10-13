@@ -61,6 +61,7 @@ def build_card(ds: Path, extra: dict | None = None) -> str:
         for name, fs in files_of.items())
     meta_desc = {"excluded_items.jsonl": "questions removed by documented rules, with their answers and the reason",
                  "excluded_landmarks.jsonl": "answer keys of landmarks removed in the photo screening",
+                 "removed_place_aliases.jsonl": "place labels removed from the answer keys (district, region or former municipality)",
                  "gazetteer.json": "Swiss cantons, current and former municipalities and countries (location analysis)",
                  "review.json": "photo-screening decisions (team, joint)"}
     meta_block = "\n".join(f"- `metadata/{f}`: {d}" for f, d in meta_desc.items() if (ds / "metadata" / f).exists())
@@ -160,7 +161,7 @@ are included with their grades. It was built for Hack Apertus 2026, Track 1B
   - expected behaviour and traps: `expected_behavior`, `trap_type`, `false_premise_claim`, `false_premise_aliases`, `paired_control_item_id`, `confusable_with`, `split`
 - `data/landmarks.jsonl`: answer keys, one row per landmark. Fields:
   - names: labels in 5 languages and `name_aliases` (each flagged `distinctive`; saint/type-only names count only together with the town)
-  - place: `place_aliases` (current, former and merged municipality names), `ambiguous_place_aliases` (need the canton), `canton_aliases`
+  - place: `place_aliases` (names of the current municipality in all languages; districts, regions and former municipalities removed, see `metadata/removed_place_aliases.jsonl`), `ambiguous_place_aliases` (need the canton), `canton_aliases`
   - year: `gold_year`, `year_window`, raw inception and its precision
   - inventory: KGS number, heritage class
   - design covariates: fame tier, language region, type, coordinates

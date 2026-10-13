@@ -73,3 +73,27 @@ def test_license_mapping():
     assert license_spdx("cc-by-nc-sa-4.0") is None
     assert license_spdx("gfdl") is None
     assert license_spdx(None) is None
+
+
+def test_place_aliases_keep_only_the_current_municipality(tmp_path):
+    # review 3 + team-lead village rule: districts, regions and former municipalities are not accepted places
+    import json
+    from landmarks_eval.build.assemble import clean_place_aliases
+    (tmp_path / "metadata").mkdir()
+    (tmp_path / "data").mkdir()
+    gz = {"municipalities": [{"bfs": 3762, "names": ["scuol", "schuls"], "current": True},
+                             {"bfs": 3741, "names": ["ardez"], "current": False}]}
+    (tmp_path / "metadata" / "gazetteer.json").write_text(json.dumps(gz), encoding="utf-8")
+    lm = {"qid": "Q1", "municipality_bfs": "3762", "municipality_name": "Scuol", "ambiguous_place_aliases": ["Ardez"],
+          "place_aliases": [{"text": "Scuol", "lang": "", "source": "bfs:name"},
+                            {"text": "Schuls", "lang": "de", "source": "wikidata:place_label"},
+                            {"text": "Ardez", "lang": "rm", "source": "wikidata:place_label"},
+                            {"text": "Sent", "lang": "", "source": "bfs:name"}]}   # a border landmark keeps BFS names
+    (tmp_path / "data" / "landmarks.jsonl").write_text(json.dumps(lm) + "\n", encoding="utf-8")
+    assert clean_place_aliases(tmp_path) == 1
+    out = json.loads((tmp_path / "data" / "landmarks.jsonl").read_text(encoding="utf-8"))
+    assert [a["text"] for a in out["place_aliases"]] == ["Scuol", "Schuls", "Sent"]
+    assert out["ambiguous_place_aliases"] == []
+    assert clean_place_aliases(tmp_path) == 1          # idempotent: the log keeps the removal
+    log = (tmp_path / "metadata" / "removed_place_aliases.jsonl").read_text(encoding="utf-8").splitlines()
+    assert len(log) == 1 and json.loads(log[0])["text"] == "Ardez"

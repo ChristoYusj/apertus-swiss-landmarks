@@ -46,6 +46,7 @@ ABSTAIN_PATTERNS = [
     r"\bableitbar\b", r"mir nicht bekannt", r"(ist|sind) .{0,70}nicht moglich", r"je ne trouve pas", r"ne dispose pas d", r"non identifiable",
     r"difficile de (determiner|dire|identifier)", r"n est pas (immediatement )?claire?", r"je n ai pas d informations",
     r"nessuna informaziun", r"betga? segir", r"betg visibel", r"\bnon identifitgabel\b", r"non indicheda",
+    r"non inditga",                                    # Sursilvan "Non inditgà" (review 3)
     r"impossible (de|d) (donner|indiquer|fournir|nommer|preciser)",
     # the 70B's one-word Romansh answer "Nesgir" (4x) is its "Na segir" (not sure) run together; whole answer only
     r"^\s*nesgir\s*$",
@@ -129,6 +130,9 @@ GENERIC_CAPS = {
     "tgesa", "chapella", "clutger", "colonna", "mines", "covered", "prieure", "museu", "cultura", "ffs", "cff", "sbb",
     "bunker", "chalet", "menhir", "steinmenhir", "statua", "horologium", "fontane", "brunnenanlage", "claustrum",
     "teatre", "teater", "rovine", "ruinas",
+    # review 3: the same audit over every claim branch (type-noun anchor, article, name+noun), both models
+    "fundaziun", "gruppa", "posta", "parrocchia", "muntogna", "corporaziun", "maestros", "chappel",
+    "stadtverwaltung", "uhren", "uhrengebaude", "dudelspieler", "dudelspielers", "mercato", "centrale", "centrala",
 }
 _SAINT_NAME = re.compile(r"\b(?:St|Sankt|San|Santa|Santo|Sant|Saint|Sainte|Ste|Sogn|Sontga|Son|SS|Santi|S)\.?[\s\-']+"
                          r"(?P<n>[A-ZÀ-Þ][\w'’-]+)")
@@ -229,69 +233,101 @@ def _swiss_area(word: str, gz) -> bool:
     return loc["kind"] == "abroad" or loc["kind"] == "switzerland_only" or (loc["kind"] == "swiss" and loc["level"] == "canton")
 
 
-def names_anything(text: str, gz=None) -> bool:
-    """Does the answer contain any name at all (a capitalised word that is not a type word, a generic noun, an area
-    or a sentence opener)? "Kapelle", "Chasa da baselgia", "In der Schweiz." name nothing; "Neuthal, Kanton Zürich",
-    "Sveti Stefan" do. Saints' dedications count as names ("Chiesa di Santa Maria Assunta")."""
+def name_evidence(text: str, gz=None) -> str | None:
+    """The first name in the answer (a capitalised word that is not a type word, a generic noun, an area or a
+    sentence opener), or None. "Kapelle", "Chasa da baselgia", "In der Schweiz." name nothing; "Neuthal, Kanton
+    Zürich", "Sveti Stefan" do. Saints' dedications count as names ("Chiesa di Santa Maria Assunta")."""
     if _dedications(text):
-        return True
+        return "dedication"
     for sent in re.split(r"(?<=[.!?;:])\s+|\n", text):
         sent = re.sub(r"(?<=[a-zß-ÿ]{3})(?=[A-ZÀ-Þ])", " ", sent)   # "chantunSurselva" (a missing space), not "MInF5"
-        words = re.findall(r"[^\W_][\w-]*", sent)      # "Porte d'Enfer" -> "Porte", "d", "Enfer"
-        for i, w in enumerate(words):
+        toks = list(re.finditer(r"[^\W_][\w-]*", sent))   # "Porte d'Enfer" -> "Porte", "d", "Enfer"
+        for i, m in enumerate(toks):
+            w = m.group()
             n = normalize(w)
-            if not w[:1].isupper() or any(ch.isdigit() for ch in w) or len(n) < 3:
+            if not w[:1].isupper() or any(ch.isdigit() for ch in w):
                 continue
-            if n in TYPE_WORDS or n in GENERIC_CAPS or (i == 0 and n.split()[0] in STARTERS) or n in STARTERS:
+            if i > 0 and i + 1 < len(toks) and sent[m.end():toks[i + 1].start()].isspace():
+                # review 3: two capitalised words in mid-sentence form a name even if each alone is a function or
+                # short word ("Chaplutta da Sur En"); mid-sentence capitals are the signal in all four languages
+                w2 = toks[i + 1].group()
+                pair = [normalize(w), normalize(w2)]
+                if (w2[:1].isupper() and not any(ch.isdigit() for ch in w2)
+                        and not any(p in GENERIC_CAPS or p in TYPE_NOUNS for p in pair)
+                        and all(p not in TYPE_WORDS or len(p) <= 3 for p in pair)   # not "Römisch Katholische"
+                        and not any(_swiss_area(x, gz) for x in (w, w2))):
+                    return f"{w} {w2}"
+            if len(n) < 3 or n in TYPE_WORDS or n in GENERIC_CAPS or (i == 0 and n.split()[0] in STARTERS) or n in STARTERS:
                 continue
+            if all(p in TYPE_WORDS or p in GENERIC_CAPS or len(p) < 3 for p in n.split()):
+                continue                                # "Uhren-Turm": every part is a common noun (review 3)
             if _swiss_area(w, gz):
                 continue
-            return True
-    return False
+            return w
+    return None
 
 
-def specific_claim(text: str, gz=None, gold_canton: str | None = None, question: str | None = None) -> bool:
-    """Does the answer commit to something checkable: a named object, a town, a foreign country or a wrong canton?
-    The name shown in the question is ignored (an echo is not a claim)."""
+def names_anything(text: str, gz=None) -> bool:
+    return name_evidence(text, gz) is not None
+
+
+# a lowercase adjective made from a place name right after a building noun ("Musée gruérien", "Musée jurassien")
+_PLACE_ADJ = re.compile(r"(ien|ienne|ois|oise|ais|aise|ese|esi|ense|ensi)$")
+
+
+def claim_evidence(text: str, gz=None, gold_canton: str | None = None, question: str | None = None) -> str | None:
+    """What the answer commits to that can be checked (a named object, a town, a foreign country, a wrong canton),
+    as "<branch>:<word>", or None. The name shown in the question is ignored (an echo is not a claim)."""
     text = _strip_echo(text, question)
     if _foreign_claim(text, gz):
-        return True
+        return "country"
     if gz is not None:
         loc = gz.locate(text)
         if loc["kind"] == "swiss" and (loc["level"] == "municipality" or (loc.get("canton") and loc["canton"] != gold_canton)):
-            return True
+            return f"gazetteer:{loc.get('name')}"
         named_cantons = {p["canton"] for m in gz.mentions(text) if not any(k == "municipality" for k, _ in m["payloads"])
                          for k, p in m["payloads"] if k == "canton"}
         if len(named_cantons) >= 2:               # "Kanton Graubünden oder Wallis": competing candidates
-            return True
-    if any(_is_name_word(m.group("n"), normalize(m.group("n"))) for m in _SAINT_NAME.finditer(text)):
-        return True
+            return "two_cantons"
+    for m in _SAINT_NAME.finditer(text):
+        if _is_name_word(m.group("n"), normalize(m.group("n"))):
+            return f"saint:{m.group('n')}"
     for m in _TOWN_CUE.finditer(text):             # "in der Gemeinde Schiedhalden" (a town the gazetteer lacks)
         if _is_name_word(m.group("n"), normalize(m.group("n"))):
-            return True
+            return f"town_cue:{m.group('n')}"
     for m in _place_preps(text):           # "situà a Cuera", "forse in Sud America": a named place
         n = m.group("n")
         if _is_name_word(n, normalize(n)) and not (gz is not None and gz.locate(n)["kind"] != "none"
                                                    and gz.locate(n).get("level") != "municipality"):
-            return True
+            return f"prep:{n}"
     for q in _QUOTED.findall(text) + _BOLD.findall(text):
-        if any(_is_name_word(o, n) for o, n in _caps(q)):
-            return True
+        for o, n in _caps(q):
+            if _is_name_word(o, n):
+                return f"quoted:{o}"
     for m in _ROMANCE_DEF.finditer(text):           # "il Teatro alla Scala", "l'Abbazia di Ettal" (not "una chiesa")
         n = m.group("n")
         if _is_name_word(n, normalize(n)) and not _swiss_area(n, gz):   # "dans le Tessin" is an area, not a name
-            return True
-    w = _caps(text)
-    for i, (o, n) in enumerate(w):
-        if n in TYPE_NOUNS:
-            j = i + 1
-            while j < len(w) and w[j][1] in _PREP:
-                j += 1
-            if j < len(w) and j - i <= 2 and _is_name_word(*w[j]):
-                return True                       # "Castello di Vaduz", "Burg Neuburg"
-        if i > 0 and i + 1 < len(w) and _is_name_word(o, n) and w[i + 1][1] in TYPE_NOUNS:
-            return True                           # "Landwasser-Viadukt", "Museum Rietberg" (other order)
-    return False
+            return f"article:{n}"
+    # the building-noun anchor never crosses a bracket or comma ("Rathaus (Stadtverwaltung)" is a gloss, review 3)
+    for seg in re.split(r"[()\[\],;:.!?/]", text):
+        w = _caps(seg)
+        for i, (o, n) in enumerate(w):
+            if n in TYPE_NOUNS:
+                j = i + 1
+                while j < len(w) and w[j][1] in _PREP:
+                    j += 1
+                if j < len(w) and j - i <= 2 and _is_name_word(*w[j]):
+                    return f"type_noun:{w[j][0]}"     # "Castello di Vaduz", "Burg Neuburg"
+                if j == i + 1 and j < len(w) and w[j][0][:1].islower() and _PLACE_ADJ.search(w[j][1]) \
+                        and w[j][1] not in TYPE_WORDS and w[j][1] not in GENERIC_CAPS:
+                    return f"place_adjective:{w[j][0]}"   # "Musée gruérien" (review 3)
+            if i > 0 and i + 1 < len(w) and _is_name_word(o, n) and w[i + 1][1] in TYPE_NOUNS:
+                return f"name_type_noun:{o}"      # "Landwasser-Viadukt", "Museum Rietberg" (other order)
+    return None
+
+
+def specific_claim(text: str, gz=None, gold_canton: str | None = None, question: str | None = None) -> bool:
+    return claim_evidence(text, gz, gold_canton, question) is not None
 
 
 def mentions(text: str, alias: str) -> bool:
@@ -403,6 +439,18 @@ def grade_name(text: str, strong: list[str], weak: list[str] = (), place_aliases
     if any(extended_alias(text, a) for a in _specific(strong)) or any(
             extended_alias(text, a) for a in weak if usable_alias(a)):
         return CodeGrade("incorrect", "similar_but_different_name")
+    gold_ded = {d for a in [*strong, *weak] for d in _dedications(a)}
+    if gold_ded and _dedications(text) & gold_ded:
+        # the gold saint in another spelling ("Pfarrkirche St. Martin" for "Kirche S. Martin"): like a weak name,
+        # it needs the town (review 3; the same rule as same_dedication_without_town for premise traps)
+        if _right_town(text, [], place_aliases, ambiguous, canton_aliases):
+            return CodeGrade("correct", "same_dedication_plus_town")
+        if _other_town(text, gz, gold_bfs, place_aliases):
+            return CodeGrade("incorrect", "same_dedication_wrong_town")
+        other = _strip_dedications(rest)               # "Église Saint-Pierre de Neuilly-sur-Seine": another place
+        if specific_claim(other, gz, gold_canton, question) or (not _abstain_phrase(text) and names_anything(other, gz)):
+            return CodeGrade("incorrect", "same_dedication_other_name")
+        return CodeGrade("not_attempted", "same_dedication_without_town")
     claim = specific_claim(rest, gz, gold_canton, question)
     if _abstain_phrase(text) and not claim:
         return CodeGrade("not_attempted", "hedged_guess_names_nothing_specific")
@@ -417,10 +465,41 @@ _OF = {"de", "di", "da", "del", "dei", "des", "du", "dal", "dil",
        "e", "est", "ist", "is", "es", "esch"}   # "il chantun è Turitg", "der Kanton ist Zürich"
 
 
+# one saint, several languages (review 3: "St. Antonius" = "Sant'Antonio", "Giachem" = "Jakob"); first = key
+_SAINT_FORMS = [
+    "martin martino martinus marti", "antonio anton antonius antoine antoni", "peter pietro pierre peder pieder petrus",
+    "stephan stefano stephanus etienne steffan stefan", "jakob giacomo jacques giachem jacobus jakobus giachen",
+    "johannes johann giovanni jean gion gian john", "lorenz lorenzo laurentius laurent luregn",
+    "michael michele michel", "nikolaus niklaus nicolao nicolaus nicolas niclau nicola", "viktor vittore victor",
+    "sebastian sebastiano sebastien bastian", "georg giorgio georges george", "paul paolo paulus", "andreas andrea andre",
+    "bartholomaus bartolomeo barthelemy", "mauritius maurizio maurice moritz", "gallus gallo gall",
+    "josef giuseppe joseph", "anna anne", "katharina caterina catherine", "rochus rocco roch", "karl carlo charles",
+    "maria marie mary", "theodul teodulo theodule joder", "ulrich ulderico udalric", "valentin valentino valentinus",
+]
+_SAINT_CANON = {f: forms.split()[0] for forms in _SAINT_FORMS for f in forms.split()}
+
+
+# Mary Magdalene is not Mary ("Sainte-Marie-Madeleine", "Santa Maria Maddalena", "Sontga Maria Madlaina")
+_MAGDALENE = re.compile(r"\bMari[ae][\s\-]+(?:Madd?alena|Madeleine|Magdalena|Madlaina)\b", re.I)
+# epithets that belong to the dedication ("San Giovanni Battista", "Sant'Antonio Abate")
+_EPITHET = r"(?:[\s\-]+(?:Battista|Baptista|Baptiste|Battesta|Abate|Abt|Apostolo|Apôtre|Evangelista|Évangéliste|" \
+           r"Evangelist|Assunta|Maggiore|Martire|Vescovo|Magno|Täufer))*"
+
+
 def _dedications(s: str) -> set[str]:
-    """Saints' names after a saint marker ("Sant'Antonio Abate" -> {"antonio"}; "Santo Antonio" -> {"antonio"})."""
-    return {normalize(m.group("n")) for m in _SAINT_NAME.finditer(s)} | \
-           {t2 for t1, t2 in zip(normalize(s).split(), normalize(s).split()[1:]) if t1 == "st" and len(t2) >= 3}
+    """Saints' names after a saint marker, in one spelling for all languages ("Sant'Antonio Abate" -> {"antonio"},
+    "St. Antonius" -> {"antonio"}, "Saint-Jean-Baptiste" -> {"johannes"})."""
+    s = _MAGDALENE.sub("Magdalena", s)
+    raw = {normalize(m.group("n")) for m in _SAINT_NAME.finditer(s)} | \
+          {t2 for t1, t2 in zip(normalize(s).split(), normalize(s).split()[1:]) if t1 == "st" and len(t2) >= 3}
+    return {_SAINT_CANON.get(d.split()[0], d) if d else d for d in raw}
+
+
+def _strip_dedications(s: str) -> str:
+    """The answer without its saints' dedications: what else does it name?"""
+    s = _MAGDALENE.sub(" ", s)
+    s = re.sub(_SAINT_NAME.pattern + _EPITHET, " ", s)
+    return re.sub(r"\b(?:St|st)\.?\s+[A-ZÀ-Þ][\w'’-]+" + _EPITHET, " ", s)
 
 
 def mentions_as_town(text: str, alias: str) -> bool:
@@ -449,11 +528,12 @@ def other_object(text: str, name_aliases: list[str], place_aliases: list[str]) -
 
     def other_name(o: str) -> bool:
         n = normalize(o)
-        return _is_name_word(o, n) and n not in town and n not in TYPE_NOUNS and n not in gold_ded
+        return _is_name_word(o, n) and n not in town and n not in TYPE_NOUNS and _SAINT_CANON.get(n, n) not in gold_ded
 
     def dedication(o: str) -> bool:                # a saint/dedication names a church ("S. Maria Assunta")
         n = normalize(o)
-        return o[:1].isupper() and len(n) >= 3 and n not in town and n not in GENERIC_CAPS and n not in gold_ded
+        return (o[:1].isupper() and len(n) >= 3 and n not in town and n not in GENERIC_CAPS
+                and _SAINT_CANON.get(n, n) not in gold_ded)
 
     if any(dedication(m.group("n")) for m in _SAINT_NAME.finditer(text)):
         return True                               # "chiesa di San Martino a Poschiavo" (gold: San Vittore)
