@@ -49,6 +49,7 @@ def main(argv: list[str] | None = None) -> int:
     b = sub.add_parser("build-landmarks", help="(team only, network) pull Wikidata + BFS and sample landmarks")
     b.add_argument("--refresh", action="store_true", help="ignore the SPARQL cache and re-pull")
     sub.add_parser("build-images", help="(team only, network) fetch, licence-filter and re-encode photos")
+    sub.add_parser("build-questions", help="(team only) generate test cases from the frozen templates")
 
     for name in ("run", "grade", "score", "verify", "live"):
         p = sub.add_parser(name)
@@ -71,6 +72,11 @@ def main(argv: list[str] | None = None) -> int:
         report = build_images(args.work)
         print(json.dumps({k: v for k, v in report.items() if k != "replaced"}, indent=1, ensure_ascii=False))
         print("replaced:", len(report["replaced"]))
+        return 0
+
+    if args.cmd == "build-questions":
+        from .build.questions import build_questions
+        print(json.dumps(build_questions(args.work), indent=1, ensure_ascii=False))
         return 0
 
     from .client import Endpoint

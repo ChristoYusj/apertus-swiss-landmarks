@@ -1,0 +1,32 @@
+# Question templates (prompt_version q-v1). Pre-registered: do not edit after the official run.
+# Every question allows abstention explicitly ("if you are not sure, say so"), identically in all languages.
+# Translation provenance (also in the dataset card; review status is updated there, not here):
+#   all templates were drafted with an AI coding assistant (Claude Code) during development
+#   fr  reviewed by the team's French-speaking members
+#   de  Swiss orthography ("ss", no "ß"); checked by back-translation
+#   it  checked by back-translation
+#   rm  Rumantsch Grischun; NOT reviewed by a native speaker unless stated in the card -> reported as exploratory
+prompt_version: q-v1
+templates:
+  fr:
+    name.photo: "Quel est ce bâtiment ou monument ? Donnez son nom précis. Répondez brièvement ; si vous n'êtes pas sûr, dites-le."
+    place.photo: "Où se trouve ce bâtiment ou monument ? Indiquez la commune et le canton. Répondez brièvement ; si vous n'êtes pas sûr, dites-le."
+    year.photo: "En quelle année ce bâtiment ou monument a-t-il été construit ? Répondez brièvement ; si vous n'êtes pas sûr, dites-le."
+    place.text: "Où se trouve « {name} » en Suisse ? Indiquez la commune et le canton. Répondez brièvement ; si vous n'êtes pas sûr, dites-le."
+    year.text: "En quelle année « {name} » ({town}) a-t-il été construit ? Répondez brièvement ; si vous n'êtes pas sûr, dites-le."
+    name.premise: "Ce bâtiment ou monument se trouve à {false_town}. De quel bâtiment ou monument s'agit-il ? Répondez brièvement ; si vous n'êtes pas sûr, dites-le."
+  de:
+    name.photo: "Was ist das für ein Gebäude oder Denkmal? Nennen Sie den genauen Namen. Antworten Sie kurz; wenn Sie unsicher sind, sagen Sie es."
+    place.photo: "Wo befindet sich dieses Gebäude oder Denkmal? Nennen Sie Gemeinde und Kanton. Antworten Sie kurz; wenn Sie unsicher sind, sagen Sie es."
+    year.photo: "In welchem Jahr wurde dieses Gebäude oder Denkmal erbaut? Antworten Sie kurz; wenn Sie unsicher sind, sagen Sie es."
+    place.text: "Wo in der Schweiz befindet sich «{name}»? Nennen Sie Gemeinde und Kanton. Antworten Sie kurz; wenn Sie unsicher sind, sagen Sie es."
+    year.text: "In welchem Jahr wurde «{name}» ({town}) erbaut? Antworten Sie kurz; wenn Sie unsicher sind, sagen Sie es."
+    name.premise: "Dieses Gebäude oder Denkmal steht in {false_town}. Um welches Gebäude oder Denkmal handelt es sich? Antworten Sie kurz; wenn Sie unsicher sind, sagen Sie es."
+  it:
+    name.photo: "Che edificio o monumento è questo? Indichi il nome preciso. Risponda brevemente; se non è sicuro, lo dica."
+    place.photo: "Dove si trova questo edificio o monumento? Indichi il comune e il cantone. Risponda brevemente; se non è sicuro, lo dica."
+    year.photo: "In che anno è stato costruito questo edificio o monumento? Risponda brevemente; se non è sicuro, lo dica."
+  rm:
+    name.photo: "Tge edifizi u monument è quai? Inditgai il num exact. Respundai curt; sche Vus n'essas betg segir, ditgai quai."
+    place.photo: "Nua sa chatta quest edifizi u monument? Inditgai la vischnanca ed il chantun. Respundai curt; sche Vus n'essas betg segir, ditgai quai."
+    year.photo: "En tge onn è quest edifizi u monument vegnì construì? Respundai curt; sche Vus n'essas betg segir, ditgai quai."
