@@ -119,3 +119,47 @@ def test_split_names_with_canton_suffix():
     assert not distinctive("Reformierte Kirche Zernez", {"zernez"})
     assert distinctive("Gerechtigkeitsbrunnen", {"bern"})
     assert distinctive("Schloss Chillon", {"veytaux"})
+
+
+@pytest.mark.parametrize("text", [
+    "Unsicher.", "Unsicher, da keine spezifischen geografischen Hinweise im Bild vorhanden sind.", "Betg segir",
+    "N/A", "Nun enconuschent", "Incertain", "Je ne suis pas sûr.", "Non sono sicuro.",
+    "Das genaue Gebäude oder Denkmal ist nicht eindeutig identifizierbar. Unsicher.",
+    "Nun en segir davart l'onn da construcziun.",
+])
+def test_short_abstentions_observed_in_the_official_run(text):
+    # real answers of Apertus 1.5 70B (official run, 13 Oct 2026) that v1 of the grader missed
+    assert abstains(text)
+    assert grade_name(text, NAMES).label == "not_attempted"
+
+
+@pytest.mark.parametrize("text", [
+    "Non sono sicuro al 100% senza ulteriori informazioni, ma sembra essere la Chiesa di San Giacomo Maggiore a Pontebba.",
+    "Non sono sicuro al 100%, ma sembra essere il Viadotto di Landwasser, in Svizzera.",
+    "Je ne suis pas sûr, mais il semble que ce soit la cathédrale de Lausanne.",
+    "Unsicher, vermutlich ist es das Schloss Thun.",
+])
+def test_hedged_guess_is_an_attempt(text):
+    assert not abstains(text)
+    assert grade_name(text, NAMES).label == "incorrect"
+
+
+def test_saint_pairs_and_confession_words_are_not_distinctive():
+    from landmarks_eval.grading.normalize import distinctive
+    assert not distinctive("Pfarrkirche St. Peter und Paul", {"flumenthal"})
+    assert not distinctive("Chiesa parrocchiale dei SS. Pietro e Paolo", set())
+    assert not distinctive("Römisch-katholische Pfarrkirche", {"beinwil", "am", "see"})
+    assert not distinctive("Église catholique romaine", set())
+    assert distinctive("Kunsthaus Zürich", {"zurich"})  # 'kunsthaus' is specific
+    assert distinctive("Valère Castle", {"sion"})
+
+
+def test_premise_abstention_repeating_the_town_is_not_adoption():
+    t = "Je ne suis pas sûr. L'image montre une église, mais il est difficile de dire quel bâtiment de Centovalli c'est."
+    # contains a guess marker? no ("mais il est difficile" is not a guess) -> abstention
+    assert grade_premise(t, ["Centovalli"], ["Alto Malcantone"], ["San Michele"]).label == "not_attempted"
+    assert grade_premise("L'église de Rothrist", ["Rothrist"], ["Holderbank"], ["Reformierte Kirche Holderbank"]).label == "incorrect"
+
+
+def test_no_specific_name_abstention_de():
+    assert abstains("Es gibt zahlreiche römisch-katholische Pfarrkirchen in der Schweiz. Ohne einen spezifischen Namen kann ich keine genaue Gemeinde nennen.")

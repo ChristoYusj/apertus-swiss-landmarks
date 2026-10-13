@@ -17,7 +17,7 @@ from pathlib import Path
 
 import yaml
 
-from ..grading.normalize import normalize, split_bilingual
+from ..grading.normalize import distinctive, normalize, split_bilingual
 from ..schema import TestCase
 from .wikidata_api import details
 
@@ -58,6 +58,15 @@ def build_questions(work: Path, alt_accepted: dict[str, str] | None = None,
                     lowinfo: dict[str, str] | None = None) -> dict:
     pv, T = _templates()
     lms = [json.loads(l) for l in open(work / "landmarks_final.jsonl", encoding="utf-8")]
+    # (re)compute name distinctiveness with the current rule (single source of truth: normalize.distinctive)
+    for lm in lms:
+        town_tokens = {t for a in lm["place_aliases"] for t in normalize(a["text"]).split()}
+        for a in lm["name_aliases"]:
+            a["distinctive"] = distinctive(a["text"], town_tokens)
+        lm["name_needs_place"] = not any(a["distinctive"] for a in lm["name_aliases"])
+    with open(work / "landmarks_final.jsonl", "w", encoding="utf-8", newline="\n") as f:
+        for lm in lms:
+            f.write(json.dumps(lm, ensure_ascii=False) + "\n")
     cases = []
     for lm in lms:
         img = lm["main_image_id"]
@@ -67,10 +76,13 @@ def build_questions(work: Path, alt_accepted: dict[str, str] | None = None,
             if lm["gold_year"] is not None:
                 cases.append(_case(lm, "photo_main", "year", lang, "year.photo", pv, T[lang]["year.photo"], img))
         towns = {normalize(a["text"]) for a in lm["place_aliases"]}
+        town_tokens = {t for n in towns for t in n.split()}
         shown = {lang: _label(lm, lang) for lang in ("fr", "de")}
         leaks = any(f" {t} " in f" {normalize(n)} " for n in shown.values() for t in towns if t)
+        # the NAME SHOWN in the question must identify the object, otherwise "where is it?" is unanswerable
+        shown_ok = all(distinctive(n, town_tokens) for n in shown.values())
         for lang in ("fr", "de"):
-            if not leaks and not lm["name_needs_place"]:
+            if not leaks and shown_ok:
                 cases.append(_case(lm, "text_only", "place", lang, "place.text", pv,
                                    T[lang]["place.text"].format(name=shown[lang]), None))
             if lm["gold_year"] is not None:

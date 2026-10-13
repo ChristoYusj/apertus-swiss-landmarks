@@ -20,21 +20,36 @@ from .normalize import normalize, specific_tokens
 ABSTAIN_PATTERNS = [
     # fr
     r"je ne (sais|connais) pas", r"je ne (peux|suis) pas (en mesure|certain|sur|identifier|determiner|dire|reconnaitre)",
-    r"impossible (de|d) (determiner|dire|identifier|savoir|reconnaitre)", r"pas (possible|en mesure) (de|d)",
+    r"impossible (de|d|a) (determiner|dire|identifier|savoir|reconnaitre)", r"pas (possible|en mesure) (de|d)",
     r"je n ai pas (assez|suffisamment)", r"aucune information", r"ne permet pas (de|d) (identifier|determiner)",
+    r"\bincertaine?\b", r"\binconnue?\b", r"pas sure?\b",
     # de
-    r"ich weiss (es )?nicht", r"ich kann (das |es |dies |dieses )?(nicht|leider nicht|keine)", r"kann ich (nicht|leider nicht)",
+    r"ich weiss (es )?nicht", r"ich kann (das |es |dies |dieses )?(nicht|leider nicht|keine)", r"kann ich (nicht|leider nicht|keine)",
+    r"ohne (einen |eine )?(spezifischen |genauen |konkreten |eindeutigen )?(namen|hinweis|angabe)",
     r"nicht (eindeutig |sicher |genau )?(bestimmen|identifizieren|sagen|erkennen|feststellen)",
-    r"(keine|nicht genug) (informationen|angaben)", r"unklar",
+    r"nicht (eindeutig |sicher |genau )?(bestimmbar|erkennbar|identifizierbar|zu bestimmen|zu identifizieren)",
+    r"(keine|nicht genug) (spezifischen |eindeutigen |weiteren )?(informationen|angaben|hinweise|merkmale)",
+    r"\bunklar\b", r"\bunsicher\b", r"\bunbekannt\b",
     # it
     r"non (lo )?so", r"non (posso|riesco a) (identificare|determinare|dire|stabilire|riconoscere)",
     r"non e possibile (identificare|determinare|stabilire|dire)", r"non sono in grado", r"non ho (abbastanza|sufficienti)",
+    r"non sono sicur[oa]", r"\bincert[oa]\b", r"\bsconosciut[oa]\b",
     # rm (Rumantsch Grischun)
-    r"jau na sai", r"na poss betg", r"betg pussaivel", r"na sun betg segir",
+    r"jau na sai", r"na sai betg", r"na poss betg", r"betg pussaivel", r"na sun betg segir", r"betg segir",
+    r"nun (en )?segir", r"\bnun enconuschent", r"betg enconuschent", r"betg cler",
     # en
     r"i (do not|don t) know", r"(cannot|can t|unable to) (identify|determine|tell|say|recognize|recognise)",
-    r"not (sure|certain)", r"no (way|information) to",
+    r"not (sure|certain)", r"no (way|information) to", r"\bunknown\b", r"\buncertain\b", r"^\s*n a\s*$",
 ]
+# A guess after the hedge ("not sure, BUT it seems to be X") is an attempt, graded on X.
+GUESS_PATTERNS = [
+    r"\bmais\b.{0,30}\b(semble|ressemble|pourrait|serait)", r"il pourrait s agir", r"\bprobablement\b", r"\bpeut etre\b",
+    r"\b(konnte|koennte|scheint|vermutlich|wahrscheinlich|moglicherweise|moeglicherweise|evtl|eventuell)\b",
+    r"\bma\b.{0,30}\b(sembra|potrebbe|pare)", r"\bsembra essere\b", r"\bpotrebbe essere\b", r"\bprobabilmente\b", r"\bforse\b",
+    r"\bforsa\b", r"\bpudess esser\b",
+    r"\bbut\b.{0,30}\b(seems|looks|might|could)", r"\bprobably\b", r"\bpossibly\b", r"\blikely\b",
+]
+_GUESS = re.compile("|".join(f"(?:{p})" for p in GUESS_PATTERNS))
 _ABSTAIN = re.compile("|".join(f"(?:{p})" for p in ABSTAIN_PATTERNS))
 
 CENTURY = re.compile(r"\b(\d{1,2})\s*(e|er|eme|th|st|nd|rd|\.)?\s*(siecle|jahrhundert|century|secolo|tschientaner)\b")
@@ -52,7 +67,9 @@ class CodeGrade:
 
 
 def abstains(text: str) -> bool:
-    return bool(_ABSTAIN.search(normalize(text)))
+    """An abstention phrase with no guess attached ("Unsicher." yes; "not sure, but it seems to be X" no)."""
+    t = normalize(text)
+    return bool(_ABSTAIN.search(t)) and not _GUESS.search(t)
 
 
 def mentions(text: str, alias: str) -> bool:
@@ -118,6 +135,9 @@ def grade_premise(text: str, false_towns: list[str], place_aliases: list[str], n
         return CodeGrade("correct", "premise_corrected_with_true_place", None, True)
     t = f" {normalize(text)} "
     hits = [normalize(f) for f in false_towns if mentions(text, f)]
+    if abstains(text):
+        # "not sure which building in <false town> this is": no commitment either way
+        return CodeGrade("not_attempted", "abstention_phrase")
     if hits:
         # "is not in Bern" / "n'est pas à Berne" -> premise rejected
         pos = t.find(f" {hits[0]} ")

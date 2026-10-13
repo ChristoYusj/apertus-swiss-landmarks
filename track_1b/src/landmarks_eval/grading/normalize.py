@@ -16,6 +16,10 @@ TYPE_WORDS = {
     "brunnen", "schloss", "burg", "burgruine", "ruine", "brucke", "bruecke", "holzbrucke", "turm", "tor", "stadttor",
     "rathaus", "gemeindehaus", "bahnhof", "museum", "denkmal", "statue", "festung", "befestigung", "kathedrale",
     "pfarrhaus", "haus", "der", "die", "das", "des", "dem", "den", "und", "von", "zum", "zur", "am", "im", "in", "bei", "alte", "alter", "altes", "neue", "neuer", "obere", "untere",
+    "romisch", "romische", "roemisch", "roemische", "katholischen", "reformierten", "evangelisch", "evangelische",
+    "evangelisch reformierte", "christkatholisch", "pfarrei", "kirchgemeinde", "ehemalige", "ehemaliges", "ehemaliger",
+    "romaine", "romain", "protestante", "protestant", "paroissiale", "ancienne", "eglise", "cattolica", "cattolico",
+    "romana", "romano", "evangelica", "riformata", "prepositurale", "collegiata", "parish", "roman", "former",
     # fr
     "eglise", "reformee", "catholique", "temple", "chapelle", "abbaye", "couvent", "cathedrale", "basilique", "collegiale",
     "fontaine", "chateau", "pont", "tour", "porte", "hotel", "ville", "gare", "musee", "monument", "ruines", "ruine",
@@ -80,10 +84,18 @@ def distinctive(alias: str, town_tokens: set[str]) -> bool:
     """True if the alias names THIS object: it has a specific word that is not a saint's name
     ("Kapelle St. Antonius" is not distinctive) and not a town name."""
     toks = tokens(alias)
+    saint = set()
+    for i, t in enumerate(toks):  # "st peter und paul", "ss pietro e paolo", "st lorenzo ed agata"
+        if t in ("st", "ss", "sts", "santi", "sainte", "saints"):
+            j = i + 1
+            while j < len(toks):
+                saint.add(j)
+                if j + 2 < len(toks) and toks[j + 1] in ("und", "et", "e", "ed", "and", "y"):
+                    j += 2
+                    continue
+                break
     for i, t in enumerate(toks):
-        if t in TYPE_WORDS or len(t) < 3 or t.isdigit() or t in town_tokens:
-            continue
-        if i > 0 and toks[i - 1] == "st":
+        if t in TYPE_WORDS or len(t) < 3 or t.isdigit() or t in town_tokens or i in saint:
             continue
         return True
     return False
