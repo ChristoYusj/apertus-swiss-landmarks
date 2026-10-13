@@ -13,5 +13,6 @@ CMD ["--help"]
 FROM runtime AS test
 RUN pip install --no-cache-dir "pytest>=8"
 COPY tests ./tests
+COPY tools ./tools
 ENTRYPOINT ["python", "-m", "pytest", "-q", "tests"]
 CMD []
