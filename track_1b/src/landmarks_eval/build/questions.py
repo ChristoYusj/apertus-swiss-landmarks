@@ -186,8 +186,9 @@ def build_questions(work: Path, alt_accepted: dict[str, str] | None = None,
             f.write(json.dumps(c, ensure_ascii=False) + "\n")
     with open(out / "landmarks.jsonl", "w", encoding="utf-8", newline="\n") as f:
         for lm in lms:
-            f.write(json.dumps({k: v for k, v in lm.items() if not k.startswith("_") and k != "main_image_id"},
-                               ensure_ascii=False) + "\n")
+            pub = {k: v for k, v in lm.items() if not k.startswith("_") and k != "main_image_id"}
+            pub["lookalike_siblings"] = [{"qid": q, "municipality": t} for q, t in lm.get("_siblings") or []]
+            f.write(json.dumps(pub, ensure_ascii=False) + "\n")
     counts: dict[str, int] = {}
     for c in cases:
         k = f"{c['arm']}|{c['question_type']}"

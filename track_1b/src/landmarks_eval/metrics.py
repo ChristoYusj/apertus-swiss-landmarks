@@ -34,8 +34,9 @@ def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float] | None:
     return (max(0.0, c - h), min(1.0, c + h))
 
 
-def cluster_bootstrap(rows: list[dict], stat, cluster_key: str = "landmark_qid", b: int = 2000, seed: int = 20261015):
-    """95 % percentile CI of stat(rows), resampling whole landmarks (items of one landmark are correlated)."""
+def bootstrap_values(rows: list[dict], stat, cluster_key: str = "landmark_qid", b: int = 2000,
+                     seed: int = 20261015) -> list[float] | None:
+    """stat() on b resamples of whole landmarks (items of one landmark are correlated), sorted."""
     clusters = defaultdict(list)
     for r in rows:
         clusters[r[cluster_key]].append(r)
@@ -49,10 +50,37 @@ def cluster_bootstrap(rows: list[dict], stat, cluster_key: str = "landmark_qid",
         v = stat(sample)
         if v is not None:
             vals.append(v)
+    return sorted(vals) or None
+
+
+def percentile_ci(vals: list[float] | None):
     if not vals:
         return None
-    vals.sort()
     return (vals[int(0.025 * len(vals))], vals[min(len(vals) - 1, int(0.975 * len(vals)))])
+
+
+def bootstrap_p(vals: list[float] | None) -> float | None:
+    """Two-sided bootstrap p-value for H0: statistic = 0 (share of resamples on the other side of 0, doubled)."""
+    if not vals:
+        return None
+    lo = sum(v <= 0 for v in vals) / len(vals)
+    hi = sum(v >= 0 for v in vals) / len(vals)
+    return min(1.0, 2 * min(lo, hi))
+
+
+def cluster_bootstrap(rows: list[dict], stat, cluster_key: str = "landmark_qid", b: int = 2000, seed: int = 20261015):
+    """95 % percentile CI of stat(rows), resampling whole landmarks (items of one landmark are correlated)."""
+    return percentile_ci(bootstrap_values(rows, stat, cluster_key, b, seed))
+
+
+def holm(pvalues: dict[str, float | None], alpha: float = 0.05) -> dict[str, dict]:
+    """Holm step-down adjustment over the tests that have a p-value."""
+    items = sorted(((k, p) for k, p in pvalues.items() if p is not None), key=lambda kv: kv[1])
+    m, out, running = len(items), {}, 0.0
+    for i, (k, p) in enumerate(items):
+        running = max(running, min(1.0, (m - i) * p))
+        out[k] = {"p": p, "p_holm": running, "reject_at_0.05": running < alpha}
+    return out
 
 
 def cohen_kappa(a: list[str], b: list[str]) -> float | None:

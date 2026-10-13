@@ -1,0 +1,6 @@
+# Labels of every item with a BFS municipality number (P771), current or former, in the five languages.
+# Used to recognise which Swiss municipality a model answer names (gazetteer for the location analysis).
+SELECT DISTINCT ?bfs ?text WHERE {
+  ?m wdt:P771 ?bfs ; rdfs:label ?text .
+  FILTER(LANG(?text) IN ("en", "fr", "de", "it", "rm"))
+}

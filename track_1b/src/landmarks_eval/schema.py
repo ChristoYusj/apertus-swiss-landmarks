@@ -122,6 +122,8 @@ class Landmark(Strict):
     name_needs_place: bool = False  # no distinctive name (e.g. "Kapelle St. Antonius"): Q1 also needs the town
     ambiguous_place_aliases: list[str] = []  # town names shared with another municipality: need the canton too
     lookalike_set_id: Optional[str] = None
+    # heritage objects with the same name stem in OTHER municipalities: [{"qid": ..., "municipality": ...}]
+    lookalike_siblings: list[dict] = []
     stratum: str
     selection_seed: int
 

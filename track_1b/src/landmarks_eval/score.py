@@ -7,6 +7,7 @@ import json
 from collections import defaultdict
 from pathlib import Path
 
+from .analysis import hypotheses, load_gazetteer, location_analysis
 from .client import Endpoint
 from .grading import judge as J
 from .grading.rules import grade
@@ -80,7 +81,8 @@ def compute_scores(dataset: Path, results: Path, bootstrap: int = 2000) -> dict:
         rows.append({"item_id": iid, "landmark_qid": lm["qid"], "arm": c["arm"], "qtype": c["question_type"],
                      "lang": c["lang"], "tier": lm["fame_tier"], "region": lm["language_region"],
                      "type": lm["type_group"], "label": j["final_label"], "code": j["code_label"],
-                     "judge": j["judge_label"], "canton_correct": j["canton_correct"]})
+                     "judge": j["judge_label"], "canton_correct": j["canton_correct"],
+                     "text": (resp.get(iid) or {}).get("response_text") or ""})
     graded = [r for r in rows if r["label"]]
     lab = lambda rs: [r["label"] for r in rs]
 
@@ -123,6 +125,11 @@ def compute_scores(dataset: Path, results: Path, bootstrap: int = 2000) -> dict:
     both = [r for r in graded if r["code"] and r["judge"]]
     s["agreement_judge_vs_code"] = {"n": len(both), "cohen_kappa": cohen_kappa([r["code"] for r in both], [r["judge"] for r in both]),
                                     "raw_agreement": (sum(r["code"] == r["judge"] for r in both) / len(both)) if both else None}
+    gz = load_gazetteer(dataset)
+    if gz is not None:  # hypotheses H1b-H4 + location analysis need the gazetteer shipped with the dataset
+        s["hypotheses"] = hypotheses(graded, gz, lms, cases, bootstrap=bootstrap)
+        s["location_photo_main_place"] = location_analysis(
+            [r for r in main if r["qtype"] == "place"], gz, lms)
     return rnd(s)
 
 

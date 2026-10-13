@@ -56,6 +56,13 @@ def main(argv: list[str] | None = None) -> int:
     m.add_argument("files", nargs=1, type=Path)
     sub.add_parser("assemble", help="(team only) assemble the publishable dataset folder")
 
+    st = sub.add_parser("stability", help="re-ask a seeded sample to measure temperature-0 answer stability")
+    st.add_argument("--dataset")
+    st.add_argument("--results", type=Path, required=True)
+    st.add_argument("--n", type=int, default=100)
+    st.add_argument("--probe", type=int, default=20)
+    st.add_argument("--repeats", type=int, default=2)
+
     for name in ("run", "grade", "score", "verify", "live"):
         p = sub.add_parser(name)
         p.add_argument("--dataset", help="dataset dir or hf:<repo>@<revision> (default: config.json)")
@@ -109,6 +116,17 @@ def main(argv: list[str] | None = None) -> int:
         results = args.results or dataset / "responses" / _config().get("reference_model_dir", "apertus-v1.5-70b")
         expected = args.expected or EXPECTED
         return 0 if verify(dataset, results, expected if expected.exists() else None) else 1
+
+    if args.cmd == "stability":
+        ep = Endpoint.from_env("LLM")
+        if ep is None:
+            print("LLM_NAME, LLM_BASE_URL and LLM_API_KEY must be set.", file=sys.stderr)
+            return 2
+        from .stability import stability
+        rep = stability(dataset, args.results, ep, n=args.n, probe=args.probe, repeats=args.repeats)
+        print(json.dumps({k: v for k, v in rep.items() if k != "probe"} | {"probe": {k: v for k, v in rep["probe"].items()
+                                                                               if k != "detail"}}, indent=1))
+        return 0
 
     if args.cmd in ("run", "live"):
         ep = Endpoint.from_env("LLM")

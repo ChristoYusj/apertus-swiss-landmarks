@@ -67,3 +67,22 @@
   shown in text-only questions; where a landmark has no label in the question's language a fallback label is
   shown (mostly English in French questions). Results are reported with and without these items
   (sensitivity analysis, added after the run).
+
+## Analyses added (13 Oct, after the run; labelled as such in the report)
+- **Hypothesis tests implemented** (`analysis.py`, part of `scores.json`): H1b, H2, H2b, H3 (FR, DE), H4 and the
+  Holm correction across them, exactly as registered. Two-sided cluster-bootstrap p-values for H1/H1b/H2.
+  - H2 as registered compares against "the share of DE municipalities among wrong answers for DE landmarks",
+    which is not an informative base rate; the registered test is kept in the Holm family and a clarified
+    comparison (vs. the share of German-speaking municipalities among all current Swiss municipalities, BFS)
+    is reported next to it.
+  - H2b is not testable: only 3 wrong answers (1 landmark) name a look-alike's town; reported descriptively.
+    Look-alike siblings are now shipped in `landmarks.jsonl` (`lookalike_siblings`) so this is reproducible.
+- **Location analysis (exploratory, not registered):** which canton/municipality/country a place answer
+  names, by question language, extracted deterministically with `metadata/gazetteer.json` (26 cantons,
+  2,110 current + 1,126 former municipalities in 5 languages from Wikidata/BFS; Liechtenstein's BFS-numbered
+  municipalities count as abroad). Matching rules (capitalised names only, no hyphenated continuation, church
+  context, place cue for "Zug"/"Baden", short forms of suffixed names) were fixed by reading 40 random
+  extractions plus every distinct extracted name, before the tables were interpreted; pinned in
+  `tests/test_location.py`.
+- **Stability check** (`landmarks-eval stability`): 100 items re-asked once, 20 of them twice more:
+  72 % identical text, 100 % identical code label (kappa 1.0); 20/20 probe items kept their label over 4 answers.

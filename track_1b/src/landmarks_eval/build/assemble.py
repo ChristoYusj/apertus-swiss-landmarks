@@ -78,8 +78,10 @@ def assemble(work: Path) -> dict:
     if (work / "review" / "merged.json").exists():
         shutil.copy2(work / "review" / "merged.json", ds / "metadata" / "review.json")
     pruned = prune_results(ds, {c["item_id"] for c in cases}, work / "removed_items.jsonl")
+    from .gazetteer import build_gazetteer
+    gazetteer = build_gazetteer(work, ds)
     return {"test_cases": len(cases), "landmarks": len(lms), "images_shipped": len(shipped), "problems": problems[:20],
-            "n_problems": len(problems), "responses_moved_to_excluded_items": pruned}
+            "n_problems": len(problems), "responses_moved_to_excluded_items": pruned, "gazetteer": gazetteer}
 
 
 def prune_results(ds: Path, case_ids: set[str], removed_path: Path) -> dict[str, int]:
