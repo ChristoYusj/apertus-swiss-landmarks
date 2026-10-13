@@ -74,6 +74,7 @@ administrative location; the Federal Statistical Office municipality register (0
 numbers, cantons and language regions; Wikimedia Commons for photos and their licences.
 
 **Answer-key construction and cleaning** (all rules in code, all decisions logged in `CHANGELOG.md`):
+
 - Name aliases from Wikidata labels/aliases/sitelinks in EN/FR/DE/IT/RM/GSW. Aliases that are only a town name
   or only type words are dropped. A name is *non-distinctive* if, after removing type words, saints' names and
   the town, nothing is left ("Kapelle St. Antonius", "Kunsthaus Zürich"): it then counts only together with the
@@ -90,6 +91,7 @@ question is dropped if the shown name contains a year. 170 items were removed th
 responses are kept in `metadata/excluded_items.jsonl` with the reason.
 
 **Human annotation** (`docs/annotation_guidelines.md`).
+
 - *Task P, photo screening:* the team screens every shipped photo jointly (one decision per landmark): privacy
   (recognisable people, licence plates, private interiors → exclude, never blur), "wrong object", the best second
   view, and "too generic" photos for the low-information trap ⟨pending⟩.
@@ -145,12 +147,16 @@ Overall, name correct 0.1 %, place correct 0.8 %, year never answered (0 of 272)
 French and confident fabrication in Romansh, on identical images. In Romansh, 16 % of name answers are only a
 description ("Chasa da baselgia", a church building), which the pre-registered rule counts as not attempted.
 
+![Same 264 photos, four question languages (Apertus 1.5 70B, code grader).](docs/figures/fig1_languages.png){width=100%}
+
 **2. In Romansh the model moves landmarks to Graubünden** (exploratory, location extracted with the gazetteer).
 Of 200 landmarks outside Graubünden, the Romansh answer places **99** in Graubünden; the French and Italian
 answers for the same photos place none there and the German answers 14 (paired McNemar RM vs FR/IT/DE,
 p < 10⁻⁶). Overall 59 % of Romansh place answers say Graubünden (true share 24 %). The municipalities named are
 mostly German- and Italian-speaking Graubünden towns (Chur, Davos, Poschiavo): the pull is toward the canton
 associated with Romansh rather than toward Romansh-speaking villages. The 8B model shows the same pull (28 %).
+
+![Share of place answers that say Graubünden, by question language (dashed: true share).](docs/figures/fig2_graubunden.png){width=62%}
 
 **3. Famous names absorb unknown objects.** Twelve different landmarks, mostly castles and towers, are called "Castel Tarasp" (the
 iconic Engadine castle), nine Swiss landmarks become "Castle Vaduz" (Liechtenstein), and castles in French and Italian
@@ -169,6 +175,8 @@ answers become "Château de Chillon". Disentis Abbey becomes "Kloster Einsiedeln
 
 Knowing the name helps, and fame matters there: text-only place accuracy is 13.6 % for high-fame vs 3.7 % for
 low-fame landmarks, while from the photo both are ≈ 0 %. The bottleneck is visual recognition.
+
+![Left: municipality correct with the name given vs from the photo, by fame (H3). Right: incorrect on the plain photo question vs with a false town in the question (H4).](docs/figures/fig3_know_vs_see.png){width=100%}
 
 **5. Smaller model.** Apertus 1.5 8B declines less (name: 36 % not attempted vs 68 % for 70B) and is
 confidently wrong more often in every language (name wrong: FR 69 %, IT 47 %, DE 64 %, RM 75 %). Its fame effect

@@ -10,7 +10,7 @@ ENVS   := -e LLM_NAME -e LLM_BASE_URL -e LLM_API_KEY -e LLM_CONCURRENCY \
           -e JUDGE_MODEL -e JUDGE_BASE_URL -e JUDGE_API_KEY -e LANDMARKS_DATASET
 RESULTS := $(CURDIR)/results
 
-.PHONY: run build verify live smoke test shell clean
+.PHONY: run build verify live smoke test shell clean report
 
 run: build verify live
 
@@ -39,3 +39,8 @@ shell: build
 
 clean:
 	-$(DOCKER) rmi $(IMAGE) $(IMAGE)-test
+
+# Team only (needs pandoc + xelatex locally): the submission PDF from technical_report.md
+report:
+	pandoc technical_report.md -o RedPandas_Report.pdf --pdf-engine=xelatex -H tools/report_header.tex \
+	  -V geometry:margin=2cm -V fontsize=10pt -V mainfont=Calibri -V monofont=Consolas -V colorlinks=true
