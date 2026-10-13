@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "landmarks-eval"
+version = "0.1.0"
+description = "Swiss heritage factuality benchmark for Apertus 1.5 (Hack Apertus 2026, Track 1B)"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Team Red Pandas" }]
+dependencies = [
+  "pydantic>=2.7",
+  "requests>=2.31",
+  "pyyaml>=6",
+  "huggingface_hub>=0.24",
+]
+
+[project.optional-dependencies]
+# Only needed by the team to rebuild the dataset (network access, images).
+build = ["pillow>=10", "opencv-python-headless>=4.9", "numpy>=1.26"]
+figures = ["matplotlib>=3.8", "numpy>=1.26"]
+test = ["pytest>=8"]
+
+[project.scripts]
+landmarks-eval = "landmarks_eval.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+landmarks_eval = ["prompts/*.yaml", "build/queries/*.rq", "expected/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
