@@ -55,6 +55,14 @@ def main(argv: list[str] | None = None) -> int:
     m = sub.add_parser("merge-review", help="(team only) merge the team's screening_team.json decision file")
     m.add_argument("files", nargs=1, type=Path)
     sub.add_parser("assemble", help="(team only) assemble the publishable dataset folder")
+    ap_ = sub.add_parser("audit-page", help="(team only) draw the human-audit sample and write the blind labelling page")
+    ap_.add_argument("--dataset")
+    ap_.add_argument("--results", type=Path, required=True)
+    ap_.add_argument("--out", type=Path, required=True)
+    ma = sub.add_parser("merge-audit", help="(team only) merge audit_labels.json files into <results>/human_audit.jsonl")
+    ma.add_argument("--results", type=Path, required=True)
+    ma.add_argument("--sample", type=Path, required=True, help="audit_sample.json written by audit-page")
+    ma.add_argument("files", nargs="+", type=Path)
 
     st = sub.add_parser("stability", help="re-ask a seeded sample to measure temperature-0 answer stability")
     st.add_argument("--dataset")
@@ -106,6 +114,17 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "assemble":
         from .build.assemble import assemble
         print(json.dumps(assemble(args.work), indent=1, ensure_ascii=False))
+        return 0
+    if args.cmd == "merge-audit":
+        from .build.audit import merge_labels
+        print(json.dumps(merge_labels(args.results, args.files, args.sample), indent=1))
+        return 0
+    if args.cmd == "audit-page":
+        from .build.audit import build_page
+        ds = resolve_dataset(args.dataset)
+        dev = args.results / "judge_dev_set.jsonl"
+        dev_ids = {json.loads(l)["item_id"] for l in open(dev, encoding="utf-8")} if dev.exists() else set()
+        print(build_page(ds, args.results, args.out, dev_ids))
         return 0
 
     from .client import Endpoint

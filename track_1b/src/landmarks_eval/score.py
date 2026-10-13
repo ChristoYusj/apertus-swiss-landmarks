@@ -125,6 +125,9 @@ def compute_scores(dataset: Path, results: Path, bootstrap: int = 2000) -> dict:
     both = [r for r in graded if r["code"] and r["judge"]]
     s["agreement_judge_vs_code"] = {"n": len(both), "cohen_kappa": cohen_kappa([r["code"] for r in both], [r["judge"] for r in both]),
                                     "raw_agreement": (sum(r["code"] == r["judge"] for r in both) / len(both)) if both else None}
+    if (results / "human_audit.jsonl").exists():
+        from .agreement import agreement
+        s["human_audit"] = agreement(load_jsonl(results / "human_audit.jsonl"), judg, cases)
     gz = load_gazetteer(dataset)
     if gz is not None:  # hypotheses H1b-H4 + location analysis need the gazetteer shipped with the dataset
         s["hypotheses"] = hypotheses(graded, gz, lms, cases, bootstrap=bootstrap)

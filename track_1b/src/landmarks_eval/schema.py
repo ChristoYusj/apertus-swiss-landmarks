@@ -295,6 +295,8 @@ class HumanLabel(Strict):
     in_overlap: bool
     guideline_version: str
     timestamp: str
+    used_translation: bool = False  # relied on the English machine gloss of the answer
+    unsure: bool = False
 
 
 SCHEMAS = {
