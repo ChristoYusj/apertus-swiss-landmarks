@@ -34,6 +34,11 @@ at any time, and **Load saved file** resumes from it.
 Task G is done **independently**: each annotator labels alone (sharing one computer is fine, one after the
 other, each under their own ID), and no item is discussed until all three have submitted their labels.
 Agreement between annotators is only meaningful if the labels are independent.
+Two equivalent tools show the same items in the same order: the offline page (`landmarks-eval audit-page`) and an
+online page for annotators on other devices (`tools/audit_online`, labels stored per annotator; the page only
+shows your own). Answers not in French come with a labelled English machine gloss (same model as the judge;
+proper names left untranslated); the original answer is authoritative, and you tick *used translation* if you
+relied on the gloss.
 
 You see the question, the gold answer (with accepted alternatives) and the model's answer. You do **not** see the automatic grades. Choose exactly one label:
 

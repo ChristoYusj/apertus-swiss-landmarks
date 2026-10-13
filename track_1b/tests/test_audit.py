@@ -84,3 +84,58 @@ def test_agreement_majority_and_kappas():
     assert a["judge_vs_human"]["raw_agreement"] == 1.0
     assert a["code_vs_human"]["n"] == 4 and a["code_vs_human"]["raw_agreement"] == 1.0
     assert a["by_lang"]["de"]["code_vs_human"]["n"] == 2
+
+
+def test_glosses_only_non_french_and_cached(tmp_path, monkeypatch):
+    """Glosses: machine translation of non-French audit answers, labelled, cached by response hash."""
+    import json
+    from landmarks_eval.build import gloss as G
+    from landmarks_eval.client import Endpoint, Result
+    ds = tmp_path / "ds"
+    (ds / "data").mkdir(parents=True)
+    cases = [{"item_id": "Q1-photo_main-name-fr", "lang": "fr"}, {"item_id": "Q1-photo_main-name-de", "lang": "de"},
+             {"item_id": "Q1-photo_main-name-rm", "lang": "rm"}]
+    (ds / "data" / "test_cases.jsonl").write_text("\n".join(json.dumps(c) for c in cases) + "\n", encoding="utf-8")
+    res = tmp_path / "res"
+    res.mkdir()
+    answers = {"Q1-photo_main-name-fr": "Je ne sais pas.", "Q1-photo_main-name-de": "Das ist die Kapelle St. Anna.",
+               "Q1-photo_main-name-rm": ""}
+    (res / "responses.jsonl").write_text("\n".join(json.dumps({"item_id": k, "response_text": v}) for k, v in answers.items())
+                                         + "\n", encoding="utf-8")
+    sample = tmp_path / "audit_sample.json"
+    sample.write_text(json.dumps({"items": [{"item_id": k} for k in answers]}), encoding="utf-8")
+    calls = []
+
+    def fake_chat(ep, messages, params, retries=6):
+        calls.append(messages[-1]["content"])
+        return Result("This is the chapel St. Anna.", "ok", "stop")
+
+    monkeypatch.setattr(G, "chat", fake_chat)
+    ep = Endpoint(model="fake/judge", base_url="http://fake", api_key="x")
+    rep = G.make_glosses(ds, res, ep, sample, log=lambda *_: None)
+    assert rep == {"sample_items": 3, "glossed": 1, "new_calls": 1, "failed": 0}   # FR and empty answers skipped
+    rows = [json.loads(l) for l in open(res / "glosses.jsonl", encoding="utf-8")]
+    assert rows[0]["item_id"] == "Q1-photo_main-name-de" and rows[0]["label"].startswith("machine translation")
+    assert "St. Anna" in calls[0]
+    G.make_glosses(ds, res, ep, sample, log=lambda *_: None)
+    assert len(calls) == 1                                       # cached
+
+
+def test_online_audit_page_matches_offline_and_is_blind(tmp_path):
+    """tools/audit_online builds the same items and orders as the offline page, with no grades inside."""
+    import subprocess
+    import sys
+    from pathlib import Path
+    ds, res = _dataset(tmp_path)
+    offline = audit.build_page(ds, res, tmp_path / "off").read_text(encoding="utf-8")
+    tool = Path(__file__).resolve().parents[1] / "tools" / "audit_online" / "build_page.py"
+    subprocess.run([sys.executable, str(tool), "--dataset", str(ds), "--results", str(res), "--out", str(tmp_path / "on")],
+                   check=True, capture_output=True)
+    online = (tmp_path / "on" / "index.html").read_text(encoding="utf-8")
+
+    def data(html):
+        return json.loads(re.search(r"const D = (\{.*?\}), VERSION", html, re.S).group(1).replace("<\\/", "</"))
+    assert data(online) == data(offline)
+    assert not any(k in it for it in data(online)["items"] for k in ("code_label", "judge_label", "final_label", "label"))
+    assert "__DATA__" not in online and "<!doctype" not in online.lower()   # the artifact publisher adds the skeleton
+    assert (tmp_path / "on" / "audit_sample.json").read_text() == (tmp_path / "off" / "audit_sample.json").read_text()

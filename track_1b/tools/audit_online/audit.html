@@ -1,0 +1,171 @@
+<title>Grading Audit</title>
+<style>
+:root{--bg:#f7f7f5;--card:#fff;--ink:#1d1d1b;--mute:#6b6b66;--line:#e2e1dc;--accent:#c8102e;--ok:#1f7a4d;--sel:#1d4ed8;--warn:#9a5b00;--warnbg:#fff6e5}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#161615;--card:#1f1f1d;--ink:#ecebe6;--mute:#a3a29b;--line:#34332f;--accent:#ff5a6e;--ok:#4cc38a;--sel:#7aa2ff;--warn:#ffc46b;--warnbg:#2b2416}}
+:root[data-theme="dark"]{--bg:#161615;--card:#1f1f1d;--ink:#ecebe6;--mute:#a3a29b;--line:#34332f;--accent:#ff5a6e;--ok:#4cc38a;--sel:#7aa2ff;--warn:#ffc46b;--warnbg:#2b2416}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{position:sticky;top:0;z-index:2;background:var(--bg);border-bottom:1px solid var(--line);padding:10px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+h1{font-size:17px;margin:0 6px 0 0}
+select,button{font:inherit;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:6px 10px;cursor:pointer;min-height:36px}
+button:disabled{opacity:.5;cursor:default}
+.bar{flex:1;min-width:100px;height:8px;background:var(--line);border-radius:4px;overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--ok);width:0}
+.chip{font-size:12px;padding:3px 8px;border-radius:999px;border:1px solid var(--line);color:var(--mute)}
+.chip.shared{color:var(--ok);border-color:var(--ok)}.chip.local{color:var(--warn);border-color:var(--warn)}
+main{padding:16px;max-width:900px;margin:auto}
+.notice{background:var(--warnbg);color:var(--ink);border:1px solid var(--warn);border-radius:10px;padding:10px 14px;margin-bottom:14px}
+details.help{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 16px;margin-bottom:16px}
+details.help summary{cursor:pointer;font-weight:600}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px;scroll-margin-top:calc(var(--hdr,72px) + 8px)}
+.card.done{border-color:var(--ok)}
+.k{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--mute);margin-top:10px}
+.q{font-weight:600;overflow-wrap:anywhere}.gloss{color:var(--mute);font-size:14px;overflow-wrap:anywhere}
+.gold{white-space:pre-wrap;font-size:14px;background:var(--bg);border-radius:8px;padding:8px 10px;overflow-wrap:anywhere}
+.ans{white-space:pre-wrap;border-left:3px solid var(--sel);padding:4px 10px;overflow-wrap:anywhere}
+.opts{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.opts button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.row{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:14px}
+.meta{font-size:12px;color:var(--mute)}
+.empty{color:var(--mute)}
+</style>
+
+<header>
+  <h1>Grading audit</h1>
+  <label>I am <select id="who"><option value="">choose…</option><option>A1</option><option>A2</option><option>A3</option></select></label>
+  <div class="bar" aria-hidden="true"><i id="prog"></i></div><span id="count" class="meta"></span>
+  <span id="mode" class="chip">Connecting…</span>
+  <button id="next" type="button">Next unlabelled ↓</button>
+  <button id="dl" type="button">Download my labels</button>
+</header>
+<main>
+  <div id="notice" class="notice" hidden></div>
+  <details class="help" open>
+    <summary>How to grade (read once)</summary>
+    <p>Work <b>alone</b>: choose your ID, grade your items, and don't discuss items until all three of you have finished. The page only ever shows <b>your own</b> labels, never the model's grade, the judge's or another annotator's.</p>
+    <p>For each item compare the <b>model answer</b> with the <b>gold answer</b> and choose:</p>
+    <ul>
+      <li><b>Correct</b>: it names the gold landmark / the right municipality / a year in the window, and nothing contradicts the gold.</li>
+      <li><b>Incorrect</b>: it commits to something wrong: another landmark, another municipality, a village instead of the municipality, a wrong canton or country, several competing candidates, or (premise question) it accepts the false town.</li>
+      <li><b>Not attempted</b>: it declines, or stays too vague to check ("a church in the Alps", only the right canton), without contradicting the gold.</li>
+    </ul>
+    <p>Tick <i>used translation</i> if you relied on the English gloss, and <i>unsure</i> if it was a hard call. Every click is saved at once.</p>
+  </details>
+  <div id="list"><p class="empty">Loading…</p></div>
+</main>
+
+<script>
+const D = __DATA__, VERSION = "__VERSION__", KEY = "audit-online-v1";
+const ITEMS = Object.fromEntries(D.items.map(x => [x.id, x]));
+const $ = s => document.querySelector(s);
+let who = "", MODE = "connecting", db = null, dl = null, unsub = null;
+let LAB = {};                                    // labels of the current annotator: item id -> {label, used_translation, unsure, t}
+const writing = {}, dirty = new Set();
+
+function docId(a, id) { return a + "__" + id; }
+function setMode(m, text) { MODE = m; const el = $("#mode"); el.className = "chip " + m; el.textContent = text;
+  document.querySelectorAll(".opts button, .row input").forEach(b => b.disabled = (m === "connecting")); }
+function notice(html) { const n = $("#notice"); if (!html) { n.hidden = true; return; } n.hidden = false; n.innerHTML = html; }
+function localAll() { try { return JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { return {}; } }
+function persistLocal() { try { const all = localAll(); all[who] = LAB; localStorage.setItem(KEY, JSON.stringify(all)); } catch (e) {} }
+function clean(id) { const s = LAB[id] || {}, o = {a: who, item: id, t: s.t};
+  for (const k of ["label", "used_translation", "unsure"]) if (s[k] !== undefined) o[k] = s[k]; return o; }
+
+function set(id, patch) {
+  if (MODE === "connecting" || !who) return;
+  LAB[id] = Object.assign({}, LAB[id], patch, {t: new Date().toISOString()});
+  redraw(id);
+  if (MODE === "shared") { dirty.add(id); if (!writing[id]) flush(id); } else persistLocal();
+}
+async function flush(id) {
+  writing[id] = true;
+  while (dirty.has(id)) {
+    dirty.delete(id);
+    try { await db.doc("audit/" + docId(who, id)).set(clean(id)); }
+    catch (e) {
+      if (e && e.code === "unavailable") { await new Promise(r => setTimeout(r, 800 + Math.random() * 800)); dirty.add(id); continue; }
+      writing[id] = false; return writeFailed();
+    }
+  }
+  writing[id] = false;
+}
+function writeFailed() {
+  persistLocal(); setMode("local", "Saved on this device only");
+  notice("Your labels are saved on <b>this device only</b>. When you finish, press <b>Download my labels</b> and send the file to the team lead.");
+}
+
+function progress() { const o = D.orders[who] || []; const n = o.filter(id => (LAB[id] || {}).label).length;
+  $("#prog").style.width = (o.length ? 100 * n / o.length : 0) + "%"; $("#count").textContent = who ? n + " / " + o.length : ""; }
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+function card(id, k) {
+  const it = ITEMS[id], s = LAB[id] || {}, c = el("div", "card" + (s.label ? " done" : "")); c.id = "c-" + id;
+  c.append(el("div", "meta", (k + 1) + " · " + it.lang.toUpperCase() + " · " + it.arm + " · " + it.qtype));
+  c.append(el("div", "k", "Question"), el("div", "q", it.question), el("div", "gloss", "EN: " + it.q_gloss));
+  c.append(el("div", "k", "Gold answer"), el("div", "gold", it.gold));
+  c.append(el("div", "k", "Model answer"), el("div", "ans", it.answer || "(empty)"));
+  if (it.a_gloss) c.append(el("div", "gloss", "EN machine gloss (aid only, the original is authoritative): " + it.a_gloss));
+  const o = el("div", "opts");
+  [["correct", "Correct"], ["incorrect", "Incorrect"], ["not_attempted", "Not attempted"]].forEach(([v, l]) => {
+    const b = el("button", s.label === v ? "on" : "", l); b.type = "button"; b.disabled = MODE === "connecting";
+    b.onclick = () => set(id, {label: v}); o.append(b); });
+  c.append(o);
+  const r = el("div", "row");
+  [["used_translation", "used translation"], ["unsure", "unsure"]].forEach(([f, l]) => {
+    const lab = el("label"), cb = el("input"); cb.type = "checkbox"; cb.checked = !!s[f]; cb.disabled = MODE === "connecting";
+    cb.onchange = () => set(id, {[f]: cb.checked}); lab.append(cb, document.createTextNode(" " + l)); r.append(lab); });
+  c.append(r); return c;
+}
+function redraw(id) { const o = D.orders[who] || [], e = document.getElementById("c-" + id); if (e) e.replaceWith(card(id, o.indexOf(id))); progress(); }
+function render() {
+  const L = $("#list"); L.textContent = "";
+  if (!who) { L.append(el("p", "empty", "Choose your ID (A1, A2 or A3) at the top.")); progress(); return; }
+  (D.orders[who] || []).forEach((id, k) => L.appendChild(card(id, k))); progress();
+}
+
+function choose(a) {
+  who = a; LAB = {}; dirty.clear();
+  try { localStorage.setItem(KEY + "-who", a); } catch (e) {}
+  if (unsub) { unsub(); unsub = null; }
+  if (!a) { render(); return; }
+  if (MODE === "local") { LAB = localAll()[a] || {}; render(); window.scrollTo(0, 0); return; }
+  render(); window.scrollTo(0, 0);
+  unsub = db.collection("audit").where("a", "==", a).limit(1000).onSnapshot(snap => {
+    for (const ch of snap.docChanges()) {
+      const d = ch.doc.data(); if (!d || d.a !== who || writing[d.item] || dirty.has(d.item)) continue;
+      if (ch.type === "removed") delete LAB[d.item]; else LAB[d.item] = {label: d.label, used_translation: d.used_translation, unsure: d.unsure, t: d.t};
+      redraw(d.item);
+    }
+    progress();
+  }, err => notice("Live connection stopped (" + (err && err.code || "error") + "). Reload the page; your saved labels are kept."));
+}
+
+$("#who").onchange = e => choose(e.target.value);
+$("#next").onclick = () => { if (!who) return; const id = (D.orders[who] || []).find(i => !(LAB[i] || {}).label);
+  if (!id) { notice("All your items are labelled. Thank you!"); return; }
+  document.getElementById("c-" + id).scrollIntoView(); };
+$("#dl").onclick = async () => {
+  if (!who) { notice("Choose your ID first."); return; }
+  const body = JSON.stringify({format: "audit-v1", guideline_version: VERSION, exported_at: new Date().toISOString(), labels: {[who]: LAB}}, null, 1);
+  const name = "audit_labels_" + who + ".json";
+  try { if (dl) { await dl.save({filename: name, data: body}); return; } } catch (e) { if (e && e.code === "cancelled") return; }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([body], {type: "application/json"})); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+};
+
+async function connect() {
+  const cl = window.claude;
+  const [d, u, w] = cl && cl.use ? await Promise.all([cl.use("db"), cl.use("user"), cl.use("downloads")].map(p => p.catch(() => null))) : [null, null, null];
+  dl = w;
+  let canWrite = null;
+  if (u && u.can) { try { canWrite = await u.can("data.write"); } catch (e) { canWrite = null; } }
+  if (!d || canWrite === false) {
+    setMode("local", "Saved on this device only");
+    notice("Your labels are saved on <b>this device only</b>. When you finish, press <b>Download my labels</b> and send the file to the team lead.");
+  } else { db = d; setMode("shared", "Saved online"); }
+  let last = ""; try { last = localStorage.getItem(KEY + "-who") || ""; } catch (e) {}
+  if (last && D.orders[last]) { $("#who").value = last; choose(last); } else render();
+}
+function hdr() { document.documentElement.style.setProperty("--hdr", document.querySelector("header").offsetHeight + "px"); }
+window.addEventListener("resize", hdr);
+render(); hdr(); connect();
+</script>

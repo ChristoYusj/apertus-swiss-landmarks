@@ -67,6 +67,10 @@ def main(argv: list[str] | None = None) -> int:
     fg = sub.add_parser("figures", help="report figures from a scores.json (needs the [figures] extra)")
     fg.add_argument("--scores", type=Path, required=True)
     fg.add_argument("--out", type=Path, default=Path("docs/figures"))
+    gl = sub.add_parser("glosses", help="(team only) English machine glosses of non-French answers in the audit sample")
+    gl.add_argument("--dataset")
+    gl.add_argument("--results", type=Path, required=True)
+    gl.add_argument("--sample", type=Path, required=True, help="audit_sample.json written by audit-page")
     jd = sub.add_parser("judge-dev", help="(team only) run the LLM judge on the confirmed 40-item dev set")
     jd.add_argument("--dataset")
     jd.add_argument("--results", type=Path, required=True)
@@ -147,6 +151,15 @@ def main(argv: list[str] | None = None) -> int:
         results = args.results or dataset / "responses" / _config().get("reference_model_dir", "apertus-v1.5-70b")
         expected = args.expected or EXPECTED
         return 0 if verify(dataset, results, expected if expected.exists() else None) else 1
+
+    if args.cmd == "glosses":
+        judge_ep = Endpoint.from_env("JUDGE")
+        if judge_ep is None:
+            print("JUDGE_MODEL, JUDGE_BASE_URL and JUDGE_API_KEY must be set (glosses use the judge endpoint).", file=sys.stderr)
+            return 2
+        from .build.gloss import make_glosses
+        make_glosses(dataset, args.results, judge_ep, args.sample)
+        return 0
 
     if args.cmd == "judge-dev":
         judge_ep = Endpoint.from_env("JUDGE")

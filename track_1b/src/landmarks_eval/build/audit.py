@@ -69,7 +69,9 @@ def _q_gloss(c: dict) -> str:
     return t + TAIL
 
 
-def build_page(dataset: Path, results: Path, out_dir: Path, dev_ids: set[str] = frozenset()) -> Path:
+def page_data(dataset: Path, results: Path, dev_ids: set[str] = frozenset()) -> tuple[dict, dict]:
+    """(items + per-annotator orders for a labelling page, the drawn sample). Shared by the offline page and the
+    online version (tools/audit_online)."""
     cases = {c["item_id"]: c for c in load_jsonl(dataset / "data" / "test_cases.jsonl")}
     lms = {l["qid"]: l for l in load_jsonl(dataset / "data" / "landmarks.jsonl")}
     resp = {r["item_id"]: r for r in load_jsonl(results / "responses.jsonl")}
@@ -89,8 +91,13 @@ def build_page(dataset: Path, results: Path, out_dir: Path, dev_ids: set[str] = 
         mine = [it["id"] for it in items if a in it["who"]]
         rng.shuffle(mine)
         orders[a] = mine
+    return {"items": items, "orders": orders}, sample
+
+
+def build_page(dataset: Path, results: Path, out_dir: Path, dev_ids: set[str] = frozenset()) -> Path:
+    data, sample = page_data(dataset, results, dev_ids)
     out_dir.mkdir(parents=True, exist_ok=True)
-    payload = json.dumps({"items": items, "orders": orders}, ensure_ascii=False).replace("</", "<\\/")
+    payload = json.dumps(data, ensure_ascii=False).replace("</", "<\\/")
     page = out_dir / "grading_audit.html"
     page.write_text(PAGE.replace("__DATA__", payload).replace("__VERSION__", GUIDELINE_VERSION), encoding="utf-8")
     (out_dir / "audit_sample.json").write_text(json.dumps(sample, indent=1), encoding="utf-8")
