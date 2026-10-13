@@ -21,8 +21,8 @@ make run
   scores equal the published ones (exit code = verification result). No GPU, about a minute.
 - With `LLM_NAME`, `LLM_BASE_URL`, `LLM_API_KEY` set (any OpenAI-compatible endpoint, e.g. the CSCS Apertus
   endpoint): also evaluates that model on a seeded, stratified sample (`SAMPLE=150`) or on everything (`FULL=1`).
-- Optional independent judge: `JUDGE_MODEL`, `JUDGE_BASE_URL`, `JUDGE_API_KEY` (default `openai/gpt-oss-120b`
-  via the Hugging Face router); without it the deterministic code grader is used. See `track_1b/.env.example`.
+- Optional independent judge: `JUDGE_MODEL`, `JUDGE_BASE_URL`, `JUDGE_API_KEY` (we used `openai/gpt-oss-120b:groq`
+  via the Hugging Face router, `https://router.huggingface.co/v1`, prompt `judge-v1`); without it the deterministic code grader is used. See `track_1b/.env.example`.
 - Requirements: Docker; runtime ~1 min (verify), under an hour for a full 70B run; API key only for live runs;
   no model weights are downloaded.
 

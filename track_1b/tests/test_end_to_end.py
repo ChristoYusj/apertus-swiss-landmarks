@@ -119,3 +119,41 @@ def test_pipeline_and_regression_guards(tmp_path, monkeypatch, fake_model):
 
     # clean state passes again
     assert verify(FIXTURE, results, expected, log=lambda *_: None)
+
+
+def test_parallel_judge_cache_and_dev_set(tmp_path, monkeypatch, fake_model):
+    """The judge runs in parallel, its verdicts become the final labels, a second grading run makes no new judge
+    calls (cache by response hash + prompt version), and judge-dev compares the judge with confirmed labels."""
+    from landmarks_eval.grading import judge as J
+    from landmarks_eval.judge_dev import judge_dev
+    _patch_photo_answers(monkeypatch, fake_model)
+    ep = Endpoint(model="fake/model", base_url="http://fake", api_key="x")
+    results = tmp_path / "results"
+    run_mod.run(FIXTURE, results, ep, concurrency=1, log=lambda *_: None)
+
+    judge_calls = []
+
+    def fake_judge_chat(ep, messages, params, retries=6):
+        judge_calls.append(1)
+        text = messages[-1]["content"]
+        grade = "A" if "Fontaine Alpha" in text.split("MODEL ANSWER:")[1] or "Lausanne" in text.split("MODEL ANSWER:")[1] else "C"
+        return Result('{"grade": "%s", "predicted_place": null, "reason": "fake"}' % grade, "ok", "stop")
+
+    monkeypatch.setattr(J, "chat", fake_judge_chat)
+    monkeypatch.setenv("JUDGE_CONCURRENCY", "3")
+    judge_ep = Endpoint(model="fake/judge", base_url="http://fake", api_key="x")
+    grade_all(FIXTURE, results, judge_ep=judge_ep, log=lambda *_: None)
+    rows = [json.loads(l) for l in open(results / "judgements.jsonl", encoding="utf-8")]
+    assert len(judge_calls) == 6 and all(r["final_source"] == "judge" for r in rows)
+    assert {r["item_id"]: r["final_label"] for r in rows}["Q101-photo_main-name-fr"] == "correct"
+    assert [r["item_id"] for r in rows] == [json.loads(l)["item_id"] for l in open(results / "responses.jsonl", encoding="utf-8")]
+    grade_all(FIXTURE, results, judge_ep=judge_ep, log=lambda *_: None)
+    assert len(judge_calls) == 6                                # cached: no new calls
+
+    (results / "judge_dev_set.jsonl").write_text(
+        json.dumps({"item_id": "Q101-photo_main-name-fr", "confirmed_label": "correct", "confirmed_by": "test"}) + "\n" +
+        json.dumps({"item_id": "Q102-photo_main-name-fr", "confirmed_label": "incorrect", "confirmed_by": "test"}) + "\n",
+        encoding="utf-8")
+    rep = judge_dev(FIXTURE, results, judge_ep, log=lambda *_: None)
+    assert rep["n"] == 2 and rep["agreement_with_confirmed"] == 0.5
+    assert [d["item_id"] for d in rep["disagreements"]] == ["Q102-photo_main-name-fr"]

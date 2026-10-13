@@ -67,6 +67,9 @@ def main(argv: list[str] | None = None) -> int:
     fg = sub.add_parser("figures", help="report figures from a scores.json (needs the [figures] extra)")
     fg.add_argument("--scores", type=Path, required=True)
     fg.add_argument("--out", type=Path, default=Path("docs/figures"))
+    jd = sub.add_parser("judge-dev", help="(team only) run the LLM judge on the confirmed 40-item dev set")
+    jd.add_argument("--dataset")
+    jd.add_argument("--results", type=Path, required=True)
     st = sub.add_parser("stability", help="re-ask a seeded sample to measure temperature-0 answer stability")
     st.add_argument("--dataset")
     st.add_argument("--results", type=Path, required=True)
@@ -144,6 +147,15 @@ def main(argv: list[str] | None = None) -> int:
         results = args.results or dataset / "responses" / _config().get("reference_model_dir", "apertus-v1.5-70b")
         expected = args.expected or EXPECTED
         return 0 if verify(dataset, results, expected if expected.exists() else None) else 1
+
+    if args.cmd == "judge-dev":
+        judge_ep = Endpoint.from_env("JUDGE")
+        if judge_ep is None:
+            print("JUDGE_MODEL, JUDGE_BASE_URL and JUDGE_API_KEY must be set.", file=sys.stderr)
+            return 2
+        from .judge_dev import judge_dev
+        judge_dev(dataset, args.results, judge_ep)
+        return 0
 
     if args.cmd == "stability":
         ep = Endpoint.from_env("LLM")

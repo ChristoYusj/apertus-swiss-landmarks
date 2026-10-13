@@ -225,3 +225,17 @@ right_canton_only, similar_but_different_name, ...) and a seeded random 150 per 
   incorrect -> not_attempted, 2 rule only); all read by hand. 70B: H4 78 % vs 24 % (control lower), name wrong
   FR 9 / IT 24 / DE 39 / RM 52 %; registered results unchanged (H3_de, H4 supported). Stability re-graded: unchanged.
 - 20 regression tests ("Review 3"; 14 fail on the previous grader) + 1 for the alias cleaning; 226 tests pass.
+
+## LLM judge: dev-set tuning and freeze (13 Oct, night)
+- Judge: `openai/gpt-oss-120b` via the Hugging Face router, pinned to one provider (`:groq`) so verdicts are
+  reproducible; temperature 0, max_tokens 1500 (the model's hidden reasoning, ~250-400 tokens, counts against it).
+- Dev set (40 items, labels confirmed by the lead; never used for the audit): first run 39/40 agree (kappa 0.95).
+  Tuning, on these 40 items only, two clarifications:
+  1. a descriptor before the municipality's own name is not wrong ("Gemeinde Val Verzasca" for Verzasca);
+  2. that edit made one premise item flip ("not sure which building in Geneva this is" read as accepting the
+     false town), so the existing premise rule was stated as its own line with that example.
+  Final prompt: 40/40 agree with the confirmed labels (kappa 1.0) on two independent runs, and the two runs agree
+  with each other on 40/40 (`responses/apertus-v1.5-70b/judge_dev_eval.json`). The code grader agrees on 39/40.
+- **Frozen as `judge-v1` by the commit containing this entry**, before the full judge run and before the human
+  audit sample is drawn. Judging is parallel (`JUDGE_CONCURRENCY`) and resumable (cache by response hash and
+  prompt version, file written every 200 items). New command `landmarks-eval judge-dev`.

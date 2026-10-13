@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import concurrent.futures as cf
 import hashlib
 import json
+import os
 from collections import defaultdict
 from pathlib import Path
 
@@ -34,6 +36,7 @@ def grade_all(dataset: Path, results: Path, judge_ep: Endpoint | None = None, lo
     out = []
     n_judged = n_cached = 0
     gz = load_gazetteer(dataset)
+    todo = []                                     # (row index, case, lm, response) still to be judged
     for r in responses:
         case, lm = cases[r["item_id"]], lms[cases[r["item_id"]]["landmark_qid"]]
         cg = grade(case, lm, r["response_text"], gz) if r["status"] == "ok" else None
@@ -51,14 +54,31 @@ def grade_all(dataset: Path, results: Path, judge_ep: Endpoint | None = None, lo
                 row[k] = prev[k]
             n_cached += 1
         elif judge_ep and r["status"] == "ok":
-            label, place, raw, _h = J.judge(judge_ep, case, lm, r["response_text"])
-            row.update(judge_label=label, judge_raw=raw, judge_model=judge_ep.model,
-                       judge_prompt_version=J.JUDGE_PROMPT_VERSION, predicted_place=place)
-            n_judged += 1
-        row["final_label"] = row["judge_label"] or row["code_label"]
-        row["final_source"] = "judge" if row["judge_label"] else ("code" if row["code_label"] else "none")
-        Judgement.model_validate(row)
+            todo.append((len(out), case, lm, r["response_text"]))
         out.append(row)
+
+    def finish(rows):
+        for row in rows:
+            row["final_label"] = row["judge_label"] or row["code_label"]
+            row["final_source"] = "judge" if row["judge_label"] else ("code" if row["code_label"] else "none")
+            Judgement.model_validate(row)
+
+    # judge calls in parallel (JUDGE_CONCURRENCY, default 4); the file is written after every chunk, so an
+    # interrupted run resumes from the cache (only labelled judgements are reused)
+    workers = int(os.environ.get("JUDGE_CONCURRENCY", "4"))
+    for start in range(0, len(todo), 200):
+        chunk = todo[start:start + 200]
+        with cf.ThreadPoolExecutor(max_workers=workers) as ex:
+            results = list(ex.map(lambda t: J.judge(judge_ep, t[1], t[2], t[3]), chunk))
+        for (i, *_), (label, place, raw, _h) in zip(chunk, results):
+            out[i].update(judge_label=label, judge_raw=raw, judge_model=judge_ep.model,
+                          judge_prompt_version=J.JUDGE_PROMPT_VERSION, predicted_place=place)
+        n_judged += len(chunk)
+        finish(out)
+        write_jsonl(jpath, out)
+        log(f"  judge: {min(start + 200, len(todo))}/{len(todo)} "
+            f"(no label so far: {sum(1 for (i, *_) in todo[:start + 200] if not out[i]['judge_label'])})")
+    finish(out)
     write_jsonl(jpath, out)
     log(f"graded {len(out)} responses (judge: {n_judged} new, {n_cached} cached; "
         f"code-only: {sum(1 for o in out if o['final_source'] == 'code')})")
