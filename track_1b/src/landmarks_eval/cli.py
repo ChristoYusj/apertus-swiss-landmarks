@@ -15,8 +15,10 @@ import os
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]  # track_1b/
+PKG = Path(__file__).resolve().parent
+ROOT = PKG.parents[1]  # track_1b/ in a source checkout
 DEFAULT_WORK = ROOT / "work"
+EXPECTED = PKG / "expected" / "reference.scores.json"
 
 
 def resolve_dataset(spec: str | None) -> Path:
@@ -29,12 +31,14 @@ def resolve_dataset(spec: str | None) -> Path:
         repo, _, rev = spec[3:].partition("@")
         return Path(snapshot_download(repo_id=repo, repo_type="dataset", revision=rev or None))
     p = Path(spec)
-    return p if p.is_absolute() else (ROOT / p)
+    return p if p.is_absolute() or p.exists() else (ROOT / p)
 
 
 def _config() -> dict:
-    p = ROOT / "config.json"
-    return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+    for p in (Path.cwd() / "config.json", ROOT / "config.json"):
+        if p.exists():
+            return json.loads(p.read_text(encoding="utf-8"))
+    return {}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -75,7 +79,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "verify":
         from .verify import verify
         results = args.results or dataset / "responses" / _config().get("reference_model_dir", "apertus-v1.5-70b")
-        expected = args.expected or (ROOT / "src" / "landmarks_eval" / "expected" / "reference.scores.json")
+        expected = args.expected or EXPECTED
         return 0 if verify(dataset, results, expected if expected.exists() else None) else 1
 
     if args.cmd in ("run", "live"):
@@ -84,7 +88,7 @@ def main(argv: list[str] | None = None) -> int:
             print("LLM_NAME, LLM_BASE_URL and LLM_API_KEY must be set for a live run.", file=sys.stderr)
             return 2
         from .run import run
-        results = args.results or ROOT / "results" / ("live-" + ep.model.replace("/", "_"))
+        results = args.results or Path.cwd() / "results" / ("live-" + ep.model.replace("/", "_"))
         run(dataset, results, ep, sample=args.sample)
         if args.cmd == "run":
             return 0

@@ -1,0 +1,5 @@
+{
+ "dataset": "hf:chrizzto/swiss-heritage-factuality@main",
+ "reference_model_dir": "apertus-v1.5-70b",
+ "note": "dataset revision is pinned to a commit SHA at release (see CHANGELOG.md)"
+}

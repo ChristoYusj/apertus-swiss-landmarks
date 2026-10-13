@@ -1,0 +1,17 @@
+name: clean-checkout
+on:
+  push:
+    branches: [main, build]
+  pull_request:
+  workflow_dispatch:
+jobs:
+  test-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Line endings are LF
+        run: "! git ls-files --eol | grep -E 'w/crlf' "
+      - name: Unit + end-to-end tests (Docker)
+        run: make test
+      - name: make run (offline verification; no secrets in CI)
+        run: make run
