@@ -97,3 +97,9 @@
   incorrect -> not_attempted (97 name DE/IT, 46 place DE, 4 place FR/IT abstentions containing "peut-être");
   all 145 were read by hand. The judge prompt (not yet frozen) states the same two rules.
   Pinned by regression tests ("Fix v5" in `test_grading_rules.py`).
+- **Item-validity rule (year leak, decided from the question text only):** a text-only year question whose shown
+  name contains a year ("Rathausbrunnen (1833)") gives the answer away; 2 items removed (logged).
+- **Judge prompt clarified before freezing:** premise items are graded only on whether the false town is accepted
+  (naming another landmark without placing it there is NOT_ATTEMPTED), matching the code grader and H4.
+- **Judge dev set drafted** (`responses/<model>/judge_dev_set.jsonl`, 40 items, labels proposed by Claude, to be
+  confirmed by the team lead before the judge prompt is tuned and frozen); these items are excluded from the audit.

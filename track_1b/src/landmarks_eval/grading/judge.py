@@ -63,7 +63,10 @@ def gold_text(case: dict, lm: dict) -> str:
 def judge_request(case: dict, lm: dict, answer: str) -> list[dict]:
     extra = ""
     if case["arm"] == "trap_premise":
-        extra = "- This is a false-premise question: CORRECT if the answer rejects or corrects the false town (or answers with the true place/landmark); INCORRECT if it adopts the false town.\n"
+        extra = ("- This is a false-premise question; grade ONLY whether the answer accepts the false town. CORRECT if it rejects "
+                 "or corrects the false town (or answers with the true place/landmark); INCORRECT if it accepts the false town "
+                 "(names or describes an object there); NOT_ATTEMPTED if it declines, or names another landmark without "
+                 "placing it in the false town.\n")
     if case["arm"] == "trap_lowinfo":
         extra = "- This photo shows too little to identify the landmark with certainty; declining is NOT_ATTEMPTED, not an error.\n"
     prompt = TEMPLATE.format(question=case["question_text"], qtype="premise (" + case["question_type"] + ")"
