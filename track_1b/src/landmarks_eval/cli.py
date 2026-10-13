@@ -50,9 +50,10 @@ def main(argv: list[str] | None = None) -> int:
     b.add_argument("--refresh", action="store_true", help="ignore the SPARQL cache and re-pull")
     sub.add_parser("build-images", help="(team only, network) fetch, licence-filter and re-encode photos")
     sub.add_parser("build-questions", help="(team only) generate test cases from the frozen templates")
-    sub.add_parser("review-page", help="(team only) write the offline photo-screening page")
-    m = sub.add_parser("merge-review", help="(team only) merge screening_A*.json decision files")
-    m.add_argument("files", nargs="+", type=Path)
+    r = sub.add_parser("review-page", help="(team only) write the offline photo-screening page + photos")
+    r.add_argument("--out", type=Path, default=None, help="output folder (default: <work>/review/photo_screening)")
+    m = sub.add_parser("merge-review", help="(team only) merge the team's screening_team.json decision file")
+    m.add_argument("files", nargs=1, type=Path)
     sub.add_parser("assemble", help="(team only) assemble the publishable dataset folder")
 
     for name in ("run", "grade", "score", "verify", "live"):
@@ -81,15 +82,15 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "build-questions":
         from .build.questions import build_questions
         merged = args.work / "review" / "merged.json"
-        alt = low = None
+        alt = low = dropped = None
         if merged.exists():
             mj = json.loads(merged.read_text(encoding="utf-8"))
-            alt, low = mj["alt_accepted"], mj["lowinfo"]
-        print(json.dumps(build_questions(args.work, alt, low), indent=1, ensure_ascii=False))
+            alt, low, dropped = mj["alt_accepted"], mj["lowinfo"], mj["report"]["dropped_landmarks"]
+        print(json.dumps(build_questions(args.work, alt, low, dropped), indent=1, ensure_ascii=False))
         return 0
     if args.cmd == "review-page":
         from .build.review_page import build_review_page
-        print(build_review_page(args.work))
+        print(build_review_page(args.work, args.out))
         return 0
     if args.cmd == "merge-review":
         from .build.review_merge import merge_review

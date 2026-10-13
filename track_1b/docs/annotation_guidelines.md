@@ -1,23 +1,40 @@
-# Annotation guidelines (v1)
+# Annotation guidelines (v2)
 
-Three team members (pseudonymous IDs **A1, A2, A3**) annotate. There are two tasks: photo screening (Task P) and the grading audit (Task G). Annotators work alone and do not discuss individual items until their labels are submitted.
+Three team members (pseudonymous IDs **A1, A2, A3**) annotate. There are two tasks: photo screening (Task P) and the grading audit (Task G).
 
-## Task P: photo screening (before the evaluation run)
-You review every photo that will be shipped. For each photo:
+## Task P: photo screening (guideline v2-team, joint decisions)
+The team screens **together on one computer** and records **one joint decision per landmark** (no split, no
+separate votes). Disagreements are discussed until the team agrees; if it cannot agree, the cautious option is
+recorded. The page shows no model answers. One card per landmark:
 
-1. **Privacy (all photos).** Choose **Exclude** if *any* of these is visible:
+1. **Main photo.** Choose **OK**, or **Exclude** if *any* of these is visible:
    - a recognisable person: a face, or a person close enough to be identifiable;
    - a readable car licence plate;
    - the inside of a private home;
    - any text with personal data (name plates, letters).
 
-   People who are tiny and unrecognisable in a crowd or in the distance are fine. We **exclude and replace** photos; we never blur them, because blurring would modify a CC BY-SA work.
-2. **Second view (photos marked `alt`).** Choose **Good 2nd view** only if the photo shows the **same object** as the main photo, from the **outside** (or the main visible feature for a fountain, bridge or statue), clearly enough that someone who knows the object could recognise it. Otherwise choose **Not usable** (different building, interior, detail only, mostly scenery, old engraving or map).
-3. **Low-information (optional tick).** Tick **Too generic to identify** if the photo alone would not let even an expert know *which* object it is: a close-up of a generic door, a typical chapel interior, a plain wall. These become the "unknowable" trap items. For such photos the correct behaviour is to say "I can't tell".
+   People who are tiny and unrecognisable in a crowd or in the distance are fine. We **exclude and replace**
+   photos; we never blur them, because blurring would modify a CC BY-SA work. Choose **Wrong object** if the
+   photo does not show this landmark (another building, a map, a painting). An excluded or wrong main photo
+   removes the landmark from the dataset; its existing answers are kept in `metadata/excluded_items.jsonl`.
+2. **Second view.** Among the other photos, click **Use as 2nd view** on the best one: the **same object**, from
+   the **outside** (or the main visible feature for a fountain, bridge or statue), clearly enough that someone
+   who knows the object could recognise it, and with **no recognisable people** (rule 1). If none qualifies,
+   click **None usable** (different building, interior, detail only, mostly scenery, old engraving or map).
+3. **Low-information (optional).** Click **Too generic** on a photo (also with no people) that alone would not
+   let even an expert know *which* object it is: a close-up of a generic door, a typical chapel interior, a
+   plain wall. It becomes an "unknowable" trap item, where the correct behaviour is to say "I can't tell".
 
-If unsure, choose the more cautious option: **Exclude** for privacy, **Not usable** for second views.
+Only the photos picked in 2 and 3 are shipped besides the main photo; the others are never published.
+If unsure, choose the more cautious option: **Exclude** for privacy, don't pick a second view.
+Progress is saved in the browser after every click; **Save progress** downloads `screening_team.json`
+at any time, and **Load saved file** resumes from it.
 
 ## Task G: grading audit (after the official run)
+Task G is done **independently**: each annotator labels alone (sharing one computer is fine, one after the
+other, each under their own ID), and no item is discussed until all three have submitted their labels.
+Agreement between annotators is only meaningful if the labels are independent.
+
 You see the question, the gold answer (with accepted alternatives) and the model's answer. You do **not** see the automatic grades. Choose exactly one label:
 
 - **Correct:** the answer commits to the gold target and contradicts nothing in it. The name can be any recognisable name, translation or unique description of *this* object. The place must be the right municipality. A year must fall inside the gold window shown.

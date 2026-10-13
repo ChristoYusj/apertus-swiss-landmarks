@@ -1,12 +1,14 @@
-"""Merge the annotators' photo-screening files (screening_A1.json ...) into the image records.
+"""Merge the team's photo-screening file (screening_team.json) into the image records.
 
-Decision rules (docs/annotation_guidelines.md, Task P):
-  privacy     exclude if ANY reviewer says exclude (cautious); keep needs >= 1 keep and no exclude
-  2nd view    an alt photo is accepted if every reviewer who saw it said "good" (and privacy keep);
-              at most one accepted alt per landmark (first in id order)
-  low-info    an alt photo becomes a trap_lowinfo item only if >= 2 reviewers ticked it
-  main photo  excluded main photo -> the landmark is dropped and reported (no silent swap)
-Agreement on the overlap set (photos seen by all three) is reported with Fleiss' kappa.
+The team screens together on one computer and records one joint decision per landmark
+(docs/annotation_guidelines.md, Task P, guideline v2-team). Decision rules:
+  main photo  "ok"       -> privacy keep
+              "exclude"  -> privacy exclude; the landmark is dropped and reported (no silent swap)
+              "wrong"    -> the photo does not show the landmark; the landmark is dropped and reported
+  2nd view    the photo picked as "2nd view" -> privacy keep, becomes the photo_alt image
+  low-info    the photo marked "Too generic" -> privacy keep, becomes the trap_lowinfo image
+  other alts  not picked -> stay "pending" and are never shipped
+A landmark without a decision stays pending (reported), so a partial file can be merged safely.
 """
 
 from __future__ import annotations
@@ -15,56 +17,69 @@ import json
 from collections import Counter
 from pathlib import Path
 
-from ..metrics import fleiss_kappa
+REVIEWER = "team"
 
 
 def merge_review(work: Path, files: list[Path]) -> dict:
+    if len(files) != 1:
+        raise SystemExit("merge-review takes exactly one file: screening_team.json")
+    sub = json.loads(Path(files[0]).read_text(encoding="utf-8"))
+    if sub.get("format") != "team-consensus":
+        raise SystemExit(f"{files[0]}: not a team screening file (format={sub.get('format')!r})")
+    decisions: dict[str, dict] = sub["decisions"]
     images = [json.loads(l) for l in open(work / "images.jsonl", encoding="utf-8")]
-    assignment = json.loads((work / "review" / "assignment.json").read_text(encoding="utf-8"))
-    who = {x["id"]: x["who"] for x in assignment["items"]}
-    decisions: dict[str, dict] = {}
-    for f in files:
-        d = json.loads(Path(f).read_text(encoding="utf-8"))
-        decisions[d["annotator"]] = d["decisions"]
-    missing = {a: [i for i, ws in who.items() if a in ws and a in decisions and not decisions[a].get(i, {}).get("privacy")]
-               for a in decisions}
-    by_img = {im["image_id"]: im for im in images}
+    by_lm: dict[str, dict] = {}
+    for im in images:
+        by_lm.setdefault(im["landmark_qid"], {"main": None, "alts": {}})
+        if im["role"] == "main_p18":
+            by_lm[im["landmark_qid"]]["main"] = im
+        else:
+            by_lm[im["landmark_qid"]]["alts"][im["image_id"]] = im
+    unknown = sorted(set(decisions) - set(by_lm))
+    if unknown:
+        raise SystemExit(f"decisions for unknown landmarks: {unknown[:5]}")
+    for im in images:  # merging is idempotent: start from a clean slate every time
+        im.update(pii_decision="pending", pii_reason=None, pii_reviewer_ids=[])
     alt_accepted: dict[str, str] = {}
     lowinfo: dict[str, str] = {}
-    dropped_landmarks = []
+    dropped: dict[str, str] = {}
     stats = Counter()
-    for iid, im in sorted(by_img.items()):
-        votes = [(a, decisions[a].get(iid, {})) for a in who.get(iid, []) if a in decisions]
-        priv = [v.get("privacy") for _, v in votes if v.get("privacy")]
-        if not priv:
-            im["pii_decision"] = "pending"
-            stats["unreviewed"] += 1
+    for qid, g in sorted(by_lm.items()):
+        d = decisions.get(qid) or {}
+        main = g["main"]
+        if d.get("main") not in ("ok", "exclude", "wrong"):
+            stats["landmarks_pending"] += 1
             continue
-        excl = "exclude" in priv
-        im["pii_decision"] = "exclude" if excl else "keep"
-        im["pii_reason"] = "flagged by reviewer" if excl else None
-        im["pii_reviewer_ids"] = sorted(a for a, v in votes if v.get("privacy"))
-        stats[f"privacy_{im['pii_decision']}"] += 1
-        if im["role"] == "main_p18" and excl:
-            dropped_landmarks.append(im["landmark_qid"])
-        if im["role"] == "alt" and not excl:
-            views = [v.get("view") for _, v in votes if v.get("view")]
-            if views and all(v == "good" for v in views) and im["landmark_qid"] not in alt_accepted:
-                alt_accepted[im["landmark_qid"]] = iid
-            if sum(bool(v.get("lowinfo")) for _, v in votes) >= 2 and im["landmark_qid"] not in lowinfo:
-                lowinfo[im["landmark_qid"]] = iid
-    # agreement on the overlap set
-    overlap = [i for i, ws in who.items() if len(ws) == 3 and all(decisions.get(a, {}).get(i, {}).get("privacy") for a in ws)]
-    table = [[decisions[a][i]["privacy"] for a in ("A1", "A2", "A3")] for i in overlap] if len(decisions) == 3 else []
+        stats[f"main_{d['main']}"] += 1
+        if d["main"] == "exclude":
+            main.update(pii_decision="exclude", pii_reason="recognisable person or private detail (team screening)",
+                        pii_reviewer_ids=[REVIEWER])
+            dropped[qid] = "main photo excluded for privacy"
+            continue
+        main.update(pii_decision="keep", pii_reviewer_ids=[REVIEWER])
+        if d["main"] == "wrong":
+            dropped[qid] = "main photo does not show the landmark"
+            continue
+        if g["alts"] and not d.get("alt"):
+            stats["alt_choice_pending"] += 1
+        for field, target in (("alt", alt_accepted), ("low", lowinfo)):
+            iid = d.get(field)
+            if not iid or iid == "none":
+                continue
+            if iid not in g["alts"]:
+                raise SystemExit(f"{qid}: {field}={iid} is not one of this landmark's other photos")
+            g["alts"][iid].update(pii_decision="keep", pii_reviewer_ids=[REVIEWER])
+            target[qid] = iid
+        if alt_accepted.get(qid) and alt_accepted.get(qid) == lowinfo.get(qid):
+            raise SystemExit(f"{qid}: the same photo is both the 2nd view and 'too generic'")
     with open(work / "images.jsonl", "w", encoding="utf-8", newline="\n") as f:
         for im in images:
             f.write(json.dumps(im, ensure_ascii=False) + "\n")
-    report = {"annotators": sorted(decisions), "missing_per_annotator": {a: len(v) for a, v in missing.items()},
-              "stats": dict(stats), "alt_accepted": len(alt_accepted), "lowinfo_traps": len(lowinfo),
-              "dropped_landmarks_main_photo_excluded": dropped_landmarks,
-              "overlap_items_complete": len(overlap),
-              "privacy_fleiss_kappa_overlap": fleiss_kappa(table) if table else None,
-              "privacy_raw_agreement_overlap": (sum(len(set(r)) == 1 for r in table) / len(table)) if table else None}
+    report = {"source_file": Path(files[0]).name, "guideline_version": sub.get("guideline_version"),
+              "exported_at": sub.get("exported_at"), "landmarks": len(by_lm), "stats": dict(stats),
+              "alt_accepted": len(alt_accepted), "lowinfo_traps": len(lowinfo),
+              "dropped_landmarks": dropped, "complete": stats["landmarks_pending"] == 0 and stats["alt_choice_pending"] == 0}
+    (work / "review").mkdir(exist_ok=True)
     (work / "review" / "merged.json").write_text(json.dumps({"report": report, "alt_accepted": alt_accepted,
                                                              "lowinfo": lowinfo}, indent=1), encoding="utf-8")
     return report

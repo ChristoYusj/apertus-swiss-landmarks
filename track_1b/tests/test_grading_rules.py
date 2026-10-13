@@ -150,7 +150,10 @@ def test_saint_pairs_and_confession_words_are_not_distinctive():
     assert not distinctive("Chiesa parrocchiale dei SS. Pietro e Paolo", set())
     assert not distinctive("Römisch-katholische Pfarrkirche", {"beinwil", "am", "see"})
     assert not distinctive("Église catholique romaine", set())
-    assert distinctive("Kunsthaus Zürich", {"zurich"})  # 'kunsthaus' is specific
+    # changed in fix v4: 'kunsthaus' is generic (Kunsthaus Zug, Glarus, Aarau...); the alias still grades
+    # correct because it contains the town (test_name_containing_the_town_carries_the_town)
+    assert not distinctive("Kunsthaus Zürich", {"zurich"})
+    assert distinctive("Zürcher Kunsthaus", {"zurich"})
     assert distinctive("Valère Castle", {"sion"})
 
 
@@ -163,3 +166,58 @@ def test_premise_abstention_repeating_the_town_is_not_adoption():
 
 def test_no_specific_name_abstention_de():
     assert abstains("Es gibt zahlreiche römisch-katholische Pfarrkirchen in der Schweiz. Ohne einen spezifischen Namen kann ich keine genaue Gemeinde nennen.")
+
+
+# --- Fix v4 (13 Oct, post-run audit of every code-"correct" name grade and of all 786 name tokens) ---------
+def _split(names, towns):
+    from landmarks_eval.grading.normalize import distinctive, normalize
+    tt = {t for p in towns for t in normalize(p).split()}
+    return [n for n in names if distinctive(n, tt)], [n for n in names if not distinctive(n, tt)]
+
+
+def test_meaningless_alias_cannot_turn_an_abstention_into_correct():
+    # real answer from the official run; Wikidata lists "bâtiment" as an alias of the landmark
+    strong, weak = _split(["bâtiment", "Building", "Grange-à-l'Évêque"], ["Sion"])
+    text = "Je ne suis pas sûr du nom précis de ce bâtiment ou monument sans informations supplémentaires."
+    assert grade_name(text, strong, weak, ["Sion"]).label == "not_attempted"
+
+
+def test_generic_type_phrase_is_not_a_name():
+    # real answer: "a public clock tower" for the Tour de l'Horloge in Vevey
+    names = ["tour de l'Horloge", "Torre dell'orologio", "Uhrturm und Brunnen"]
+    strong, weak = _split(names, ["Vevey"])
+    assert strong == []
+    text = "Non sono sicuro al 100% senza ulteriori informazioni, ma sembra essere una torre dell'orologio pubblica."
+    assert grade_name(text, strong, weak, ["Vevey"]).label == "not_attempted"
+    assert grade_name("È la torre dell'orologio di Vevey.", strong, weak, ["Vevey"]).label == "correct"
+
+
+def test_generic_name_plus_town_is_correct_even_if_no_word_is_specific():
+    strong, weak = _split(["Rathausbrunnen"], ["Lenzburg"])
+    assert grade_name("Der Rathausbrunnen in Lenzburg.", strong, weak, ["Lenzburg"]).label == "correct"
+    assert grade_name("Ein Rathausbrunnen.", strong, weak, ["Lenzburg"]).label == "not_attempted"
+
+
+def test_name_containing_the_town_carries_the_town():
+    # "Rapperswil" is a former municipality, only "Rapperswil-Jona" is a place alias
+    strong, weak = _split(["Burg Rapperswil (Neu-Rapperswil)", "Schloss Rapperswil"], ["Rapperswil-Jona"])
+    assert grade_name("Das ist Schloss Rapperswil.", strong, weak, ["Rapperswil-Jona"]).label == "correct"
+    strong, weak = _split(["Kunsthaus Zürich", "Zürcher Kunsthaus"], ["Zürich", "Zurich"])
+    assert grade_name("Kunsthaus Zürich", strong, weak, ["Zürich", "Zurich"]).label == "correct"
+    assert grade_name("Das Kunsthaus.", strong, weak, ["Zürich"]).label == "incorrect"  # "Kunsthaus" alone is no alias
+
+
+def test_ambiguous_town_inside_a_name_does_not_count():
+    strong, weak = _split(["Kirche Gossau"], ["Gossau"])
+    assert grade_name("Kirche Gossau", strong, weak, ["Gossau"], ["Gossau"]).label == "correct"  # town named explicitly
+    assert grade_name("Kirche Gossau", strong, weak, [], ["Gossau"]).label == "not_attempted"
+
+
+def test_proper_names_that_look_generic_stay_distinctive():
+    from landmarks_eval.grading.normalize import distinctive
+    assert distinctive("château de Villa", {"sierre"})        # Villa is a locality in Sierre
+    assert distinctive("Château Grenier", {"bex"})            # family name
+    assert distinctive("Musée suisse des douanes", {"lugano"})
+    assert not distinctive("Bahnhof SBB", {"renens"})
+    assert not distinctive("Rundkirche Mariä Himmelfahrt", {"saas", "balen"})
+    assert not distinctive("Torre comunale 009a", {"locarno"})  # inventory codes are not names

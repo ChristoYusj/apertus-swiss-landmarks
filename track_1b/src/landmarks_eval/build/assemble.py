@@ -16,6 +16,7 @@ import shutil
 from pathlib import Path
 
 from ..schema import ImageRecord, Landmark, TestCase
+from .questions import label_with_lang
 
 
 def assemble(work: Path) -> dict:
@@ -67,11 +68,51 @@ def assemble(work: Path) -> dict:
                 "fame_tier": lm["fame_tier"], "language_region": lm["language_region"], "type_group": lm["type_group"],
                 "heritage_class": lm["heritage_class"], "arm": c["arm"], "lang": c["lang"],
                 "post_cutoff_image": im.get("post_cutoff"),
+                # text-only questions show a label; when the landmark has none in the question's language a
+                # fallback label is shown (mostly English in FR questions) -> covariate for a sensitivity analysis
+                "shown_name_lang": label_with_lang(lm, c["lang"])[1] if c["arm"] == "text_only" else None,
             }, ensure_ascii=False) + "\n")
     for name in ("selection_report.json", "images_report.json", "questions_report.json"):
         if (work / name).exists():
             shutil.copy2(work / name, ds / "metadata" / name)
     if (work / "review" / "merged.json").exists():
         shutil.copy2(work / "review" / "merged.json", ds / "metadata" / "review.json")
+    pruned = prune_results(ds, {c["item_id"] for c in cases}, work / "removed_items.jsonl")
     return {"test_cases": len(cases), "landmarks": len(lms), "images_shipped": len(shipped), "problems": problems[:20],
-            "n_problems": len(problems)}
+            "n_problems": len(problems), "responses_moved_to_excluded_items": pruned}
+
+
+def prune_results(ds: Path, case_ids: set[str], removed_path: Path) -> dict[str, int]:
+    """Responses/judgements of items no longer in the dataset move to metadata/excluded_items.jsonl (with the
+    reason); nothing is deleted silently. Scores in those results folders must be recomputed afterwards."""
+    removed = {json.loads(l)["item_id"]: json.loads(l) for l in open(removed_path, encoding="utf-8")} \
+        if removed_path.exists() else {}
+    excl_path = ds / "metadata" / "excluded_items.jsonl"
+    excluded = [json.loads(l) for l in open(excl_path, encoding="utf-8")] if excl_path.exists() else []
+    moved: dict[str, int] = {}
+    for rdir in sorted(p for p in (ds / "responses").glob("*") if p.is_dir()):
+        lines = {n: [l for l in open(rdir / n, encoding="utf-8") if l.strip()] if (rdir / n).exists() else None
+                 for n in ("responses.jsonl", "judgements.jsonl")}
+        rows = {n: [(json.loads(l), l) for l in ls] if ls is not None else None for n, ls in lines.items()}
+        gone = [r for r, _ in rows["responses.jsonl"] or [] if r["item_id"] not in case_ids]
+        if not gone and not any(j["item_id"] not in case_ids for j, _ in rows["judgements.jsonl"] or []):
+            continue
+        for r in gone:
+            info = removed.get(r["item_id"], {})
+            excluded.append({"item_id": r["item_id"], "model": r.get("model"), "question_text": info.get("question_text"),
+                             "response_text": r.get("response_text"),
+                             "reason": info.get("reason", "item not in the current dataset"),
+                             "decided_without_looking_at_answers": True})
+        for n, rs in rows.items():
+            if rs is None:
+                continue
+            with open(rdir / n, "w", encoding="utf-8", newline="\n") as f:
+                for r, raw in rs:  # kept rows are copied byte for byte
+                    if r["item_id"] in case_ids:
+                        f.write(raw if raw.endswith("\n") else raw + "\n")
+        moved[rdir.name] = len(gone)
+    if moved:
+        with open(excl_path, "w", encoding="utf-8", newline="\n") as f:
+            for e in excluded:
+                f.write(json.dumps(e, ensure_ascii=False) + "\n")
+    return moved

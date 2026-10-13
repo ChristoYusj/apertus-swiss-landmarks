@@ -177,8 +177,9 @@ No person is a data subject: photos showing recognisable people were excluded.
   - It also scanned all answer keys for hazards; the fixes are documented in the repository CHANGELOG.
 - **Privacy screening:**
   - An OpenCV face detector pre-flagged {sum(i['faces_detected'] > 0 for i in imgs)} shipped photos.
-  - 100 % of photos were then reviewed by humans. Excluded photos are not shipped.
-  - Screening agreement (Fleiss' κ on the overlap set): {review.get('privacy_fleiss_kappa_overlap', 'reported in the technical report')}.
+  - Every shipped photo was then reviewed by the team, jointly, one decision per landmark (guideline v2-team).
+    Excluded photos and unpicked candidate views are not shipped.
+  - Landmarks dropped in the screening: {len(review.get('dropped_landmarks', {}))} (main photo excluded or not showing the landmark); their answers are kept in `metadata/excluded_items.jsonl`.
 - **Answer-key spot check:** {extra.get('gold_qc', 'two annotators checked the answer keys of 30 random landmarks against Wikipedia and the KGS inventory; see the technical report')}.
 
 #### Data Instance Licenses

@@ -12,6 +12,7 @@ import json
 import re
 
 from ..client import Endpoint, chat
+from .normalize import usable_alias
 
 JUDGE_PROMPT_VERSION = "judge-v1"
 JUDGE_PARAMS = {"temperature": 0.0, "max_tokens": 600}
@@ -40,7 +41,9 @@ Reply with JSON only: {{"grade": "A|B|C", "predicted_place": "<municipality name
 
 
 def gold_text(case: dict, lm: dict) -> str:
-    names = [a["text"] + ("" if a.get("distinctive", True) else " [only with the town]") for a in lm["name_aliases"]][:8]
+    usable = sorted((a for a in lm["name_aliases"] if usable_alias(a["text"])),
+                    key=lambda a: not a.get("distinctive", True))  # distinctive names first (stable)
+    names = [a["text"] + ("" if a.get("distinctive", True) else " [only with the town]") for a in usable][:8]
     places = [a["text"] for a in lm["place_aliases"]][:8]
     cantons = [a["text"] for a in lm["canton_aliases"]][:6]
     lines = [f"- landmark names: {' | '.join(names)}",

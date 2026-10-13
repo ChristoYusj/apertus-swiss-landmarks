@@ -15,7 +15,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from .normalize import normalize, specific_tokens
+from .normalize import normalize, specific_tokens, usable_alias
 
 ABSTAIN_PATTERNS = [
     # fr
@@ -81,12 +81,17 @@ def _specific(aliases: list[str]) -> list[str]:
     return [a for a in aliases if specific_tokens(a)]
 
 
-def grade_name(text: str, strong: list[str], weak: list[str] = (), place_aliases: list[str] = ()) -> CodeGrade:
-    """strong = distinctive names; weak = saint/type names shared by many buildings (need the town)."""
+def grade_name(text: str, strong: list[str], weak: list[str] = (), place_aliases: list[str] = (),
+               ambiguous: list[str] = ()) -> CodeGrade:
+    """strong = distinctive names; weak = saint/type names shared by many buildings (need the town).
+    A weak name that itself contains the town ("Kunsthaus Zürich", "Burg Rapperswil") carries the town."""
     if any(mentions(text, a) for a in _specific(strong)):
         return CodeGrade("correct", "name_alias_match")
-    if any(mentions(text, a) for a in _specific(weak)):
-        if any(mentions(text, p) for p in place_aliases):
+    hits = [a for a in weak if usable_alias(a) and mentions(text, a)]
+    if hits:
+        amb = {normalize(a) for a in ambiguous}
+        town_tokens = {t for p in place_aliases if normalize(p) not in amb for t in specific_tokens(p)}
+        if any(mentions(text, p) for p in place_aliases) or any(town_tokens & set(normalize(a).split()) for a in hits):
             return CodeGrade("correct", "name_alias_plus_town_match")
         # e.g. "St. Antonius chapel" without the town: could be any of many chapels
         return CodeGrade("not_attempted", "nondistinctive_name_without_town")
@@ -162,7 +167,7 @@ def grade(case: dict, landmark: dict, response_text: str | None) -> CodeGrade:
                              places, names)
     q = case["question_type"]
     if q == "name":
-        return grade_name(response_text, strong, weak, places)
+        return grade_name(response_text, strong, weak, places, landmark.get("ambiguous_place_aliases", []))
     if q == "place":
         return grade_place(response_text, places, cantons, landmark.get("ambiguous_place_aliases", []))
     if q == "year":

@@ -28,7 +28,7 @@ dataset *Swiss Heritage Factuality* (Hack Apertus 2026, Track 1B).
 Name: ____________________  Pseudonym: A_  Date: ____________  Signature: ____________
 
 ## Part B: People who may appear in photographs
-Every photo was screened by two team members. Photos showing recognisable people, licence
+Every published photo was screened jointly by the team. Photos showing recognisable people, licence
 plates, private interiors or other personal data were **excluded** (not blurred). If you
 believe you are recognisable in a photo of this dataset, open a discussion on the
 dataset's Hugging Face page with the image ID. The photo is removed in the next version

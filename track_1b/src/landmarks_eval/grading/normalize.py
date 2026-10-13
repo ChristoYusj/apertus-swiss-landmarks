@@ -34,6 +34,100 @@ TYPE_WORDS = {
     "town", "hall", "station", "museum", "monument", "ruins", "the", "of", "and", "old",
 } | _SAINT
 
+# Audit 2026-10-13 (post-run, documented in CHANGELOG): every token that made a name alias or a shown label
+# "specific" was listed (786 tokens) and each was classified by hand as a proper name or a generic word.
+# Generic words found: building types, religious-order compounds, dedications shared by many churches,
+# museum/railway/military vocabulary, function words. Kept as specific on purpose: national qualifiers
+# (suisse, swiss, svizzero: "Musée suisse des douanes" is unique), figure names of fountains, every
+# compound that contains a proper name (Grimmenturm, Hergiswaldbrücke, Pfyfferbrunnen), and words that are
+# also place or family names in this dataset ("château de Villa" in Sierre, "Château Grenier" in Bex).
+GENERIC_WORDS_AUDIT = {
+    # function words and numbers
+    "with", "mit", "avec", "con", "its", "son", "sein", "eines", "then", "puis", "dann", "spater", "soit", "als",
+    "auf", "aus", "fur", "uber", "vom", "over", "sul", "alle", "delle", "dell", "two", "deux", "due", "zwei",
+    "sept", "iii", "all", "tous", "known", "bekannt", "heisst", "part", "teil",
+    # generic buildings and parts
+    "building", "buildings", "batiment", "batiments", "gebaude", "nebengebaude", "nebengebauden", "nebenbauten",
+    "nebenb", "museumsgebaude", "bahnhofsgebaude", "outbuilding", "outbuildings", "annexes", "dependance",
+    "dependances", "communs", "house", "houses", "maison", "maisons", "casa", "case", "chasa", "palazzo",
+    "palais", "palas", "residence", "residenz", "sitz", "landsitz", "manor", "herrenhausern", "maitre", "farmhouse",
+    "bauernhaus", "paysanne", "barn", "grange", "granary", "speicher", "turmspeicher", "muhlespeicher",
+    "zehntenspeicher", "kornhaus", "zeughaus", "kaufhaus", "stadthaus", "amthaus", "landhaus", "guterschuppen",
+    "kuhlkeller", "cantine", "store", "department", "factory", "mill", "spinning", "cotton", "baumwollspinnerei",
+    "fabrikantenvilla", "owner", "school", "boarding", "internat", "pensionnat", "novitiate", "noviziat",
+    "infirmary", "infirmerie", "hospiz", "ospiz", "rectory", "parrochiale", "janitor", "portierhaus", "conciergerie",
+    "office", "prefecture", "tribunal", "gerichts", "pretorio", "municipal", "municipale", "comunale", "comune",
+    "comuni", "commune", "gemendeverwaltung", "kantonshauses", "standes", "state", "civico", "rathausplatz",
+    "piazza", "place", "park", "parc", "gardens", "jardins", "gartenanlage", "gartenhaus", "grounds", "estate",
+    "domaine", "site", "gelande", "siedlungen", "village", "dorf", "stadt", "city", "pond", "teich", "bassin",
+    "river", "tomb", "grabmal", "funeral", "funeraire", "friedhof", "cimitero", "cimetry", "cemetery", "kreuzweg",
+    "via", "crucis", "sale", "gemeinschaftsraumen", "bell", "clock", "horloge", "orologio", "uhrturm",
+    "glockenturm", "clocher", "schlossturm", "gemeindeturm", "meierturm", "sendeturm", "communication",
+    "rathausbrunnen", "springbrunnen", "dreitrog", "dreitrogbrunnen", "fountains", "fontaines", "romerbrucke",
+    "vogteischloss", "viztumsschloss", "vogtei", "landvogts", "castel", "mur", "wall", "walls",
+    # churches, monasteries, orders
+    "abtei", "abbazia", "chloster", "chloschter", "clostra", "monastere", "monastero", "convent", "basilica",
+    "basilika", "baptistere", "baptistery", "baptisterium", "battistero", "cathedral", "cattedrale", "duomo",
+    "santuario", "sanctuaire", "oratory", "oratorium", "plebana", "plebian", "kollegiatkirche", "stiftskirche",
+    "wehrkirche", "rundkirche", "martinskirche", "remigiuskirche", "dreifaltigkeitskirche", "michaeliskapelle",
+    "grabkapelle", "kirchenburg", "wehrchille", "kapalle", "caplutta", "kirchenbezirk", "klosterkomplex",
+    "augustinerkloster", "benediktinerabtei", "benediktinerkloster", "benediktinerklosters",
+    "benediktinerinnenkloster", "dominikanerinnenkloster", "franziskanerkloster", "franziskanerkirche",
+    "kapuzinerkloster", "trappistinnenkloster", "konventualenkloster", "johanniterkommende", "johanniterkomturei",
+    "commandery", "benedictine", "benedictin", "benedictina", "benedettino", "franciscan", "franziskaner",
+    "cordeliers", "agostiniane", "conventuali", "frati", "minori", "evangelical", "reforme", "refurmeda",
+    "refurmada", "rifurmada", "catolica", "catolic", "protestantische", "complex", "complesso",
+    # dedications shared by many churches (like saints' names)
+    "maria", "marie", "mary", "notre", "dame", "madonna", "vergine", "vierge", "virgin", "beata", "jungfrau",
+    "himmelfahrt", "assunta", "assunzione", "assomption", "assumption", "annunziata", "immaculee", "immacolata",
+    "conception", "grazie", "pieta", "douleurs", "angeli", "angioli", "anges", "coeur", "herz", "jesu", "sacre",
+    "sacred", "sacro", "heart", "holy", "heilig", "heilige", "heiligen", "croix", "kreuz", "cross", "trinity",
+    "dreifaltigkeit", "auferstehung", "resurrection", "resurrezione", "salvator", "allerheiligen", "allerhailige",
+    "saints", "santi", "monte",
+    # museums and collections
+    "musee", "museo", "kunstmuseum", "heimatmuseum", "klostermuseum", "stadtmuseum", "gemeindemuseum",
+    "zollmuseum", "archaologiemuseum", "collezioni", "archiv", "archive", "kunsthaus", "kunsthuus", "art", "arts",
+    "arte", "beaux", "kunst", "history", "histoire", "storia", "historical", "historisches", "natural",
+    "naturelle", "naturale", "naturhistorisches", "archaeology", "archeologie", "archaologie", "archeologico",
+    "archeologiche", "ethnography", "ethnographie", "ethnologie", "ethnographisches", "etnografico", "culture",
+    "cultures", "kulturen", "customs", "douanes", "dogane", "doganale",
+    # railways, bridges, fortifications
+    "railway", "bahn", "dampfbahn", "bergstrecke", "train", "cogwheel", "steam", "line", "ligne", "staziun",
+    "viaduct", "viaduc", "viadukt", "viadotto", "kehrviadukt", "kreisviadukt", "spiral", "helicoidal",
+    "elicoidale", "cff", "sbb", "rhatischen", "arsenal", "fort", "forte", "forts", "fortini", "befestigungen",
+    "befestigungsanlagen", "festungsanlagen", "fortifications", "fortificazioni", "fortified", "fortifie",
+    "fortifiee", "fortificata", "defensive", "defensif", "enceinte", "enclosure", "ramparts", "remparts",
+    "muraria", "murata", "cinta", "hunger", "hungerfestungen",
+    # descriptors, languages, titles, inventory codes
+    "ehemals", "altem", "antico", "nuovo", "neu", "grande", "petit", "piccolo", "inferiore", "bassa", "mezzo",
+    "round", "ronde", "wooden", "country", "countryside", "campagna", "campagne", "rural", "landlich",
+    "mittelalterliche", "prahistorische", "century", "jahrhundert", "nineteenth", "neunzehnten", "ottocentesche",
+    "predecessor", "vorgangerbauten", "francais", "anglaise", "englische", "franzosische", "italian", "italiana",
+    "captain", "hptm", "father", "pater", "pere", "switzerland", "bru", "vittime", "lavoro", "opfer",
+    "ruina", "abbey", "eveche",
+}
+TYPE_WORDS |= GENERIC_WORDS_AUDIT
+
+# Words that do not even say what KIND of object it is: an alias made only of these and function words
+# ("bâtiment", "Building") is never used for grading, not even together with the town.
+NON_NAMES = {"building", "buildings", "batiment", "batiments", "gebaude", "edifice", "bau", "bauwerk", "structure",
+             "complex", "complesso", "site", "object", "objekt", "objet", "oggetto", "part", "teil"}
+
+
+def usable_alias(alias: str) -> bool:
+    """False for aliases like "bâtiment" that name no kind of object; True for "Rathausbrunnen", "Torre comunale"."""
+    return any(len(t) >= 3 and not _has_digit(t) and t not in NON_NAMES and t not in _FUNCTION_WORDS
+               for t in tokens(alias))
+
+
+_FUNCTION_WORDS = {
+    "the", "of", "and", "with", "its", "then", "two", "all", "over", "der", "die", "das", "des", "dem", "den", "und",
+    "von", "zum", "zur", "mit", "sein", "eines", "dann", "als", "auf", "aus", "fur", "uber", "vom", "zwei", "les",
+    "des", "aux", "sur", "avec", "son", "puis", "soit", "deux", "sept", "del", "della", "dei", "degli", "con", "due",
+    "sul", "alle", "delle", "dell", "dal", "dalla", "former", "old", "ehemalige", "ehemaliges", "ehemaliger",
+    "ancien", "ancienne", "antico", "alte", "alter", "altes", "neue", "neuer", "neu", "nuovo",
+}
+
 
 def strip_accents(s: str) -> str:
     return "".join(c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c))
@@ -54,7 +148,12 @@ def tokens(s: str) -> list[str]:
 
 def specific_tokens(label: str) -> list[str]:
     """Tokens of a label that are not type/function words (length >= 3)."""
-    return [t for t in tokens(label) if t not in TYPE_WORDS and len(t) >= 3 and not t.isdigit()]
+    return [t for t in tokens(label) if t not in TYPE_WORDS and len(t) >= 3 and not _has_digit(t)]
+
+
+def _has_digit(t: str) -> bool:
+    """Years and inventory codes ("1833", "009a") never name an object."""
+    return any(ch.isdigit() for ch in t)
 
 
 def is_generic(label: str | None) -> bool:
@@ -95,7 +194,7 @@ def distinctive(alias: str, town_tokens: set[str]) -> bool:
                     continue
                 break
     for i, t in enumerate(toks):
-        if t in TYPE_WORDS or len(t) < 3 or t.isdigit() or t in town_tokens or i in saint:
+        if t in TYPE_WORDS or len(t) < 3 or _has_digit(t) or t in town_tokens or i in saint:
             continue
         return True
     return False

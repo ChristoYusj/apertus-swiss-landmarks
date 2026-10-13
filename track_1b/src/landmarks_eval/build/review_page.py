@@ -1,48 +1,46 @@
-"""Generate the offline photo-screening page (Task P of docs/annotation_guidelines.md).
+"""Generate the offline photo-screening page (Task P of docs/annotation_guidelines.md, guideline v2).
 
-One self-contained HTML file: the annotator picks A1/A2/A3, reviews their assigned photos
-(main photos: privacy only; alternative views: privacy + "good 2nd view" + "too generic"),
-decisions persist in the browser, and "Download my decisions" saves a JSON file that is
-merged with `landmarks-eval merge-review`. Photos are loaded from Wikimedia Commons.
+The team screens together on one computer (joint consensus decisions, no split). One card per landmark:
+  main photo       OK / Exclude (person or private detail) / Wrong object
+  other photos     pick at most one "2nd view" and at most one "Too generic"; "None usable" if no good view
+Decisions autosave in the browser after every click; "Save progress" downloads the decisions file at any
+time (also mid-way) and "Load saved file" resumes from it, e.g. on another browser. The file is merged
+with `landmarks-eval merge-review`. Photos are the shipped 500 px files (images/ next to the page), with
+Wikimedia Commons as a fallback when the folder is missing.
 """
 
 from __future__ import annotations
 
-import html
 import json
-import random
+import shutil
 from pathlib import Path
 from urllib.parse import quote, unquote
 
-OVERLAP_RANDOM = 60
-OVERLAP_LOWINFO = 40
-SEED = 20261013
+GUIDELINE_VERSION = "v2-team"
 
 
-def assign(images: list[dict], lms: dict) -> list[dict]:
-    rng = random.Random(SEED)
-    ids = sorted(i["image_id"] for i in images)
-    low_alts = sorted(i["image_id"] for i in images
-                      if i["role"] == "alt" and lms[i["landmark_qid"]]["fame_tier"] == "low")
-    overlap = set(rng.sample(low_alts, min(OVERLAP_LOWINFO, len(low_alts))))
-    rest = [i for i in ids if i not in overlap]
-    overlap |= set(rng.sample(rest, min(OVERLAP_RANDOM, len(rest))))
-    others = [i for i in ids if i not in overlap]
-    rng.shuffle(others)
-    who = {i: ["A1", "A2", "A3"] for i in overlap}
-    for k, i in enumerate(others):
-        who[i] = [["A1", "A2", "A3"][k % 3]]
-    out = []
+def _commons(title: str, width: int) -> str:
+    return f"https://commons.wikimedia.org/wiki/Special:FilePath/{quote(unquote(title))}?width={width}"
+
+
+def cards(images: list[dict], lms: list[dict]) -> list[dict]:
+    by_lm: dict[str, list[dict]] = {}
     for im in images:
-        lm = lms[im["landmark_qid"]]
+        by_lm.setdefault(im["landmark_qid"], []).append(im)
+    out = []
+    for lm in lms:
+        ims = by_lm.get(lm["qid"], [])
+        main = [i for i in ims if i["role"] == "main_p18"]
+        assert len(main) == 1, f"{lm['qid']}: expected one main photo, found {len(main)}"
+        alts = sorted((i for i in ims if i["role"] == "alt"), key=lambda i: i["image_id"])
         name = next((v for v in (lm["labels"].get(l) for l in ("fr", "de", "en", "it", "rm")) if v), lm["qid"])
-        title = im["commons_title"].removeprefix("File:")
-        out.append({"id": im["image_id"], "qid": im["landmark_qid"], "role": im["role"], "name": name,
-                    "town": lm["municipality_name"], "faces": im["faces_detected"],
-                    "src": f"https://commons.wikimedia.org/wiki/Special:FilePath/{quote(title)}?width=500",
-                    "main": f"https://commons.wikimedia.org/wiki/Special:FilePath/{quote(unquote(lm['p18_file'].rsplit('/', 1)[-1]))}?width=240",
-                    "page": im["commons_page_url"], "who": who[im["image_id"]], "overlap": len(who[im["image_id"]]) == 3})
-    out.sort(key=lambda x: (x["qid"], x["role"] != "main_p18", x["id"]))
+
+        def photo(im):
+            return {"id": im["image_id"], "page": im["commons_page_url"], "faces": im["faces_detected"],
+                    "fallback": _commons(im["commons_title"].removeprefix("File:"), 500)}
+
+        out.append({"qid": lm["qid"], "name": name, "town": lm["municipality_name"], "canton": lm["canton_code"],
+                    "main": photo(main[0]), "alts": [photo(a) for a in alts]})
     return out
 
 
@@ -50,78 +48,116 @@ PAGE = r"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Photo screening</title>
 <style>
-:root{--bg:#f7f7f5;--card:#fff;--ink:#1d1d1b;--mute:#6b6b66;--line:#e2e1dc;--accent:#c8102e;--ok:#1f7a4d;--warn:#b54708}
-@media (prefers-color-scheme:dark){:root{--bg:#161615;--card:#1f1f1d;--ink:#ecebe6;--mute:#a3a29b;--line:#34332f;--accent:#ff5a6e;--ok:#4cc38a;--warn:#f0a35e}}
+:root{--bg:#f7f7f5;--card:#fff;--ink:#1d1d1b;--mute:#6b6b66;--line:#e2e1dc;--accent:#c8102e;--ok:#1f7a4d;--warn:#b54708;--sel:#1d4ed8}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--card:#1f1f1d;--ink:#ecebe6;--mute:#a3a29b;--line:#34332f;--accent:#ff5a6e;--ok:#4cc38a;--warn:#f0a35e;--sel:#7aa2ff}}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
-header{position:sticky;top:0;z-index:2;background:var(--bg);border-bottom:1px solid var(--line);padding:12px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-h1{font-size:17px;margin:0 8px 0 0}select,button{font:inherit;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:6px 10px;cursor:pointer}
-button.primary{background:var(--accent);border-color:var(--accent);color:#fff}.bar{flex:1;min-width:160px;height:8px;background:var(--line);border-radius:4px;overflow:hidden}
-.bar>i{display:block;height:100%;background:var(--ok);width:0}main{padding:16px;max-width:1100px;margin:auto}
-.help{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin-bottom:16px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:14px;display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:14px}
-.card.done{opacity:.6}.card img.big{width:100%;border-radius:8px;background:var(--line);min-height:120px}
-.meta{font-size:13px;color:var(--mute)}.meta b{color:var(--ink)}.tag{display:inline-block;font-size:12px;padding:1px 7px;border-radius:10px;border:1px solid var(--line);margin-right:4px}
-.tag.alt{border-color:var(--accent);color:var(--accent)}.tag.face{border-color:var(--warn);color:var(--warn)}
-.q{margin:10px 0 4px;font-weight:600;font-size:14px}.opts button{margin:0 6px 6px 0}.opts button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
-.side img{width:100%;border-radius:8px}label{font-size:14px}
-@media (max-width:720px){.card{grid-template-columns:1fr}}
+header{position:sticky;top:0;z-index:2;background:var(--bg);border-bottom:1px solid var(--line);padding:10px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+h1{font-size:17px;margin:0 6px 0 0}button{font:inherit;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:6px 10px;cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}.bar{flex:1;min-width:120px;height:8px;background:var(--line);border-radius:4px;overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--ok);width:0}main{padding:16px;max-width:1150px;margin:auto}
+.help{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin-bottom:16px}.help li{margin:3px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:16px}
+.card.done{border-color:var(--ok)}.card.done .title::after{content:"  ✓ done";color:var(--ok);font-weight:600}
+.title{font-weight:600;font-size:16px}.meta{font-size:13px;color:var(--mute)}
+.mainrow{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px;margin-top:8px}
+img{width:100%;border-radius:8px;background:var(--line);min-height:90px;display:block;object-fit:contain;cursor:zoom-in}
+.mainrow img{height:330px}.alt img{height:210px}
+.alts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:12px}
+.alt{border:2px solid transparent;border-radius:10px;padding:6px}.alt.view{border-color:var(--sel)}.alt.low{border-color:var(--warn)}
+.q{margin:8px 0 4px;font-weight:600;font-size:14px}.opts{display:flex;flex-wrap:wrap;gap:6px}
+.opts button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.tag{display:inline-block;font-size:12px;padding:1px 7px;border-radius:10px;border:1px solid var(--warn);color:var(--warn);margin:4px 0}
+.saved{font-size:12px;color:var(--mute)}label{font-size:14px;cursor:pointer}input[type=file]{display:none}
+@media (max-width:760px){.mainrow{grid-template-columns:1fr}.alts{grid-template-columns:1fr 1fr}}
 </style></head><body>
 <header><h1>Photo screening</h1>
-<label>I am <select id="who"><option value="">choose…</option><option>A1</option><option>A2</option><option>A3</option></select></label>
 <div class="bar"><i id="prog"></i></div><span id="count" class="meta"></span>
-<button id="dl" class="primary">Download my decisions</button></header>
+<label><input type="checkbox" id="hide"> Hide finished</label>
+<button id="next">Next unfinished ↓</button>
+<button id="save" class="primary">Save progress</button>
+<button id="loadbtn" type="button">Load saved file</button><input type="file" id="load" accept=".json,application/json">
+<span id="saved" class="saved"></span></header>
 <main>
-<div class="help"><b>Read once.</b> For every photo answer <b>Privacy</b>: <i>Exclude</i> if a recognisable person, a readable licence plate, a private interior or personal text is visible (tiny distant people are fine).
-For photos tagged <span class="tag alt">2nd view</span> also answer: is it <i>the same object</i> as the small main photo, seen clearly from outside? And tick <i>Too generic</i> if this photo alone could not tell even an expert <i>which</i> object it is.
-When unsure: Exclude / Not usable. Your choices are saved in this browser; press <b>Download my decisions</b> at the end and send the file to the team lead.</div>
+<div class="help"><b>Read once. You decide together, one card per landmark.</b><ol>
+<li><b>Main photo:</b> <i>OK</i>, or <i>Exclude</i> if a recognisable person, a readable licence plate, a private interior or personal text is visible (tiny, distant people are fine), or <i>Wrong object</i> if it does not show this landmark (another building, a map, a painting).</li>
+<li><b>Other photos:</b> click <i>Use as 2nd view</i> on the best one: the <i>same object</i>, seen clearly, with no recognisable people. If none qualifies, click <i>None usable</i>.</li>
+<li><b>Optional:</b> click <i>Too generic</i> on a photo (no people) that alone could not tell even an expert <i>which</i> object it is: a plain wall, a generic door, a typical interior.</li></ol>
+Click a photo to see it larger. When unsure: Exclude / don't pick. Every click is saved in this browser automatically. Press <b>Save progress</b> whenever you stop (it downloads <code>screening_team.json</code>); <b>Load saved file</b> continues from such a file. Send the last file to the team lead.</div>
 <div id="list"></div></main>
 <script>
-const DATA = __DATA__;
+const DATA = __DATA__, VERSION = "__VERSION__", KEY = "screening-team-v2";
 const $ = s => document.querySelector(s);
-let who = "", st = {};
-function key(){return "screening-"+who}
-function load(){try{st=JSON.parse(localStorage.getItem(key())||"{}")}catch(e){st={}}}
-function save(){try{localStorage.setItem(key(),JSON.stringify(st))}catch(e){}}
-function mine(){return DATA.filter(d=>d.who.includes(who))}
-function complete(d){const s=st[d.id]||{};return s.privacy&&(d.role!=="alt"||s.privacy==="exclude"||s.view)}
-function progress(){const m=mine();const n=m.filter(complete).length;$("#prog").style.width=(m.length?100*n/m.length:0)+"%";$("#count").textContent=n+" / "+m.length}
-function btn(d,field,val,label){const b=document.createElement("button");b.textContent=label;if((st[d.id]||{})[field]===val)b.classList.add("on");
- b.onclick=()=>{st[d.id]=Object.assign({},st[d.id],{[field]:val});save();render(d.id)};return b}
-function card(d){const el=document.createElement("div");el.className="card"+(complete(d)?" done":"");el.id="c-"+d.id;
- const left=document.createElement("div");const img=document.createElement("img");img.className="big";img.loading="lazy";img.src=d.src;img.alt=d.name;left.appendChild(img);
- const meta=document.createElement("div");meta.className="meta";meta.innerHTML="";const t=document.createElement("b");t.textContent=d.name;meta.appendChild(t);
- meta.appendChild(document.createTextNode(" — "+d.town+" · "+d.id+" "));const a=document.createElement("a");a.href=d.page;a.target="_blank";a.rel="noopener";a.textContent="source";meta.appendChild(a);left.appendChild(meta);
- const side=document.createElement("div");side.className="side";
- const tags=document.createElement("div");if(d.role==="alt"){const s=document.createElement("span");s.className="tag alt";s.textContent="2nd view";tags.appendChild(s)}
- if(d.faces>0){const s=document.createElement("span");s.className="tag face";s.textContent="check: "+d.faces+" face(s)?";tags.appendChild(s)}side.appendChild(tags);
- let q=document.createElement("div");q.className="q";q.textContent="Privacy";side.appendChild(q);let o=document.createElement("div");o.className="opts";
- o.append(btn(d,"privacy","keep","OK"),btn(d,"privacy","exclude","Exclude"));side.appendChild(o);
- if(d.role==="alt"){q=document.createElement("div");q.className="q";q.textContent="Same object, clear 2nd view?";side.appendChild(q);
-  o=document.createElement("div");o.className="opts";o.append(btn(d,"view","good","Good 2nd view"),btn(d,"view","bad","Not usable"));side.appendChild(o);
-  const lab=document.createElement("label");const cb=document.createElement("input");cb.type="checkbox";cb.checked=!!(st[d.id]||{}).lowinfo;
-  cb.onchange=()=>{st[d.id]=Object.assign({},st[d.id],{lowinfo:cb.checked});save()};lab.append(cb,document.createTextNode(" Too generic to identify"));side.appendChild(lab);
-  q=document.createElement("div");q.className="q";q.textContent="Main photo";side.appendChild(q);const m=document.createElement("img");m.loading="lazy";m.src=d.main;m.alt="main photo";side.appendChild(m)}
- el.append(left,side);return el}
-function render(id){if(id){const old=document.getElementById("c-"+id);const d=DATA.find(x=>x.id===id);old.replaceWith(card(d));progress();return}
- const L=$("#list");L.textContent="";if(!who){L.textContent="Choose your ID (A1, A2 or A3) at the top.";return}
- mine().forEach(d=>L.appendChild(card(d)));progress()}
-$("#who").onchange=e=>{who=e.target.value;load();render()};
-$("#dl").onclick=()=>{if(!who)return alert("Choose your ID first");const out={annotator:who,guideline_version:"v1",exported_at:new Date().toISOString(),decisions:st};
- const b=new Blob([JSON.stringify(out,null,1)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="screening_"+who+".json";a.click()};
+let st = {}, lastSave = null;
+try { st = JSON.parse(localStorage.getItem(KEY) || "{}") || {} } catch (e) { st = {} }
+function persist(){ try { localStorage.setItem(KEY, JSON.stringify(st)); $("#saved").textContent = "autosaved " + new Date().toLocaleTimeString() } catch (e) { $("#saved").textContent = "⚠ browser storage off: use Save progress" } }
+function dec(d){ return st[d.qid] || {} }
+function complete(d){ const s = dec(d); if (!s.main) return false; if (s.main !== "ok" || !d.alts.length) return true; return !!s.alt }
+function progress(){ const n = DATA.filter(complete).length; $("#prog").style.width = (100 * n / DATA.length) + "%"; $("#count").textContent = n + " / " + DATA.length + " landmarks" }
+function set(d, patch){ const s = Object.assign({}, dec(d), patch);
+  if (patch.alt && patch.alt !== "none" && s.low === patch.alt) delete s.low;       // a photo is a 2nd view OR too generic, not both
+  if (patch.low && s.alt === patch.low) delete s.alt;
+  st[d.qid] = s; persist(); redraw(d) }
+function button(label, on, fn){ const b = document.createElement("button"); b.type = "button"; b.textContent = label; if (on) b.classList.add("on"); b.onclick = fn; return b }
+function pic(p){ const i = document.createElement("img"); i.loading = "lazy"; i.alt = p.id; i.src = "images/" + p.id + ".jpg";
+  i.onerror = () => { if (i.src !== p.fallback) i.src = p.fallback }; i.title = "click to enlarge"; i.onclick = () => window.open(i.src, "_blank"); return i }
+function src(p){ const a = document.createElement("a"); a.href = p.page; a.target = "_blank"; a.rel = "noopener"; a.textContent = "source"; return a }
+function faces(p, box){ if (p.faces > 0){ const t = document.createElement("div"); t.className = "tag"; t.textContent = "face detector: " + p.faces + " — check for people"; box.appendChild(t) } }
+function card(d, k){ const s = dec(d), el = document.createElement("div"); el.className = "card" + (complete(d) ? " done" : ""); el.id = "c-" + d.qid;
+  const t = document.createElement("div"); t.className = "title"; t.textContent = (k + 1) + ". " + d.name; el.appendChild(t);
+  const m = document.createElement("div"); m.className = "meta"; m.append(d.town + " (" + d.canton + ") · " + d.qid + " · main photo ", src(d.main)); el.appendChild(m);
+  const row = document.createElement("div"); row.className = "mainrow"; row.appendChild(pic(d.main));
+  const side = document.createElement("div"); faces(d.main, side);
+  let q = document.createElement("div"); q.className = "q"; q.textContent = "1. Main photo"; side.appendChild(q);
+  let o = document.createElement("div"); o.className = "opts";
+  o.append(button("OK", s.main === "ok", () => set(d, {main: "ok"})), button("Exclude: person / private", s.main === "exclude", () => set(d, {main: "exclude"})),
+           button("Wrong object", s.main === "wrong", () => set(d, {main: "wrong"}))); side.appendChild(o);
+  if (d.alts.length){ q = document.createElement("div"); q.className = "q"; q.textContent = "2. Other photos (" + d.alts.length + ")"; side.appendChild(q);
+    o = document.createElement("div"); o.className = "opts"; o.append(button("None usable", s.alt === "none", () => set(d, {alt: "none"}))); side.appendChild(o) }
+  else { const n = document.createElement("p"); n.className = "meta"; n.textContent = "No other photos for this landmark."; side.appendChild(n) }
+  row.appendChild(side); el.appendChild(row);
+  if (d.alts.length){ const g = document.createElement("div"); g.className = "alts";
+    d.alts.forEach(p => { const b = document.createElement("div"); b.className = "alt" + (s.alt === p.id ? " view" : "") + (s.low === p.id ? " low" : "");
+      b.appendChild(pic(p)); faces(p, b); const oo = document.createElement("div"); oo.className = "opts";
+      oo.append(button("Use as 2nd view", s.alt === p.id, () => set(d, {alt: s.alt === p.id ? undefined : p.id})),
+                button("Too generic", s.low === p.id, () => set(d, {low: s.low === p.id ? undefined : p.id})));
+      b.appendChild(oo); const mm = document.createElement("div"); mm.className = "meta"; mm.append(src(p)); b.appendChild(mm); g.appendChild(b) });
+    el.appendChild(g) }
+  if ($("#hide").checked && complete(d)) el.style.display = "none";
+  return el }
+function redraw(d){ const k = DATA.indexOf(d); document.getElementById("c-" + d.qid).replaceWith(card(d, k)); progress() }
+function render(){ const L = $("#list"); L.textContent = ""; DATA.forEach((d, k) => L.appendChild(card(d, k))); progress() }
+function payload(){ const done = DATA.filter(complete).length;
+  return {format: "team-consensus", annotator: "team", guideline_version: VERSION, exported_at: new Date().toISOString(), complete: done, total: DATA.length, decisions: st} }
+$("#save").onclick = () => { const b = new Blob([JSON.stringify(payload(), null, 1)], {type: "application/json"}); const a = document.createElement("a");
+  a.href = URL.createObjectURL(b); a.download = "screening_team.json"; document.body.appendChild(a); a.click(); a.remove();
+  $("#saved").textContent = "file saved " + new Date().toLocaleTimeString() };
+$("#loadbtn").onclick = () => $("#load").click();
+$("#load").onchange = e => { const f = e.target.files[0]; if (!f) return; f.text().then(t => { const j = JSON.parse(t);
+  if (j.format !== "team-consensus" || typeof j.decisions !== "object") throw new Error("not a screening_team.json file");
+  const known = new Set(DATA.map(d => d.qid)), n = Object.keys(j.decisions).filter(q => known.has(q)).length;
+  if (!confirm("Load " + n + " landmark decisions from " + f.name + "? This replaces what is shown now.")) return;
+  st = {}; for (const q of Object.keys(j.decisions)) if (known.has(q)) st[q] = j.decisions[q]; persist(); render() })
+  .catch(err => alert("Could not load: " + err.message)); e.target.value = "" };
+$("#hide").onchange = render;
+$("#next").onclick = () => { const d = DATA.find(x => !complete(x)); if (!d) return alert("All done — press Save progress and send the file.");
+  if ($("#hide").checked) render(); document.getElementById("c-" + d.qid).scrollIntoView({behavior: "smooth", block: "start"}) };
 render();
 </script></body></html>"""
 
 
-def build_review_page(work: Path) -> Path:
+def build_review_page(work: Path, out_dir: Path | None = None) -> Path:
+    """Write <out_dir>/photo_screening.html plus a copy of the photos in <out_dir>/images/."""
     images = [json.loads(l) for l in open(work / "images.jsonl", encoding="utf-8")]
-    lms = {json.loads(l)["qid"]: json.loads(l) for l in open(work / "landmarks_final.jsonl", encoding="utf-8")}
-    data = assign(images, lms)
-    out = work / "review" / "photo_screening.html"
-    out.parent.mkdir(parents=True, exist_ok=True)
+    lms = [json.loads(l) for l in open(work / "landmarks_final.jsonl", encoding="utf-8")]
+    data = cards(images, lms)
+    out_dir = out_dir or work / "review" / "photo_screening"
+    (out_dir / "images").mkdir(parents=True, exist_ok=True)
+    for im in images:
+        src = work / "images" / f"{im['image_id']}.jpg"
+        dst = out_dir / "images" / src.name
+        if not dst.exists() or dst.stat().st_size != src.stat().st_size:
+            shutil.copy2(src, dst)
     payload = json.dumps(data, ensure_ascii=False).replace("</", "<\\/")
-    out.write_text(PAGE.replace("__DATA__", payload), encoding="utf-8")
-    counts = {a: sum(a in d["who"] for d in data) for a in ("A1", "A2", "A3")}
-    (work / "review" / "assignment.json").write_text(json.dumps({"counts": counts, "overlap": sum(d["overlap"] for d in data),
-                                                                "items": [{k: d[k] for k in ("id", "who")} for d in data]},
-                                                               indent=1), encoding="utf-8")
-    return out
+    page = out_dir / "photo_screening.html"
+    page.write_text(PAGE.replace("__DATA__", payload).replace("__VERSION__", GUIDELINE_VERSION), encoding="utf-8")
+    return page

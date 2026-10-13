@@ -37,3 +37,33 @@
   `metadata/excluded_items.jsonl` with the reason. No item was added or re-asked.
 - Source-hygiene regression test added after a tooling error inserted invisible control characters into
   grader regexes (caught by the tests before any result was reported).
+
+## Second audit and protocol changes (13 Oct, afternoon)
+- **Photo screening protocol v2-team (before any screening data existed):** the team screens together on one
+  computer and records one joint decision per landmark, instead of three separate annotators with a
+  100-photo overlap. Consequence: no inter-annotator agreement is reported for the photo screening (it is
+  still reported for the grading audit, Task G, which stays independent). Only photos picked as 2nd view or
+  low-information are shipped; unpicked candidates are never published. A main photo marked "exclude" or
+  "wrong object" drops the landmark; its existing answers move to `metadata/excluded_items.jsonl` (code:
+  `assemble.prune_results`), and the premise-trap draw is made before dropping so other items do not change.
+- **Code-grader fix v4 (after seeing answers, documented):** an audit of *every* code-"correct" name grade
+  (4 of 1,056) found 2 false positives: an abstention containing "bâtiment" (Wikidata lists "bâtiment" as an
+  alias of that landmark) and "una torre dell'orologio" (a generic phrase stored as a name). We then listed
+  all 786 tokens that made a name count as specific and classified each by hand: ~250 generic words were
+  added to the type-word list (`normalize.GENERIC_WORDS_AUDIT`: building types, religious-order compounds,
+  shared dedications such as "Assunta" or "Notre-Dame", museum/railway/military words, function words,
+  inventory codes). Words that are also place or family names here were kept ("château de Villa",
+  "Château Grenier"). Matching changes: an alias that names no kind of object ("bâtiment", "Building") is
+  never used; a non-distinctive name counts as correct with the right town, also when the name itself
+  contains the town ("Burg Rapperswil" when only "Rapperswil-Jona" is a place alias).
+  Effect on the official run: exactly 2 code labels change (both correct -> not_attempted); no other label moves.
+  Pinned by regression tests (`test_grading_rules.py`, section "Fix v4").
+- **Item-validity rule applied again** with the audited word list (same rule as before, decided from the
+  question text only): 94 more text-only place items (47 landmarks, FR+DE kept or dropped together) showed a
+  name that does not identify the object ("Granary tower", "Former Arsenal", "Gare CFF", "Église anglaise",
+  "Dreifaltigkeitskirche", "bâtiment"). Removed; responses kept in `metadata/excluded_items.jsonl`.
+  Base set: 2,862 -> 2,768 items; verify V1-V5 pass.
+- **Covariate added (not pre-registered):** `item_metadata.shown_name_lang` records the language of the name
+  shown in text-only questions; where a landmark has no label in the question's language a fallback label is
+  shown (mostly English in French questions). Results are reported with and without these items
+  (sensitivity analysis, added after the run).
