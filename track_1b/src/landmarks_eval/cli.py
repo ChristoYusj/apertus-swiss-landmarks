@@ -50,6 +50,10 @@ def main(argv: list[str] | None = None) -> int:
     b.add_argument("--refresh", action="store_true", help="ignore the SPARQL cache and re-pull")
     sub.add_parser("build-images", help="(team only, network) fetch, licence-filter and re-encode photos")
     sub.add_parser("build-questions", help="(team only) generate test cases from the frozen templates")
+    sub.add_parser("review-page", help="(team only) write the offline photo-screening page")
+    m = sub.add_parser("merge-review", help="(team only) merge screening_A*.json decision files")
+    m.add_argument("files", nargs="+", type=Path)
+    sub.add_parser("assemble", help="(team only) assemble the publishable dataset folder")
 
     for name in ("run", "grade", "score", "verify", "live"):
         p = sub.add_parser(name)
@@ -76,7 +80,24 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.cmd == "build-questions":
         from .build.questions import build_questions
-        print(json.dumps(build_questions(args.work), indent=1, ensure_ascii=False))
+        merged = args.work / "review" / "merged.json"
+        alt = low = None
+        if merged.exists():
+            mj = json.loads(merged.read_text(encoding="utf-8"))
+            alt, low = mj["alt_accepted"], mj["lowinfo"]
+        print(json.dumps(build_questions(args.work, alt, low), indent=1, ensure_ascii=False))
+        return 0
+    if args.cmd == "review-page":
+        from .build.review_page import build_review_page
+        print(build_review_page(args.work))
+        return 0
+    if args.cmd == "merge-review":
+        from .build.review_merge import merge_review
+        print(json.dumps(merge_review(args.work, args.files), indent=1, ensure_ascii=False))
+        return 0
+    if args.cmd == "assemble":
+        from .build.assemble import assemble
+        print(json.dumps(assemble(args.work), indent=1, ensure_ascii=False))
         return 0
 
     from .client import Endpoint
