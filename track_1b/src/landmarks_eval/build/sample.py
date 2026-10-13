@@ -21,7 +21,7 @@ import random
 import re
 from pathlib import Path
 
-from ..grading.normalize import distinctive, is_generic, normalize, split_bilingual
+from ..grading.normalize import distinctive_v1 as distinctive, is_generic_v1 as is_generic, normalize, split_bilingual
 from ..schema import Landmark
 from . import sparql
 from .candidates import pull_candidates

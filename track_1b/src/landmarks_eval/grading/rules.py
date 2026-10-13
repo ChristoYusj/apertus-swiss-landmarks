@@ -155,18 +155,38 @@ def _specific(aliases: list[str]) -> list[str]:
     return [a for a in aliases if specific_tokens(a)]
 
 
+def _right_town(text: str, hits: list[str], place_aliases, ambiguous, canton_aliases) -> bool:
+    """Is the right municipality named, in the answer or inside the matched name? A town name shared by two
+    municipalities (Holderbank AG/SO) counts only together with the right canton."""
+    amb = {normalize(a) for a in ambiguous}
+    amb_tokens = {t for a in amb for t in a.split()}
+    canton = any(mentions(text, c) for c in canton_aliases)
+    if any(mentions(text, p) for p in place_aliases if normalize(p) not in amb):
+        return True
+    if canton and any(mentions(text, p) for p in place_aliases if normalize(p) in amb):
+        return True
+    town_tokens = {t for p in place_aliases if normalize(p) not in amb for t in specific_tokens(p)} - amb_tokens
+    in_name = set().union(*(set(normalize(a).split()) for a in hits)) if hits else set()
+    return bool(town_tokens & in_name) or (canton and bool(amb_tokens & in_name))
+
+
 def grade_name(text: str, strong: list[str], weak: list[str] = (), place_aliases: list[str] = (),
-               ambiguous: list[str] = (), gz=None, gold_canton: str | None = None) -> CodeGrade:
+               ambiguous: list[str] = (), gz=None, gold_canton: str | None = None, canton_aliases: list[str] = (),
+               gold_bfs: int | None = None) -> CodeGrade:
     """strong = distinctive names; weak = saint/type names shared by many buildings (need the town).
     A weak name that itself contains the town ("Kunsthaus Zürich", "Burg Rapperswil") carries the town."""
     if any(mentions(text, a) for a in _specific(strong)):
         return CodeGrade("correct", "name_alias_match")
     hits = [a for a in weak if usable_alias(a) and mentions(text, a)]
     if hits:
-        amb = {normalize(a) for a in ambiguous}
-        town_tokens = {t for p in place_aliases if normalize(p) not in amb for t in specific_tokens(p)}
-        if any(mentions(text, p) for p in place_aliases) or any(town_tokens & set(normalize(a).split()) for a in hits):
+        if _right_town(text, hits, place_aliases, ambiguous, canton_aliases):
             return CodeGrade("correct", "name_alias_plus_town_match")
+        # a generic name with ANOTHER town ("Kunsthaus Aarau" for Kunsthaus Zürich) is a wrong answer
+        if gz is not None:
+            loc = gz.locate(text)
+            if loc["kind"] == "abroad" or (loc["kind"] == "swiss" and loc["level"] == "municipality"
+                                           and loc.get("bfs_now") and gold_bfs not in loc["bfs_now"]):
+                return CodeGrade("incorrect", "nondistinctive_name_wrong_town")
         # e.g. "St. Antonius chapel" without the town: could be any of many chapels
         return CodeGrade("not_attempted", "nondistinctive_name_without_town")
     if abstains(text):
@@ -255,7 +275,8 @@ def grade(case: dict, landmark: dict, response_text: str | None, gz=None) -> Cod
     q = case["question_type"]
     if q == "name":
         return grade_name(response_text, strong, weak, places, landmark.get("ambiguous_place_aliases", []), gz,
-                          landmark.get("canton_code"))
+                          landmark.get("canton_code"), cantons,
+                          int(landmark["municipality_bfs"]) if landmark.get("municipality_bfs") else None)
     if q == "place":
         return grade_place(response_text, places, cantons, landmark.get("ambiguous_place_aliases", []), gz,
                            landmark.get("canton_code"))

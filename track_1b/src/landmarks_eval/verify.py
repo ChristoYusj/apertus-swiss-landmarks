@@ -6,6 +6,7 @@ Checks (any failure -> exit code 1):
   V3 every main test case has exactly one response (coverage)
   V4 re-running the deterministic code grader reproduces every stored code_label exactly
   V5 final labels follow the documented rule (judge label if present, else code label)
+  V7 privacy: every shipped photo was cleared in the human screening (no unscreened photo is publishable)
   V6 recomputed scores equal the expected scores file (all numbers, after rounding)
 """
 
@@ -63,14 +64,24 @@ def verify(dataset: Path, results: Path, expected: Path | None, log=print) -> bo
                 errs.append(f"{fname}:{i + 1}: {str(e).splitlines()[0]}")
     check("V1 schema validation", not errs, "; ".join(errs[:5]))
 
-    bad = []
-    for rec in load_jsonl(dataset / "metadata" / "images.jsonl"):
+    bad, uncleared = [], []
+    image_recs = load_jsonl(dataset / "metadata" / "images.jsonl")
+    for rec in image_recs:
         p = dataset / "images" / f"{rec['image_id']}.jpg"
+        if rec.get("pii_decision") != "keep":
+            uncleared.append(rec["image_id"])
         if rec.get("pii_decision") == "exclude":
             continue
         if not p.exists() or hashlib.sha256(p.read_bytes()).hexdigest() != rec["shipped_sha256"]:
             bad.append(rec["image_id"])
     check("V2 image hashes", not bad, f"{len(bad)} mismatched: {bad[:5]}")
+    # V7 privacy: every shipped photo was cleared in the human screening (Task P); an unscreened dataset is
+    # not publishable, whatever the other checks say
+    on_disk = {p.stem for p in (dataset / "images").glob("*.jpg")}
+    uncleared += sorted(on_disk - {r["image_id"] for r in image_recs})
+    check("V7 privacy screening", not uncleared,
+          f"{len(uncleared)} shipped photo(s) not cleared by the screening: {uncleared[:3]}" if uncleared
+          else f"{len(image_recs)} photos cleared")
 
     cases = {c["item_id"]: c for c in load_jsonl(dataset / "data" / "test_cases.jsonl")}
     lms = {l["qid"]: l for l in load_jsonl(dataset / "data" / "landmarks.jsonl")}

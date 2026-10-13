@@ -13,6 +13,7 @@ from __future__ import annotations
 import concurrent.futures as cf
 import datetime as dt
 import json
+import random
 from collections import Counter
 from pathlib import Path
 
@@ -32,7 +33,8 @@ def stability(dataset: Path, results: Path, ep: Endpoint, n: int = 100, probe: i
     official = {r["item_id"]: r for r in load_jsonl(results / "responses.jsonl") if r["status"] == "ok"}
     pool = [c for c in cases.values() if c["item_id"] in official]
     sample = stratified_sample(pool, n, seed=SEED)[:n]
-    jobs = [(c, 1) for c in sample] + [(c, k) for c in sample[:probe] for k in range(2, repeats + 2)]
+    probes = random.Random(SEED + 1).sample(sample, min(probe, len(sample)))  # a random subset, not the first k ids
+    jobs = [(c, 1) for c in sample] + [(c, k) for c in probes for k in range(2, repeats + 2)]
     log(f"stability: {len(sample)} items rerun once, {min(probe, len(sample))} of them {repeats} more times "
         f"({len(jobs)} requests to {ep.model})")
 
@@ -61,7 +63,7 @@ def stability(dataset: Path, results: Path, ep: Endpoint, n: int = 100, probe: i
     b = [label(r["item_id"], r["response_text"]) for r in first]
     same_label = sum(x == y for x, y in zip(a, b))
     probe_items = []
-    for c in sample[:probe]:
+    for c in probes:
         answers = [official[c["item_id"]]["response_text"]] + [r["response_text"] for r in ok if r["item_id"] == c["item_id"]]
         probe_items.append({"item_id": c["item_id"], "n_answers": len(answers), "distinct_texts": len(set(answers)),
                             "distinct_labels": len({label(c["item_id"], t) for t in answers})})

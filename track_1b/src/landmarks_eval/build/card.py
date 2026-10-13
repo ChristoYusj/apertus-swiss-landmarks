@@ -24,6 +24,10 @@ def build_card(ds: Path, extra: dict | None = None) -> str:
     cases = _load(ds / "data" / "test_cases.jsonl")
     lms = _load(ds / "data" / "landmarks.jsonl")
     imgs = _load(ds / "metadata" / "images.jsonl")
+    uncleared = [i["image_id"] for i in imgs if i.get("pii_decision") != "keep"]
+    if uncleared and not extra.get("allow_unscreened_draft"):
+        # the card states that every shipped photo was screened: never write it before that is true
+        raise SystemExit(f"photo screening incomplete: {len(uncleared)} shipped photos not cleared (e.g. {uncleared[:3]})")
     sel = json.loads((ds / "metadata" / "selection_report.json").read_text(encoding="utf-8")) if (ds / "metadata" / "selection_report.json").exists() else {}
     review = json.loads((ds / "metadata" / "review.json").read_text(encoding="utf-8")).get("report", {}) if (ds / "metadata" / "review.json").exists() else {}
     cell = Counter((l["language_region"], l["fame_tier"]) for l in lms)

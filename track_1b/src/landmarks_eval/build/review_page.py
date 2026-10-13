@@ -109,8 +109,9 @@ function card(d, k){ const s = dec(d), el = document.createElement("div"); el.cl
   const side = document.createElement("div"); faces(d.main, side);
   let q = document.createElement("div"); q.className = "q"; q.textContent = "1. Main photo"; side.appendChild(q);
   let o = document.createElement("div"); o.className = "opts";
-  o.append(button("OK", s.main === "ok", () => set(d, {main: "ok"})), button("Exclude: person / private", s.main === "exclude", () => set(d, {main: "exclude"})),
-           button("Wrong object", s.main === "wrong", () => set(d, {main: "wrong"}))); side.appendChild(o);
+  o.append(button("OK", s.main === "ok", () => set(d, {main: "ok", main_id: d.main.id})),
+           button("Exclude: person / private", s.main === "exclude", () => set(d, {main: "exclude", main_id: d.main.id})),
+           button("Wrong object", s.main === "wrong", () => set(d, {main: "wrong", main_id: d.main.id}))); side.appendChild(o);
   if (d.alts.length){ q = document.createElement("div"); q.className = "q"; q.textContent = "2. Other photos (" + d.alts.length + ")"; side.appendChild(q);
     o = document.createElement("div"); o.className = "opts"; o.append(button("None usable", s.alt === "none", () => set(d, {alt: "none"}))); side.appendChild(o) }
   else { const n = document.createElement("p"); n.className = "meta"; n.textContent = "No other photos for this landmark."; side.appendChild(n) }

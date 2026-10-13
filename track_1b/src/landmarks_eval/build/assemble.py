@@ -84,37 +84,83 @@ def assemble(work: Path) -> dict:
             "n_problems": len(problems), "responses_moved_to_excluded_items": pruned, "gazetteer": gazetteer}
 
 
+def _read_rows(path: Path) -> list[tuple[dict, str]] | None:
+    """(parsed row, raw line) pairs; newline="" keeps the file's own line endings (byte-for-byte copies)."""
+    if not path.exists():
+        return None
+    with open(path, encoding="utf-8", newline="") as f:
+        return [(json.loads(l), l if l.endswith("\n") else l + "\n") for l in f if l.strip()]
+
+
 def prune_results(ds: Path, case_ids: set[str], removed_path: Path) -> dict[str, int]:
-    """Responses/judgements of items no longer in the dataset move to metadata/excluded_items.jsonl (with the
-    reason); nothing is deleted silently. Scores in those results folders must be recomputed afterwards."""
+    """Responses/judgements of items no longer in the dataset move to metadata/excluded_items.jsonl, verbatim
+    (full response and judgement rows) and with the reason; an item that comes back is restored from there.
+    Idempotent: one record per (item_id, model). Scores in the results folders must be recomputed afterwards."""
     removed = {json.loads(l)["item_id"]: json.loads(l) for l in open(removed_path, encoding="utf-8")} \
         if removed_path.exists() else {}
     excl_path = ds / "metadata" / "excluded_items.jsonl"
     excluded = [json.loads(l) for l in open(excl_path, encoding="utf-8")] if excl_path.exists() else []
+    index = {(e["item_id"], e.get("model")): e for e in excluded}
     moved: dict[str, int] = {}
+    changed = False
     for rdir in sorted(p for p in (ds / "responses").glob("*") if p.is_dir()):
-        lines = {n: [l for l in open(rdir / n, encoding="utf-8") if l.strip()] if (rdir / n).exists() else None
-                 for n in ("responses.jsonl", "judgements.jsonl")}
-        rows = {n: [(json.loads(l), l) for l in ls] if ls is not None else None for n, ls in lines.items()}
-        gone = [r for r, _ in rows["responses.jsonl"] or [] if r["item_id"] not in case_ids]
-        if not gone and not any(j["item_id"] not in case_ids for j, _ in rows["judgements.jsonl"] or []):
+        resp, judg = _read_rows(rdir / "responses.jsonl"), _read_rows(rdir / "judgements.jsonl")
+        if resp is None:
             continue
-        for r in gone:
-            info = removed.get(r["item_id"], {})
-            excluded.append({"item_id": r["item_id"], "model": r.get("model"), "question_text": info.get("question_text"),
-                             "response_text": r.get("response_text"),
-                             "reason": info.get("reason", "item not in the current dataset"),
-                             "decided_without_looking_at_answers": True})
-        for n, rs in rows.items():
-            if rs is None:
+        models = {r.get("model") for r, _ in resp if r.get("model")}
+        model = next(iter(models)) if len(models) == 1 else None
+        jrows = {j["item_id"]: j for j, _ in judg or []}
+        present = {r["item_id"] for r, _ in resp}
+        n_out = 0
+        for r, _ in resp:
+            if r["item_id"] in case_ids:
                 continue
-            with open(rdir / n, "w", encoding="utf-8", newline="\n") as f:
-                for r, raw in rs:  # kept rows are copied byte for byte
-                    if r["item_id"] in case_ids:
-                        f.write(raw if raw.endswith("\n") else raw + "\n")
-        moved[rdir.name] = len(gone)
-    if moved:
+            key = (r["item_id"], r.get("model"))
+            info = removed.get(r["item_id"], {})
+            rec = index.get(key) or {"item_id": r["item_id"], "model": r.get("model"),
+                                     "question_text": info.get("question_text"), "response_text": r.get("response_text"),
+                                     "reason": info.get("reason", "item not in the current dataset"),
+                                     "decided_without_looking_at_answers": True}
+            rec["response_row"] = r
+            rec["judgement_row"] = jrows.get(r["item_id"], rec.get("judgement_row"))
+            if key not in index:
+                excluded.append(rec)
+                index[key] = rec
+            n_out += 1
+        for iid, j in jrows.items():   # a judgement without a response row is recorded too, never dropped
+            if iid not in case_ids and iid not in present:
+                rec = index.get((iid, model))
+                if rec is None:
+                    rec = {"item_id": iid, "model": model, "question_text": removed.get(iid, {}).get("question_text"),
+                           "response_text": None, "reason": removed.get(iid, {}).get("reason", "item not in the current dataset"),
+                           "decided_without_looking_at_answers": True}
+                    excluded.append(rec)
+                    index[(iid, model)] = rec
+                rec["judgement_row"] = j
+                n_out += 1
+        restore = [e for e in excluded if e["item_id"] in case_ids and e["item_id"] not in present
+                   and e.get("response_row") and e.get("model") in (model, None)]
+        kept_r = [raw for r, raw in resp if r["item_id"] in case_ids]
+        kept_j = [raw for j, raw in judg or [] if j["item_id"] in case_ids]
+        for e in restore:  # an item that comes back gets its original rows back
+            kept_r.append(json.dumps(e["response_row"], ensure_ascii=False, sort_keys=True) + "\n")
+            if e.get("judgement_row"):
+                kept_j.append(json.dumps(e["judgement_row"], ensure_ascii=False, sort_keys=True) + "\n")
+            excluded.remove(e)
+            index.pop((e["item_id"], e.get("model")), None)
+        if n_out or restore:
+            changed = True
+            for name, lines in (("responses.jsonl", kept_r), ("judgements.jsonl", kept_j)):
+                if name == "judgements.jsonl" and judg is None:
+                    continue
+                with open(rdir / name, "w", encoding="utf-8", newline="") as f:
+                    f.writelines(sorted(lines, key=lambda l: json.loads(l)["item_id"]))
+        if n_out:
+            moved[rdir.name] = n_out
+        if restore:
+            moved[rdir.name + ":restored"] = len(restore)
+    if changed:
         with open(excl_path, "w", encoding="utf-8", newline="\n") as f:
-            for e in excluded:
+            for e in sorted(excluded, key=lambda e: (e["item_id"], e.get("model") or "")):
                 f.write(json.dumps(e, ensure_ascii=False) + "\n")
     return moved

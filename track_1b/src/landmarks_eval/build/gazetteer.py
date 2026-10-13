@@ -12,7 +12,7 @@ import re
 from collections import defaultdict
 from pathlib import Path
 
-from ..grading.normalize import normalize, split_bilingual
+from ..grading.normalize import TYPE_WORDS, normalize, split_bilingual
 from . import sparql
 from .regions import CANTON_BY_BFS_ID
 
@@ -80,11 +80,26 @@ def build_gazetteer(work: Path, ds: Path) -> dict:
         elif b < 7000:               # >= 9000: lakes and other areas without a municipality
             former[b].add(r["text"]["value"])
 
+    # a former municipality takes the canton and language region of the current municipality it became
+    successors: dict[int, set] = defaultdict(set)
+    for r in sparql.run(sparql.load_query("municipality_successors"), work / "sparql", False):
+        b, s = int(r["bfs"]["value"]), int(r["succ"]["value"])
+        if b in former and s in current:
+            successors[b].add(s)
+
+    def former_info(b: int) -> tuple[str | None, str | None]:
+        cs = {current[s]["canton"] for s in successors.get(b, ())}
+        rs = {current[s]["region"] for s in successors.get(b, ())}
+        canton = next(iter(cs)) if len(cs) == 1 else canton_of_bfs(b)
+        region = next(iter(rs)) if len(rs) == 1 else mono(canton)
+        return canton, region
+
     def names(raw: set, short_forms: bool = False) -> list[str]:
         out = {normalize(x) for n in raw for x in split_bilingual(n)} - {""}
         if short_forms:  # "Oberhofen am Thunersee" is usually just "Oberhofen" (ties are settled by the canton)
             out |= {m.group(1) for n in list(out)
-                    if (m := re.match(r"^(.+?) (am|an der|im|bei|ob|unter|sur|pres|presso|in|near) .+$", n))}
+                    if (m := re.match(r"^(.+?) (am|an der|im|bei|ob|unter|sur|pres|presso|in|near) .+$", n))
+                    and not m.group(1).startswith("st ") and m.group(1) not in TYPE_WORDS}  # not "st maria"
         return sorted(out)
 
     gz = {
@@ -93,11 +108,14 @@ def build_gazetteer(work: Path, ds: Path) -> dict:
         "cantons": {c: {"names": sorted(v), "region": mono(c)} for c, v in sorted(cantons.items())},
         "municipalities": [{"bfs": b, "names": names(m["names"], short_forms=True), "canton": m["canton"], "region": m["region"],
                             "current": True} for b, m in sorted(current.items())]
-                          + [{"bfs": b, "names": names(v), "canton": canton_of_bfs(b), "region": mono(canton_of_bfs(b)),
-                              "current": False} for b, v in sorted(former.items())],
+                          + [{"bfs": b, "names": names(v), "canton": former_info(b)[0], "region": former_info(b)[1],
+                              "current": False, "successors": sorted(successors.get(b, ()))}
+                             for b, v in sorted(former.items())],
         "countries": {k: sorted({normalize(x) for x in v} | ({normalize(x) for n in liechtenstein for x in split_bilingual(n)}
                                                               if k == "LI" else set()))
                       for k, v in COUNTRIES.items()},
     }
     (ds / "metadata" / "gazetteer.json").write_text(json.dumps(gz, ensure_ascii=False, indent=0) + "\n", encoding="utf-8")
-    return {"cantons": len(gz["cantons"]), "municipalities_current": len(current), "municipalities_former": len(former)}
+    return {"cantons": len(gz["cantons"]), "municipalities_current": len(current), "municipalities_former": len(former),
+            "former_with_successor": len(successors),
+            "former_without_region": sum(m["region"] is None for m in gz["municipalities"] if not m["current"])}

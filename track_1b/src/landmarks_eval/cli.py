@@ -64,6 +64,9 @@ def main(argv: list[str] | None = None) -> int:
     ma.add_argument("--sample", type=Path, required=True, help="audit_sample.json written by audit-page")
     ma.add_argument("files", nargs="+", type=Path)
 
+    fg = sub.add_parser("figures", help="report figures from a scores.json (needs the [figures] extra)")
+    fg.add_argument("--scores", type=Path, required=True)
+    fg.add_argument("--out", type=Path, default=Path("docs/figures"))
     st = sub.add_parser("stability", help="re-ask a seeded sample to measure temperature-0 answer stability")
     st.add_argument("--dataset")
     st.add_argument("--results", type=Path, required=True)
@@ -114,6 +117,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "assemble":
         from .build.assemble import assemble
         print(json.dumps(assemble(args.work), indent=1, ensure_ascii=False))
+        return 0
+    if args.cmd == "figures":
+        from .figures import make_figures
+        for p in make_figures(args.scores, args.out):
+            print(p)
         return 0
     if args.cmd == "merge-audit":
         from .build.audit import merge_labels

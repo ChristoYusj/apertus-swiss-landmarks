@@ -51,6 +51,12 @@ TEXT_ONLY_RULE = ("item-validity rule: the name shown in a text-only place quest
                   "FR and DE (generic-word list audited 13 Oct); decided from the question text only")
 
 
+def _public(lm: dict) -> dict:
+    pub = {k: v for k, v in lm.items() if not k.startswith("_") and k != "main_image_id"}
+    pub["lookalike_siblings"] = [{"qid": q, "municipality": t} for q, t in lm.get("_siblings") or []]
+    return pub
+
+
 def _case(lm, arm, qtype, lang, tid, pv, text, image_id, expected="answer", **extra) -> dict:
     c = {"item_id": f"{lm['qid']}-{arm}-{qtype}-{lang}", "landmark_qid": lm["qid"], "arm": arm,
          "question_type": qtype, "lang": lang, "template_id": tid, "prompt_version": pv,
@@ -192,9 +198,13 @@ def build_questions(work: Path, alt_accepted: dict[str, str] | None = None,
             f.write(json.dumps(c, ensure_ascii=False) + "\n")
     with open(out / "landmarks.jsonl", "w", encoding="utf-8", newline="\n") as f:
         for lm in lms:
-            pub = {k: v for k, v in lm.items() if not k.startswith("_") and k != "main_image_id"}
-            pub["lookalike_siblings"] = [{"qid": q, "municipality": t} for q, t in lm.get("_siblings") or []]
-            f.write(json.dumps(pub, ensure_ascii=False) + "\n")
+            f.write(json.dumps(_public(lm), ensure_ascii=False) + "\n")
+    # landmarks dropped in the screening keep their answer key, so their excluded answers stay gradable
+    (work / "dataset" / "metadata").mkdir(parents=True, exist_ok=True)
+    with open(work / "dataset" / "metadata" / "excluded_landmarks.jsonl", "w", encoding="utf-8", newline="\n") as f:
+        for lm in all_lms:
+            if lm["qid"] in dropped:
+                f.write(json.dumps({**_public(lm), "excluded_reason": dropped[lm["qid"]]}, ensure_ascii=False) + "\n")
     counts: dict[str, int] = {}
     for c in cases:
         k = f"{c['arm']}|{c['question_type']}"

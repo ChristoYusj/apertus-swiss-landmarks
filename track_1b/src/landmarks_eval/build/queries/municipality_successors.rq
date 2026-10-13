@@ -1,0 +1,7 @@
+# Former municipalities and the municipality (or municipalities) they became, following "replaced by" (P1366)
+# and "merged into" chains; used to give a former municipality the language region of its successor.
+SELECT DISTINCT ?bfs ?succ WHERE {
+  ?m wdt:P771 ?bfs .
+  { ?m wdt:P1366+ ?s . } UNION { ?m wdt:P7888+ ?s . }
+  ?s wdt:P771 ?succ .
+}

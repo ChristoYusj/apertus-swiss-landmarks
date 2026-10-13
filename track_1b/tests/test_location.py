@@ -64,5 +64,6 @@ def test_holm_and_bootstrap_p():
     assert h["a"]["p_holm"] == pytest.approx(0.03) and h["c"]["p_holm"] == pytest.approx(0.06)
     assert h["b"]["p_holm"] == pytest.approx(0.06)          # monotone step-down
     assert [k for k, v in h.items() if v["reject_at_0.05"]] == ["a"] and "d" not in h
-    assert bootstrap_p([0.1] * 99 + [-0.1]) == pytest.approx(0.02)
+    assert bootstrap_p([0.1] * 99 + [-0.1]) == pytest.approx(2 * 2 / 101)     # (k+1)/(B+1), two-sided
+    assert bootstrap_p([0.1] * 100) == pytest.approx(2 / 101)                # never exactly 0
     assert bootstrap_p([0.0] * 10) == 1.0

@@ -14,7 +14,7 @@ import collections
 import re
 from pathlib import Path
 
-from ..grading.normalize import is_generic, normalize, specific_tokens, split_bilingual
+from ..grading.normalize import is_generic_v1 as is_generic, normalize, specific_tokens_v1 as specific_tokens, split_bilingual
 from . import sparql
 from .regions import load_bfs_table
 

@@ -37,6 +37,7 @@ def _is_church(t: str) -> bool:
 CONTEXT_ONLY = {"zug", "baden"}
 PLACE_CUES = {"in", "im", "bei", "nach", "a", "au", "di", "da", "nel", "nella", "en", "kanton", "canton", "cantone",
               "chantun", "gemeinde", "commune", "comune", "vischnanca", "stadt", "ville", "citta", "citad", "de", "von"}
+CANTON_WORDS = {"kanton", "kantons", "canton", "cantons", "cantone", "chantun"}
 LANG_REGION = {"fr": "FR", "de": "DE", "it": "IT", "rm": "RM"}
 SWITZERLAND = {"schweiz", "suisse", "svizzera", "svizra", "switzerland", "svizzer"}
 
@@ -52,7 +53,7 @@ class Gazetteer:
             for n in m["names"]:
                 if n not in STOP and n not in _FUNCTION_WORDS:
                     entries[n].append(("municipality", {"bfs": m["bfs"], "canton": m["canton"], "region": m["region"],
-                                                        "current": m["current"]}))
+                                                        "current": m["current"], "successors": m.get("successors", [])}))
         for code, ns in gz["countries"].items():
             for n in ns:
                 entries[n].append(("country", {"country": code}))
@@ -100,6 +101,8 @@ class Gazetteer:
                 payloads = [p for p in payloads if p[0] != "municipality"]
             if name in CONTEXT_ONLY and not any(t in PLACE_CUES for t in toks[max(0, i - 2):i]):
                 payloads = []
+            if i > 0 and toks[i - 1] in CANTON_WORDS and any(k == "canton" for k, _ in payloads):
+                payloads = [p for p in payloads if p[0] == "canton"]   # "im Kanton Bern" is the canton, not the town
             if payloads:
                 out.append({"pos": i, "name": name, "payloads": payloads})
             i += len(cand)
@@ -110,23 +113,28 @@ class Gazetteer:
         A town name shared by several cantons ("Buchs") takes the canton named later in the answer, if any."""
         ms = self.mentions(text)
         named_cantons = [p["canton"] for m in ms for k, p in m["payloads"] if k == "canton"]
-        for m in ms:
+        # a named town beats a canton named before it ("... dal Grischun, Cuira")
+        ordered = [m for m in ms if any(k == "municipality" for k, _ in m["payloads"])] + \
+                  [m for m in ms if not any(k == "municipality" for k, _ in m["payloads"])]
+        for m in ordered:
             munis = [p for k, p in m["payloads"] if k == "municipality"]
             cantons = [p for k, p in m["payloads"] if k == "canton"]
             if not munis and not cantons:
                 continue
+            if munis and len({p["canton"] for p in munis}) > 1:      # narrow by the named canton first
+                munis = [p for p in munis if p["canton"] in named_cantons] or munis
             cur = [p for p in munis if p["current"]]
-            pool = cur or cantons or munis
-            if len({p["canton"] for p in pool}) > 1:
-                narrowed = [p for p in pool if p["canton"] in named_cantons]
-                pool = narrowed or pool
+            pool = cur or munis or cantons
             cset = {p["canton"] for p in pool if p["canton"]}
             rset = {p["region"] for p in pool if p["region"]}
             bfs = {p["bfs"] for p in pool if p.get("bfs")}
             return {"kind": "swiss", "name": m["name"], "level": "municipality" if munis else "canton",
                     "canton": next(iter(cset)) if len(cset) == 1 else None,
                     "region": next(iter(rset)) if len(rset) == 1 else None,
-                    "bfs": next(iter(bfs)) if len(bfs) == 1 else None}
+                    "bfs": next(iter(bfs)) if len(bfs) == 1 else None,
+                    # every municipality this name can stand for, today (current ones, or what former ones became)
+                    "bfs_now": sorted({b for p in pool if p.get("bfs") for b in ([p["bfs"]] if p.get("current")
+                                                                                   else p.get("successors") or [p["bfs"]])})}
         for m in ms:
             for k, p in m["payloads"]:
                 if k == "country":
@@ -287,6 +295,21 @@ def hypotheses(rows: list[dict], gz: Gazetteer, lms: dict, cases: dict, bootstra
                  "only_premise_incorrect": b, "only_control_incorrect": c, "mcnemar_p": mcnemar(b, c)}
     pvals["H4"] = res["H4"]["mcnemar_p"]
     res["holm"] = holm(pvals)
+    # the registered hypotheses are directional; a significant effect in the other direction is not support
+    direction = {
+        "H1": (res["H1"]["estimate"] or 0) > 0, "H1b": (res["H1b"]["estimate"] or 0) > 0,
+        "H2": (res["H2"]["as_registered"]["estimate"] or 0) > 0,
+        "H3_fr": res["H3_fr"]["only_text_correct"] > res["H3_fr"]["only_photo_correct"],
+        "H3_de": res["H3_de"]["only_text_correct"] > res["H3_de"]["only_photo_correct"],
+        "H4": res["H4"]["only_premise_incorrect"] > res["H4"]["only_control_incorrect"],
+    }
+    for k, v in res["holm"].items():
+        v["direction_as_hypothesised"] = direction.get(k)
+        v["supported"] = bool(v["reject_at_0.05"] and direction.get(k))
+    # H2 per question language (descriptive): which answers drive it
+    res["H2"]["by_question_language"] = {
+        lang: {"n": len(rs), "share_DE_named": share_de(rs)}
+        for lang in ("fr", "de", "it", "rm") for rs in [[r for r in non_de if r["lang"] == lang]]}
 
     # descriptive: wrong NAME answers that name ANOTHER landmark of this dataset (pull toward the famous?)
     strong = {q: [a["text"] for a in l["name_aliases"] if a.get("distinctive", True)] for q, l in lms.items()}

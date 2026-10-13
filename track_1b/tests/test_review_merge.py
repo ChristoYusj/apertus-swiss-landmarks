@@ -97,7 +97,8 @@ def test_dropped_landmark_items_are_logged_then_moved_not_deleted(tmp_path):
     assert {r["item_id"] for r in removed} == {i for i in ids if i.startswith("Q2-")}
     assert all("photo screening" in r["reason"] and r["question_text"] for r in removed)
 
-    (ds / "metadata").mkdir()
+    kept_key = [json.loads(l) for l in open(ds / "metadata" / "excluded_landmarks.jsonl")]
+    assert [(k["qid"], k["excluded_reason"]) for k in kept_key] == [("Q2", "main photo excluded for privacy")]
     moved = prune_results(ds, new_ids, tmp_path / "removed_items.jsonl")
     assert moved == {"m": len(removed)}
     kept = [json.loads(l)["item_id"] for l in open(rdir / "responses.jsonl")]
@@ -106,3 +107,31 @@ def test_dropped_landmark_items_are_logged_then_moved_not_deleted(tmp_path):
     assert {e["item_id"] for e in excl} == {r["item_id"] for r in removed}
     assert all(e["model"] == "m" and e["response_text"] == "x" and e["question_text"] for e in excl)
     assert prune_results(ds, new_ids, tmp_path / "removed_items.jsonl") == {}   # second call: nothing to move
+
+
+def test_prune_is_idempotent_verbatim_and_reversible(tmp_path):
+    ds = tmp_path / "ds"
+    rdir = ds / "responses" / "m"
+    rdir.mkdir(parents=True)
+    (ds / "metadata").mkdir()
+    resp = [{"item_id": i, "model": "m", "response_text": f"t{i}", "request_sha256": "abc", "usage": {"x": 1}} for i in ("a", "b", "c")]
+    judg = [{"item_id": i, "code_label": "incorrect"} for i in ("a", "b", "c", "d")]   # "d": judgement without a response
+    (rdir / "responses.jsonl").write_bytes("".join(json.dumps(r) + "\r\n" for r in resp).encode())  # CRLF file
+    (rdir / "judgements.jsonl").write_text("".join(json.dumps(j) + "\n" for j in judg), encoding="utf-8")
+    removed = tmp_path / "removed.jsonl"
+    removed.write_text(json.dumps({"item_id": "c", "question_text": "Q?", "reason": "test"}) + "\n", encoding="utf-8")
+
+    first = prune_results(ds, {"a", "b"}, removed)
+    second = prune_results(ds, {"a", "b"}, removed)
+    excl = [json.loads(l) for l in open(ds / "metadata" / "excluded_items.jsonl")]
+    assert first == {"m": 2} and second == {}                                      # c (response) + d (judgement only)
+    assert sorted(e["item_id"] for e in excl) == ["c", "d"]                         # one record each, no duplicates
+    c = next(e for e in excl if e["item_id"] == "c")
+    assert c["response_row"] == resp[2] and c["judgement_row"] == judg[2] and c["reason"] == "test"
+    assert (rdir / "responses.jsonl").read_bytes().count(b"\r\n") == 2             # kept lines untouched (CRLF)
+
+    back = prune_results(ds, {"a", "b", "c"}, removed)                              # item c comes back
+    assert back == {"m:restored": 1}
+    rows = [json.loads(l) for l in open(rdir / "responses.jsonl")]
+    assert [r["item_id"] for r in rows] == ["a", "b", "c"] and rows[2] == resp[2]
+    assert [e["item_id"] for e in (json.loads(l) for l in open(ds / "metadata" / "excluded_items.jsonl"))] == ["d"]

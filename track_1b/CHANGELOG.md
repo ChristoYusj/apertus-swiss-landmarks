@@ -103,3 +103,32 @@
   (naming another landmark without placing it there is NOT_ATTEMPTED), matching the code grader and H4.
 - **Judge dev set drafted** (`responses/<model>/judge_dev_set.jsonl`, 40 items, labels proposed by Claude, to be
   confirmed by the team lead before the judge prompt is tuned and frozen); these items are excluded from the audit.
+
+## Independent code review (13 Oct, evening) and fixes
+An independent reviewer (separate agent, read-only) checked commits 1f4030c..86eba1a, re-ran the graders, and
+confirmed: fix v4 changes exactly the 2 labels stated; the bootstrap refactor is numerically identical; Holm,
+H3/H4 pairing, the premise-trap draw and the stability comparison are correct. Its findings, all fixed:
+- **Builder reproducibility:** the audited type-word list had also entered the step-1 builder (which objects and
+  aliases enter the dataset). Step 1 now uses frozen copies of the selection-time vocabulary and rules
+  (`TYPE_WORDS_V1` = the set at a73986e, `distinctive_v1`). Check: a rebuild from the cached queries reproduces
+  `landmarks.jsonl`, `reserves.jsonl` and `selection_report.json` exactly (264/264 QIDs in order, 0 field diffs).
+- **Former municipalities' language region:** 516 former municipalities in multilingual cantons had none, so
+  wrong answers naming e.g. Tarasp, Müstair, Bondo were dropped from H2 and the location tables. They now take
+  canton and region from their successor (Wikidata P1366/P7888 chain): 1,050 of 1,126 resolved, 20 without region.
+- **"im Kanton Bern" was read as the town Bern;** a town named after a canton now wins over the canton; an
+  ambiguous town is narrowed by the canton named in the answer before preferring current municipalities.
+- **Name grader:** a non-distinctive name with ANOTHER town ("Kunsthaus Aarau" for Kunsthaus Zürich) is
+  incorrect (was not attempted); a town shared by two municipalities (Holderbank AG/SO) counts only with the
+  right canton, also inside a canton-suffixed alias. Former names of the right town do not count as another town.
+  Effect on the official run: 1 label (Q29573995 text-only DE, "Neuthal, Kanton Zürich." -> right canton only).
+- **Exclusion log:** records keep the full response and judgement rows verbatim, one record per (item, model),
+  an item that comes back is restored, line endings are preserved; dropped landmarks keep their answer key in
+  `metadata/excluded_landmarks.jsonl`. Backfill of the 170 earlier records: 96 with full rows from backups; for
+  the first 74 only the answer text and the grade at the time survive (stated in each record).
+- **Privacy gate:** new verify check V7 fails while any shipped photo is not cleared by the screening (all 264
+  are pending now, so verify FAILS until the team screening is merged; this is intended); the dataset card refuses
+  to build in that state.
+- **Directional hypotheses:** each registered test now reports `direction_as_hypothesised`; "supported" needs a
+  Holm rejection in the registered direction. Bootstrap p-values use (k+1)/(B+1). H2 is reported per language.
+- Minor: screening decisions record the main photo's id (merge refuses a mismatch); no "Santa Maria" short form;
+  the stability probe items are a seeded random subset (the earlier run used the first 20 of the sample by id).

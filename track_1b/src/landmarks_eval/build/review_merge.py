@@ -47,9 +47,14 @@ def merge_review(work: Path, files: list[Path]) -> dict:
     for qid, g in sorted(by_lm.items()):
         d = decisions.get(qid) or {}
         main = g["main"]
+        if main is None:
+            stats["landmarks_without_main_photo"] += 1
+            continue
         if d.get("main") not in ("ok", "exclude", "wrong"):
             stats["landmarks_pending"] += 1
             continue
+        if d.get("main_id") and d["main_id"] != main["image_id"]:
+            raise SystemExit(f"{qid}: the decision was made on photo {d['main_id']}, but the main photo is {main['image_id']}")
         stats[f"main_{d['main']}"] += 1
         if d["main"] == "exclude":
             main.update(pii_decision="exclude", pii_reason="recognisable person or private detail (team screening)",

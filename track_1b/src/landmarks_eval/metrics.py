@@ -63,8 +63,9 @@ def bootstrap_p(vals: list[float] | None) -> float | None:
     """Two-sided bootstrap p-value for H0: statistic = 0 (share of resamples on the other side of 0, doubled)."""
     if not vals:
         return None
-    lo = sum(v <= 0 for v in vals) / len(vals)
-    hi = sum(v >= 0 for v in vals) / len(vals)
+    n = len(vals)
+    lo = (sum(v <= 0 for v in vals) + 1) / (n + 1)   # (k+1)/(B+1): never exactly 0 with finite resamples
+    hi = (sum(v >= 0 for v in vals) + 1) / (n + 1)
     return min(1.0, 2 * min(lo, hi))
 
 

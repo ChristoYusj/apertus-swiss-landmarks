@@ -2,6 +2,7 @@
 
 import pytest
 
+from landmarks_eval.analysis import Gazetteer
 from landmarks_eval.grading.rules import abstains, first_year, grade_name, grade_place, grade_premise, grade_year
 
 NAMES = ["Fontaine de la Justice", "Gerechtigkeitsbrunnen (Lausanne)", "Justice Fountain"]
@@ -208,9 +209,35 @@ def test_name_containing_the_town_carries_the_town():
 
 
 def test_ambiguous_town_inside_a_name_does_not_count():
+    # corrected after the independent review: "Gossau" (ZH or SG) identifies the town only with the canton
     strong, weak = _split(["Kirche Gossau"], ["Gossau"])
-    assert grade_name("Kirche Gossau", strong, weak, ["Gossau"], ["Gossau"]).label == "correct"  # town named explicitly
+    cantons = ["St. Gallen", "SG"]
+    assert grade_name("Kirche Gossau", strong, weak, ["Gossau"], ["Gossau"], canton_aliases=cantons).label == "not_attempted"
+    assert grade_name("Kirche Gossau im Kanton St. Gallen", strong, weak, ["Gossau"], ["Gossau"],
+                      canton_aliases=cantons).label == "correct"
     assert grade_name("Kirche Gossau", strong, weak, [], ["Gossau"]).label == "not_attempted"
+    # the canton-suffixed alias must not leak the ambiguous token ("Holderbank (AG)" -> "holderbank")
+    strong, weak = _split(["Reformierte Kirche Holderbank"], ["Holderbank (AG)", "Holderbank"])
+    assert grade_name("Die reformierte Kirche Holderbank im Kanton Solothurn", strong, weak, ["Holderbank (AG)", "Holderbank"],
+                      ["Holderbank"], canton_aliases=["Aargau", "AG"]).label == "not_attempted"
+
+
+def test_generic_name_with_the_wrong_town_is_incorrect():
+    gz = Gazetteer({"cantons": {"AG": {"names": ["aargau"], "region": "DE"}},
+                    "municipalities": [{"bfs": 4001, "names": ["aarau"], "canton": "AG", "region": "DE", "current": True},
+                                       {"bfs": 261, "names": ["zurich"], "canton": "ZH", "region": "DE", "current": True},
+                                       {"bfs": 3741, "names": ["ardez"], "canton": "GR", "region": "RM", "current": False,
+                                        "successors": [3762]}],
+                    "countries": {}})
+    strong, weak = _split(["Kunsthaus Zürich", "Zürcher Kunsthaus"], ["Zürich"])
+    assert grade_name("Das ist das Kunsthaus Aarau.", strong, weak, ["Zürich"], gz=gz, gold_bfs=261).label == "incorrect"
+    strong, weak = _split(["Kapelle St. Antonius"], ["Zürich"])
+    assert grade_name("Die Kapelle St. Antonius.", strong, weak, ["Zürich"], gz=gz, gold_bfs=261).label == "not_attempted"
+    assert grade_name("Die Kapelle St. Antonius in Aarau.", strong, weak, ["Zürich"], gz=gz, gold_bfs=261).label == "incorrect"
+    # a FORMER name of the right town is not "another town" (Ardez is now part of Scuol, 3762)
+    strong, weak = _split(["Reformierte Kirche"], ["Scuol"])
+    assert grade_name("Reformierte Kirche in Ardez", strong, weak, ["Scuol"], gz=gz, gold_bfs=3762).label == "not_attempted"
+    assert grade_name("Reformierte Kirche in Aarau", strong, weak, ["Scuol"], gz=gz, gold_bfs=3762).label == "incorrect"
 
 
 def test_proper_names_that_look_generic_stay_distinctive():

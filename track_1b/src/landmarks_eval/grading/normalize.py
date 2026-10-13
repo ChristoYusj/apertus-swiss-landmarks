@@ -33,6 +33,15 @@ TYPE_WORDS = {
     "church", "reformed", "catholic", "chapel", "monastery", "abbey", "fountain", "castle", "bridge", "tower", "gate",
     "town", "hall", "station", "museum", "monument", "ruins", "the", "of", "and", "old",
 } | _SAINT
+# Frozen copy used by the dataset BUILDER (step 1: which objects and aliases enter the dataset), exactly as it
+# was when the 264 landmarks were drawn (seed 20261013). The audited, larger list below is used for grading and
+# question validity only; changing the builder's vocabulary would change the sample on a rebuild.
+_ADDED_IN_FIX_V2_V3 = {  # added to TYPE_WORDS after the run (CHANGELOG, fixes v2/v3); not part of step 1
+    "cattolica", "cattolico", "christkatholisch", "collegiata", "ehemalige", "ehemaliger", "ehemaliges", "evangelica",
+    "evangelisch", "evangelisch reformierte", "former", "katholischen", "kirchgemeinde", "parish", "paroissiale",
+    "pfarrei", "prepositurale", "protestant", "protestante", "reformierten", "riformata", "roemisch", "roemische",
+    "romain", "romaine", "roman", "romana", "romano", "romisch", "romische"}
+TYPE_WORDS_V1 = frozenset(TYPE_WORDS - _ADDED_IN_FIX_V2_V3)  # = TYPE_WORDS at the pre-registration commit a73986e
 
 # Audit 2026-10-13 (post-run, documented in CHANGELOG): every token that made a name alias or a shown label
 # "specific" was listed (786 tokens) and each was classified by hand as a proper name or a generic word.
@@ -160,6 +169,27 @@ def is_generic(label: str | None) -> bool:
     return not label or not specific_tokens(label)
 
 
+# ---- frozen step-1 (dataset builder) versions: TYPE_WORDS_V1 and the original digit rule -------------------
+def specific_tokens_v1(label: str) -> list[str]:
+    return [t for t in tokens(label) if t not in TYPE_WORDS_V1 and len(t) >= 3 and not t.isdigit()]
+
+
+def is_generic_v1(label: str | None) -> bool:
+    return not label or not specific_tokens_v1(label)
+
+
+def distinctive_v1(alias: str, town_tokens: set[str]) -> bool:
+    """distinctive() as at step 1 (only a single saint name after "st" was skipped)."""
+    toks = tokens(alias)
+    for i, t in enumerate(toks):
+        if t in TYPE_WORDS_V1 or len(t) < 3 or t.isdigit() or t in town_tokens:
+            continue
+        if i > 0 and toks[i - 1] == "st":
+            continue
+        return True
+    return False
+
+
 def contains_phrase(haystack: str, needle: str) -> bool:
     """True if the normalised needle occurs as whole words inside the normalised haystack."""
     h, n = f" {normalize(haystack)} ", normalize(needle)
@@ -179,9 +209,11 @@ def split_bilingual(name: str) -> list[str]:
     return out
 
 
-def distinctive(alias: str, town_tokens: set[str]) -> bool:
+def distinctive(alias: str, town_tokens: set[str], _words=None, _digit=None) -> bool:
     """True if the alias names THIS object: it has a specific word that is not a saint's name
     ("Kapelle St. Antonius" is not distinctive) and not a town name."""
+    words = TYPE_WORDS if _words is None else _words
+    has_digit = _has_digit if _digit is None else _digit
     toks = tokens(alias)
     saint = set()
     for i, t in enumerate(toks):  # "st peter und paul", "ss pietro e paolo", "st lorenzo ed agata"
@@ -194,7 +226,7 @@ def distinctive(alias: str, town_tokens: set[str]) -> bool:
                     continue
                 break
     for i, t in enumerate(toks):
-        if t in TYPE_WORDS or len(t) < 3 or _has_digit(t) or t in town_tokens or i in saint:
+        if t in words or len(t) < 3 or has_digit(t) or t in town_tokens or i in saint:
             continue
         return True
     return False
