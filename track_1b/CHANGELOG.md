@@ -132,3 +132,13 @@ H3/H4 pairing, the premise-trap draw and the stability comparison are correct. I
   Holm rejection in the registered direction. Bootstrap p-values use (k+1)/(B+1). H2 is reported per language.
 - Minor: screening decisions record the main photo's id (merge refuses a mismatch); no "Santa Maria" short form;
   the stability probe items are a seeded random subset (the earlier run used the first 20 of the sample by id).
+- **Code-grader fix v5b (second audit of every hedged answer):** the v5 "names something specific" detector had
+  false positives (German plurals such as "mittelalterliche Burgen", function words after a noun such as
+  "auf einem Hügel, der ...", and names merely repeated from the text-only question, e.g. «Grimmenturm») and
+  missed real names ("il Teatro alla Scala", "l'Abbazia di Ettal", bold names, "situà a Cuera", "à Sent").
+  Now: the name shown in the question is removed before checking; only building nouns anchor a name
+  (`TYPE_NOUNS`, no function words or adjectives); an Italian/French definite article + capitalised word, a
+  **bold** name, or a capitalised word after a locative preposition count as names; "Sent" counts as the
+  village only outside dedications ("baselgia da Sent Martin"). Effect: 39 labels incorrect -> not_attempted
+  (all read by hand); pinned in `test_grading_rules.py` ("Fix v5b").
+- **Stability re-run** with a random probe subset: 75 % identical text, 99 % identical code label (kappa 0.98).

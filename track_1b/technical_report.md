@@ -125,8 +125,9 @@ EXIF is stripped. Annotators sign the consent form in `docs/consent_form_templat
 ### Evaluation setup and inference parameters
 Temperature 0, top_p 1, max_tokens 300, seed 1234, one image (base64 JPEG) + one question, no system prompt.
 Every response is stored with a content hash of its request; `verify` replays the stored answers.
-**Stability:** 100 items re-asked once and 20 of them twice more: 72 % identical text, **100 % identical code
-label** (κ = 1.0): the endpoint is not bit-for-bit deterministic, but the grades are.
+**Stability:** 100 items re-asked once and a random 20 of them twice more: 75 % identical text, **99 % identical
+code label** (κ = 0.98; the one change is a vague hedge reworded into another vague hedge), and all 20 probe items
+kept their label over four answers: the endpoint is not bit-for-bit deterministic, but the grades are stable.
 
 ### Results ⟨code⟩
 
@@ -134,9 +135,9 @@ label** (κ = 1.0): the endpoint is not bit-for-bit deterministic, but the grade
 
 | photo_main (n per cell = 264) | FR | IT | DE | RM |
 |---|---|---|---|---|
-| Name: declines ("not sure") | 90 % | 75 % | 48 % | **27 %** |
-| Name: confidently wrong | 10 % | 25 % | 52 % | **72 %** |
-| Place: confidently wrong | 2 % | 2 % | 34 % | **97 %** |
+| Name: declines ("not sure") | 90 % | 75 % | 51 % | **27 %** |
+| Name: confidently wrong | 10 % | 25 % | 49 % | **72 %** |
+| Place: confidently wrong | 2 % | 2 % | 31 % | **97 %** |
 
 Overall, name correct 0.2 %, place correct 1.1 %, year never answered (0 of 272). Among committed name answers
 99.5 % are wrong. The same instruction ("if you are not sure, say so") produces honest refusals in French and
@@ -162,13 +163,14 @@ answers become "Château de Chillon". Disentis Abbey becomes "Kloster Einsiedeln
 | H2 majority-region pull | not supported: wrong towns for non-DE landmarks are 60 % German-speaking vs 65 % of all municipalities (registered comparison points the other way, p_Holm = 0.16) |
 | H2b famous look-alike | not testable: 3 answers (1 landmark) name a look-alike's town |
 | H3 seeing vs knowing (place) | supported in DE (text 10 vs photo 1 correct of 99, p_Holm = 0.02); FR same direction (8 vs 1, p_Holm = 0.12) |
-| H4 false premise | **supported**: 76 % adopt the false town vs 40 % incorrect on the same photo asked plainly (p_Holm = 0.0002) |
+| H4 false premise | **supported**: 76 % adopt the false town vs 38 % incorrect on the same photo asked plainly (p_Holm = 0.0001) |
 
 Knowing the name helps, and fame matters there: text-only place accuracy is 13.6 % for high-fame vs 3.7 % for
 low-fame landmarks, while from the photo both are ≈ 0 %. The bottleneck is visual recognition.
 
 **5. Smaller model.** Apertus 1.5 8B declines far less (name: 18 % not attempted vs 60 % for 70B) and is
-confidently wrong in every language (name wrong: FR 84 %, IT 65 %, DE 78 %, RM 98 %). The careful French
+confidently wrong in every language (name wrong: FR 84 %, IT 62 %, DE 78 %, RM 98 %); for 8B the fame effect
+on place questions is significant (H1b, p_Holm = 0.04), as a secondary result. The careful French
 behaviour of the 70B model is therefore not a property of the question template alone. ⟨code⟩
 
 **6. Agreement.** Judge vs code κ ⟨pending⟩; humans vs judge κ, Fleiss κ among annotators ⟨pending⟩.

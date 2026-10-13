@@ -288,3 +288,49 @@ def test_v5_hedged_name_guesses(text, label):
 ])
 def test_v5_place(text, gold, label):
     assert grade_place(text, PLACES, CANTONS, gz=_GZ, gold_canton=gold).label == label
+
+
+# --- Fix v5b (13 Oct, second audit of every hedged answer; all real answers from the run) -----------------
+@pytest.mark.parametrize("text,question,label", [
+    # vague hedges that the first detector mistook for names
+    ("Unsicher. Das Bild zeigt eine Ruine, die typisch für mittelalterliche Burgen in der Schweiz sein könnte, "
+     "aber ohne spezifische Kennzeichen lässt sich die Gemeinde nicht bestimmen.", None, "not_attempted"),
+    ("Unsicher. Das Bild zeigt einen auffälligen Sendeturm auf einem Hügel, der typisch für viele Regionen in der "
+     "Schweiz sein könnte.", None, "not_attempted"),
+    # the name repeated from the question is an echo, not a claim
+    ("Ich bin unsicher, da es keinen bekannten Ort namens «Grimmenturm» in der Schweiz gibt. Es könnte sich um "
+     "einen sehr kleinen Weiler handeln.", "Wo in der Schweiz befindet sich «Grimmenturm»?", "not_attempted"),
+    # real claims stay incorrect
+    ("Le palais Castelmur se trouve à Sent, dans le canton des Grisons, en Suisse.",
+     "Où se trouve « Palais Castelmur » en Suisse ?", "incorrect"),
+    ("Il monument è situà a Cuera, in vischnanca dal chantun Grischun en Svizra.", None, "incorrect"),
+])
+def test_v5b_place(text, question, label):
+    gz = Gazetteer({"cantons": {"GR": {"names": ["graubunden", "grischun", "grisons"], "region": None}},
+                    "municipalities": [{"bfs": 3742, "names": ["sent"], "canton": "GR", "region": "RM", "current": False,
+                                        "successors": [3762]}],
+                    "countries": {}})
+    assert grade_place(text, ["Bregaglia"], ["Grisons"], gz=gz, gold_canton="GR", question=question).label == label
+
+
+@pytest.mark.parametrize("text,label", [
+    ("Non sono sicuro al 100% senza ulteriori informazioni, ma l'edificio sembra essere il Teatro alla Scala di Milano.", "incorrect"),
+    ("Non sono sicuro al 100% senza ulteriori informazioni, ma l'edificio principale è probabilmente l'Abbazia di Ettal.", "incorrect"),
+    ("Non sono sicuro al 100% senza ulteriori informazioni, ma l'edificio sembra essere il **Biblioteca Centrale di "
+     "Birmingham**.", "incorrect"),
+    ("Non sono sicuro al 100% senza ulteriori informazioni, ma l'edificio sembra essere un cortile di un monastero, "
+     "forse in Sud America.", "incorrect"),
+    ("Unsicher. Es könnte ein Kloster oder eine historische Anlage sein, aber ohne weitere Informationen kann ich den "
+     "genauen Namen nicht nennen.", "not_attempted"),
+    ("Ich bin unsicher. Es könnte eine alte Steinbrücke oder ein Aquädukt sein, aber ohne weitere Informationen kann "
+     "ich den genauen Namen nicht nennen.", "not_attempted"),
+])
+def test_v5b_name(text, label):
+    assert grade_name(text, NAMES, gz=None, gold_canton="VD").label == label
+
+
+def test_sent_is_a_town_only_outside_dedications():
+    gz = Gazetteer({"cantons": {}, "municipalities": [{"bfs": 3742, "names": ["sent"], "canton": "GR", "region": "RM",
+                                                         "current": False, "successors": [3762]}], "countries": {}})
+    assert gz.locate("Le palais se trouve à Sent.")["kind"] == "swiss"
+    assert gz.locate("La baselgia da Sent Martin.")["kind"] == "none"

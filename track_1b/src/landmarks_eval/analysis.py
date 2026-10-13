@@ -19,7 +19,7 @@ from .grading.normalize import _FUNCTION_WORDS
 from .metrics import bootstrap_p, bootstrap_values, holm, mcnemar, percentile_ci, wilson
 
 STOP = ({"alle", "au", "burg", "chapelle", "dorf", "fontaines", "monte", "munster", "mur", "pont", "speicher", "sur",
-         "torre", "berg", "buch", "egg", "eich", "horn", "mund", "port", "rain", "root", "rue", "sent", "val", "wald",
+         "torre", "berg", "buch", "egg", "eich", "horn", "mund", "port", "rain", "root", "rue", "val", "wald",
          "zell", "thal", "grub", "steg", "mon", "mut", "sour", "gy", "lu", "font", "arch", "riviera", "stein", "pura",
          "loco", "casti", "roten"} | {w for w in TYPE_WORDS if len(w) <= 3})
 CHURCH = {"kirche", "chiesa", "eglise", "baselgia", "baselgetta", "chapelle", "kapelle", "cappella", "church", "chapel",
@@ -34,7 +34,7 @@ def _is_church(t: str) -> bool:
     return t in CHURCH or t.endswith(("kirche", "kapelle", "kloster", "chille", "chiesa", "chapelle"))
 # Place names that are also everyday words ("mit Zug" = by train, "baden" = to bathe) count only right after a
 # place cue ("in Zug", "Kanton Zug", "à Baden").
-CONTEXT_ONLY = {"zug", "baden"}
+CONTEXT_ONLY = {"zug", "baden", "sent"}   # "sent" is also Romansh for "saint" ("Sent Martin")
 PLACE_CUES = {"in", "im", "bei", "nach", "a", "au", "di", "da", "nel", "nella", "en", "kanton", "canton", "cantone",
               "chantun", "gemeinde", "commune", "comune", "vischnanca", "stadt", "ville", "citta", "citad", "de", "von"}
 CANTON_WORDS = {"kanton", "kantons", "canton", "cantons", "cantone", "chantun"}
@@ -101,6 +101,9 @@ class Gazetteer:
                 payloads = [p for p in payloads if p[0] != "municipality"]
             if name in CONTEXT_ONLY and not any(t in PLACE_CUES for t in toks[max(0, i - 2):i]):
                 payloads = []
+            if name == "sent" and (any(_is_church(t) for t in toks[max(0, i - 3):i])
+                                   or (i + 1 < len(tt) and tt[i + 1][1][:1].isupper())):
+                payloads = []   # "baselgia da Sent Martin": a dedication, not the village of Sent
             if i > 0 and toks[i - 1] in CANTON_WORDS and any(k == "canton" for k, _ in payloads):
                 payloads = [p for p in payloads if p[0] == "canton"]   # "im Kanton Bern" is the canton, not the town
             if payloads:
