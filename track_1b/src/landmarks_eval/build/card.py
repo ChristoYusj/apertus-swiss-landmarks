@@ -38,6 +38,61 @@ def build_card(ds: Path, extra: dict | None = None) -> str:
     lic = Counter(i["license_spdx"] for i in imgs)
     types = Counter(l["type_group"] for l in lms)
     funnel = sel.get("funnel", {})
+    # every claim about grading and annotation below is derived from the files actually present (never assumed)
+    rdirs = sorted(p for p in (ds / "responses").glob("*") if (p / "responses.jsonl").exists()) if (ds / "responses").exists() else []
+    models = [_load(p / "responses.jsonl")[0]["model"] for p in rdirs]
+    ref = ds / "responses" / "apertus-v1.5-70b"
+    judg = _load(ref / "judgements.jsonl") if (ref / "judgements.jsonl").exists() else []
+    judge_done = bool(judg) and all(j.get("judge_label") for j in judg)
+    audit = _load(ref / "human_audit.jsonl") if (ref / "human_audit.jsonl").exists() else []
+    gloss = (ref / "glosses.jsonl").exists()
+    stab = json.loads((ref / "stability.json").read_text(encoding="utf-8")) if (ref / "stability.json").exists() else None
+    gold_qc = extra.get("gold_qc")
+    files_of = {p.name: sorted(f.name for f in p.iterdir() if f.is_file()) for p in rdirs}
+    file_desc = {"responses.jsonl": "raw outputs with parameters, usage, latency and request hashes",
+                 "judgements.jsonl": "code-grader label and rule" + (", LLM-judge label" if judge_done else "") + ", final label",
+                 "scores.json": "all scores recomputed by `landmarks-eval score`",
+                 "stability.json": "temperature-0 stability check", "stability_responses.jsonl": "the re-asked answers",
+                 "human_audit.jsonl": "blind human labels (A1-A3)", "judge_dev_set.jsonl": "judge tuning items and labels",
+                 "glosses.jsonl": "English machine glosses of answers (annotation aid)"}
+    responses_block = "\n".join(
+        f"- `responses/{name}/`:\n" + "\n".join(f"  - `{f}`: {file_desc.get(f, '')}".rstrip(": ") for f in fs
+                                             if not f.endswith(".recomputed.json"))
+        for name, fs in files_of.items())
+    meta_desc = {"excluded_items.jsonl": "questions removed by documented rules, with their answers and the reason",
+                 "excluded_landmarks.jsonl": "answer keys of landmarks removed in the photo screening",
+                 "gazetteer.json": "Swiss cantons, current and former municipalities and countries (location analysis)",
+                 "review.json": "photo-screening decisions (team, joint)"}
+    meta_block = "\n".join(f"- `metadata/{f}`: {d}" for f, d in meta_desc.items() if (ds / "metadata" / f).exists())
+    arm_desc = {"photo_main": "Wikidata main photo.",
+                "text_only": "the object's name is given; the question asks where it is or when it was built.",
+                "photo_alt": "a second, human-accepted view.",
+                "trap_premise": "the question falsely states the town of a real look-alike.",
+                "trap_lowinfo": "a photo too generic to identify; abstaining is correct."}
+    present_arms = {c["arm"] for c in cases}
+    arms_block = "\n".join(f"- `{a}`: {d}" for a, d in arm_desc.items() if a in present_arms)
+    goldqc_line = f"- **Answer-key spot check:** {gold_qc}." if gold_qc else ""
+    grading_block = (
+        "  - Every model answer was graded by a deterministic code grader and by an independent open-weights LLM judge "
+        "(`openai/gpt-oss-120b`, temperature 0); the final label is the judge's.\n"
+        "  - The judge prompt was tuned on a 40-item dev set and frozen before the human audit sample was drawn."
+        if judge_done else
+        "  - Every model answer was graded by a deterministic code grader (rules in the repository, each post-run change "
+        "documented in the CHANGELOG). LLM-judge labels are not part of this version; final label = code-grader label.")
+    if audit:
+        n_items = len({a["item_id"] for a in audit})
+        audit_block = (f"- **Human audit:** {n_items} answers (a seeded, stratified random sample) were labelled blind by "
+                       f"3 team members following `docs/annotation_guidelines.md`; "
+                       f"{sum(1 for i in {a['item_id'] for a in audit if a['in_overlap']})} items were labelled by all three.\n"
+                       "- **Agreement:** judge-human, code-human and inter-annotator agreement (Cohen's and Fleiss' kappa) "
+                       "are in `scores.json` and the technical report.")
+        annot_details = ("Three student members of Team Red Pandas (pseudonyms A1-A3), French and English speakers."
+                         + (" Non-French answers were shown with a labelled English machine gloss." if gloss else ""))
+    else:
+        audit_block = "- **Human audit:** not part of this version."
+        annot_details = "The photo screening was done jointly by the team (Team Red Pandas); no individual labels are published."
+    stab_line = (f" Re-asking 100 items gave {stab['identical_text_rate']:.0%} identical text and "
+                 f"{stab['same_code_label_rate']:.0%} identical labels." if stab else "")
     yaml_head = """---
 license: cdla-permissive-2.0
 language: [fr, de, it, rm]
@@ -64,7 +119,7 @@ and does it say "I don't know" instead of inventing an answer? This dataset hold
 inventory of protected cultural property (the KGS inventory). Each question asks
 for the landmark's name, its municipality and canton, or its year of construction,
 in French, German, Italian and Romansh. Every answer key cites Wikidata and the
-official BFS municipality register. The responses of `swiss-ai/Apertus-v1.5-70B`
+official BFS municipality register. The responses of {', '.join(f'`{m}`' for m in models) or 'the evaluated models'}
 are included with their grades. It was built for Hack Apertus 2026, Track 1B
 (Swiss Voices, core-task intelligence).
 
@@ -85,7 +140,7 @@ are included with their grades. It was built for Hack Apertus 2026, Track 1B
 - Test whether a model abstains when it cannot know (low-information photos) and whether it resists false premises in a question.
 
 ### Out-of-Scope Use
-- Not an authoritative heritage register. Answer keys come from Wikidata, which can be wrong; we measured an error rate on a sample (see *Quality Control*).
+- Not an authoritative heritage register. Answer keys come from Wikidata, which can be wrong{'; we measured an error rate on a sample (see *Quality Control*)' if gold_qc else ''}.
 - Do not use it to rank people or places, to train surveillance or person-identification systems, or as a guide to private property. Photos with recognisable people were excluded.
 - Romansh results are exploratory: the Romansh question templates were not reviewed by a native speaker.
 
@@ -112,23 +167,14 @@ are included with their grades. It was built for Hack Apertus 2026, Track 1B
 - `images/`: {len(imgs)} JPEG files, 500 px wide.
 - `metadata/images.jsonl`: per image the role (main Wikidata image or a second view), Commons title and URL, author, licence (SPDX), ready-to-use attribution text, modifications, hashes, upload/capture dates and the privacy review.
 - `metadata/item_metadata.jsonl`: per test case, the licence of each modality, translation provenance and review status, and design covariates.
-- `responses/apertus-v1.5-70b/`:
-  - `responses.jsonl`: raw model outputs with parameters, usage, latency and request hashes
-  - `judgements.jsonl`: code-grader and LLM-judge labels and the final label
-- `annotations/`:
-  - human audit labels by annotators A1–A3
-  - photo-screening decisions
-  - answer-key check
+{meta_block}
+{responses_block}
 
 Test cases by arm and question type:
 
 {_table(arms, ["arm", "question", "n"])}
 
-- `photo_main`: Wikidata main photo.
-- `text_only`: the object's name is given; the question asks where it is or when it was built.
-- `photo_alt`: a second, human-accepted view.
-- `trap_premise`: the question falsely states the town of a real look-alike.
-- `trap_lowinfo`: a photo too generic to identify; abstaining is correct.
+{arms_block}
 
 Questions per language: {', '.join(f'{k}: {v}' for k, v in sorted(lang.items()))}.
 
@@ -184,7 +230,7 @@ No person is a data subject: photos showing recognisable people were excluded.
   - Every shipped photo was then reviewed by the team, jointly, one decision per landmark (guideline v2-team).
     Excluded photos and unpicked candidate views are not shipped.
   - Landmarks dropped in the screening: {len(review.get('dropped_landmarks', {}))} (main photo excluded or not showing the landmark); their answers are kept in `metadata/excluded_items.jsonl`.
-- **Answer-key spot check:** {extra.get('gold_qc', 'two annotators checked the answer keys of 30 random landmarks against Wikipedia and the KGS inventory; see the technical report')}.
+{goldqc_line}
 
 #### Data Instance Licenses
 - Questions, answer keys (derived from CC0 Wikidata facts), labels and model responses: **CDLA-Permissive-2.0**.
@@ -195,23 +241,18 @@ No person is a data subject: photos showing recognisable people were excluded.
 
 #### Annotation Process
 - **Grading:**
-  - Every model answer was graded by a deterministic code grader and by an independent open-weights LLM judge (`openai/gpt-oss-120b`, prompt `judge-v1`, temperature 0).
-  - The judge prompt was frozen after tuning on a 40-item dev set.
-- **Human audit:**
-  - A seeded, stratified random 20 % of answers was labelled blind by 3 team members following `docs/annotation_guidelines.md`.
-  - 100 items were labelled by all three.
-- **Agreement:** judge–human, code–human and inter-annotator agreement (Cohen's and Fleiss' κ) are reported in the technical report.
+{grading_block}
+{audit_block}
 
 #### Annotator Details
-Three student members of Team Red Pandas (pseudonyms A1–A3), French and English
-speakers. Non-French answers were shown with a labelled English machine translation.
+{annot_details}
 
 ## Risks, Bias, and Limitations
 - **Wikidata coverage:** coverage is uneven. The Romansh region has only 12 listed landmarks with 3+ Wikipedia articles (all included), and Italian and Romansh cells draw on smaller pools.
 - **Romansh templates:** not native-reviewed (exploratory).
-- **Inception dates:** these can refer to an earlier building on the same site. Answer-key errors are estimated on a sample, not eliminated.
+- **Inception dates:** these can refer to an earlier building on the same site. Answer-key errors are {'estimated on a sample, not eliminated' if gold_qc else 'reduced by rule-based checks, not eliminated'}.
 - **Contamination:** famous objects and their Wikipedia text are likely in pre-training data. The `photo_alt` arm and post-July-2026 photos give only an indirect check, and URL-level checks against web-scale image corpora were infeasible.
-- **Determinism:** model outputs at temperature 0 are not perfectly reproducible on shared GPU servers. We report stability rates and verify scores by replaying the stored responses.
+- **Determinism:** model outputs at temperature 0 are not perfectly reproducible on shared GPU servers. Scores are verified by replaying the stored responses.{stab_line}
 
 ### Personally Identifiable Information
 No personal data. Photos were screened, and any with recognisable people, readable licence plates, private interiors or personal text were excluded. EXIF metadata, which can contain camera owner names and GPS positions, was stripped from every file.
