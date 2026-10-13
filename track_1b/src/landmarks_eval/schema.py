@@ -200,7 +200,7 @@ class TestCase(Strict):
 
 
 ALLOWED_LICENSES = {
-    "CC0-1.0", "PDM-1.0", "CC-BY-2.0", "CC-BY-2.5", "CC-BY-3.0", "CC-BY-4.0",
+    "CC0-1.0", "PDM-1.0", "CC-BY-1.0", "CC-BY-SA-1.0", "CC-BY-2.0", "CC-BY-2.5", "CC-BY-3.0", "CC-BY-4.0",
     "CC-BY-SA-2.0", "CC-BY-SA-2.5", "CC-BY-SA-3.0", "CC-BY-SA-4.0", "LAL-1.3",
 }
 

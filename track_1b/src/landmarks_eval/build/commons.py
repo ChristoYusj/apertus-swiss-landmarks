@@ -1,7 +1,7 @@
 """Wikimedia Commons: licence/author metadata, 500 px thumbnails, EXIF stripping, face pre-flag.
 
 Licence policy (dataset T&C: every item's licence must be stated and redistributable):
-  allowed  CC0, public domain, CC BY 2.0-4.0, CC BY-SA 2.0-4.0, Free Art License 1.3
+  allowed  CC0, public domain, CC BY 1.0-4.0, CC BY-SA 1.0-4.0, Free Art License 1.3
   rejected NC, ND, GFDL-only, unknown/missing licence, missing author, files nominated
            for deletion, files tagged with personality-rights warnings
 Images are shipped as 500 px wide JPEG re-encodes with all metadata removed; the
@@ -69,7 +69,7 @@ def license_spdx(code: str | None) -> str | None:
         return "PDM-1.0"
     if c in ("lal", "fal", "lal-1.3", "free art license"):
         return "LAL-1.3"
-    m = re.fullmatch(r"cc-by(-sa)?-(2\.0|2\.5|3\.0|4\.0)(-[a-z]{2,3})?", c)
+    m = re.fullmatch(r"cc-by(-sa)?-(1\.0|2\.0|2\.5|3\.0|4\.0)(-[a-z]{2,3})?", c)
     if m:
         return f"CC-BY{'-SA' if m.group(1) else ''}-{m.group(2)}"
     return None

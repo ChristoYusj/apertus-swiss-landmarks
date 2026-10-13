@@ -67,6 +67,7 @@ def test_bilingual_split_and_phrase():
 def test_license_mapping():
     assert license_spdx("cc-by-sa-4.0") == "CC-BY-SA-4.0"
     assert license_spdx("cc-by-2.0") == "CC-BY-2.0"
+    assert license_spdx("cc-by-sa-1.0") == "CC-BY-SA-1.0"
     assert license_spdx("cc0") == "CC0-1.0"
     assert license_spdx("pd") == "PDM-1.0"
     assert license_spdx("cc-by-nc-sa-4.0") is None
