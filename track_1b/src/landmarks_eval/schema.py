@@ -88,6 +88,7 @@ class Alias(Strict):
     text: str = Field(min_length=1)
     lang: str
     source: str  # e.g. "wikidata:label", "wikidata:alias", "wikidata:sitelink", "bfs:name"
+    distinctive: bool = True  # name aliases only: False = saint/type name shared by many buildings
 
 
 class Landmark(Strict):
@@ -118,6 +119,8 @@ class Landmark(Strict):
     gold_year: Optional[int] = None
     year_window: Optional[tuple[int, int]] = None
     name_leaks_place: bool
+    name_needs_place: bool = False  # no distinctive name (e.g. "Kapelle St. Antonius"): Q1 also needs the town
+    ambiguous_place_aliases: list[str] = []  # town names shared with another municipality: need the canton too
     lookalike_set_id: Optional[str] = None
     stratum: str
     selection_seed: int
@@ -169,6 +172,7 @@ class TestCase(Strict):
     expected_behavior: Expected
     trap_type: Optional[str] = None
     false_premise_claim: Optional[str] = None
+    false_premise_aliases: list[str] = []
     paired_control_item_id: Optional[str] = None
     confusable_with: list[QID] = []
     split: Literal["main", "dev"] = "main"

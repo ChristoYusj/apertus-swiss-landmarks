@@ -19,7 +19,7 @@ dependencies = [
 
 [project.optional-dependencies]
 # Only needed by the team to rebuild the dataset (network access, images).
-build = ["pillow>=10", "opencv-python-headless>=4.9", "numpy>=1.26"]
+build = ["pillow>=10", "opencv-python-headless>=4.9,<5", "numpy>=1.26"]
 figures = ["matplotlib>=3.8", "numpy>=1.26"]
 test = ["pytest>=8"]
 

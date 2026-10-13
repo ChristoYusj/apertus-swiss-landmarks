@@ -64,6 +64,26 @@ def contains_phrase(haystack: str, needle: str) -> bool:
 
 
 def split_bilingual(name: str) -> list[str]:
-    """'Biel/Bienne' -> ['Biel/Bienne', 'Biel', 'Bienne']; 'Domat/Ems' -> [..]."""
-    parts = [p.strip() for p in re.split(r"\s*/\s*", name) if p.strip()]
-    return [name] + parts if len(parts) > 1 else [name]
+    """'Biel/Bienne' -> ['Biel/Bienne', 'Biel', 'Bienne']; 'Carouge (GE)' -> ['Carouge (GE)', 'Carouge']."""
+    out = [name]
+    base = re.sub(r"\s*\([^)]*\)\s*$", "", name).strip()
+    if base and base != name:
+        out.append(base)
+    for n in list(out):
+        parts = [p.strip() for p in re.split(r"\s*/\s*", n) if p.strip()]
+        if len(parts) > 1:
+            out += [p for p in parts if p not in out]
+    return out
+
+
+def distinctive(alias: str, town_tokens: set[str]) -> bool:
+    """True if the alias names THIS object: it has a specific word that is not a saint's name
+    ("Kapelle St. Antonius" is not distinctive) and not a town name."""
+    toks = tokens(alias)
+    for i, t in enumerate(toks):
+        if t in TYPE_WORDS or len(t) < 3 or t.isdigit() or t in town_tokens:
+            continue
+        if i > 0 and toks[i - 1] == "st":
+            continue
+        return True
+    return False
