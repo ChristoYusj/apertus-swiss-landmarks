@@ -81,8 +81,31 @@ def test_premise(text, label):
 
 def test_premise_exonym_is_still_detected():
     # question said "Bern", answer says "Berne": still adopting the false premise
-    assert grade_premise("Cette fontaine de Berne date de 1722.", ["Bern"], PLACES, NAMES).label == "not_attempted"
-    assert grade_premise("Cette fontaine de Berne date de 1722.", ["Bern", "Berne"], PLACES, NAMES).label == "incorrect"
+    # without the exonym the adoption itself is not detected, but since the lead's rule (13 Oct) naming a place or
+    # landmark that is not the gold one is incorrect anyway
+    assert grade_premise("Cette fontaine de Berne date de 1722.", ["Bern"], PLACES, NAMES).label == "incorrect"
+    assert grade_premise("Cette fontaine de Berne date de 1722.", ["Bern", "Berne"], PLACES, NAMES).rule == "premise_adopted"
+
+
+def test_lead_rules_13_oct():
+    # premise: another landmark without the false town is wrong; the right landmark is correct; declining is NA
+    assert grade_premise("Die Abtei Saint-Maurice", ["Bern"], ["Celerina"], ["San Gian (Celerina)"]).label == "incorrect"
+    assert grade_premise("Es handelt sich um die Reuenthaler Staumauer.", ["Full-Reuenthal"], ["Airolo"],
+                         ["Forte Airolo"]).label == "incorrect"
+    assert grade_premise("C'est la Fontaine de la Justice.", ["Bern"], PLACES, NAMES).label == "correct"
+    assert grade_premise("Fontaine", ["Bern"], PLACES, NAMES).label == "not_attempted"
+    # place (photo): right town + another object is wrong; type word + town is not "another object"
+    alias = ["San Vittore", "Saint Victor"]
+    assert grade_place("Questa è la chiesa parrocchiale di San Martino a Poschiavo.", ["Poschiavo"], ["GR"],
+                       name_aliases=alias, check_object=True).label == "incorrect"
+    assert grade_place("Il monument è la Fortezza di Airolo, situata ad Airolo.", ["Airolo"], ["TI"],
+                       name_aliases=["Forte Airolo"], check_object=True).label == "correct"
+    assert grade_place("Das Gebäude befindet sich in Lugano, Kanton Tessin.", ["Lugano"], ["TI"],
+                       name_aliases=["Palazzo Civico"], check_object=True).label == "correct"
+    # "chantun Turitg" is the canton, not the town Zürich
+    assert grade_place("Il tur appartegn a la vischnanca da Stein am Rhein ed il chantun è Turitg.", ["Zürich", "Turitg"],
+                       ["Turitg"]).label == "incorrect"
+    assert grade_place("Il tur è a Turitg, chantun Turitg.", ["Zürich", "Turitg"], ["Turitg"]).label == "correct"
 
 
 def test_abstain_does_not_fire_on_answers():

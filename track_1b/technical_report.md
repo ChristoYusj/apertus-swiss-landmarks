@@ -137,7 +137,7 @@ kept their label over four answers: the endpoint is not bit-for-bit deterministi
 |---|---|---|---|---|
 | Name: declines ("not sure") | 90 % | 75 % | 51 % | **27 %** |
 | Name: confidently wrong | 10 % | 25 % | 49 % | **72 %** |
-| Place: confidently wrong | 2 % | 2 % | 31 % | **97 %** |
+| Place: confidently wrong | 2 % | 2 % | 31 % | **98 %** |
 
 Overall, name correct 0.2 %, place correct 1.1 %, year never answered (0 of 272). Among committed name answers
 99.5 % are wrong. The same instruction ("if you are not sure, say so") produces honest refusals in French and
@@ -163,7 +163,7 @@ answers become "Château de Chillon". Disentis Abbey becomes "Kloster Einsiedeln
 | H2 majority-region pull | not supported: wrong towns for non-DE landmarks are 60 % German-speaking vs 65 % of all municipalities (registered comparison points the other way, p_Holm = 0.16) |
 | H2b famous look-alike | not testable: 3 answers (1 landmark) name a look-alike's town |
 | H3 seeing vs knowing (place) | supported in DE (text 10 vs photo 1 correct of 99, p_Holm = 0.02); FR same direction (8 vs 1, p_Holm = 0.12) |
-| H4 false premise | **supported**: 76 % adopt the false town vs 38 % incorrect on the same photo asked plainly (p_Holm = 0.0001) |
+| H4 false premise | **supported**: 76 % adopt the false town vs 38 % incorrect on the same photo asked plainly (p_Holm = 0.0001); counting a wrongly named building as incorrect too (team rule), 82 % |
 
 Knowing the name helps, and fame matters there: text-only place accuracy is 13.6 % for high-fame vs 3.7 % for
 low-fame landmarks, while from the photo both are ≈ 0 %. The bottleneck is visual recognition.

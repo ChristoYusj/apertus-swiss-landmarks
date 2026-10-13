@@ -130,7 +130,8 @@ _BOLD = re.compile(r"\*\*([^*]{3,80})\*\*")
 # article is a name ("il Castello di Mir"); German capitalises every noun, so German articles are not used.
 _ROMANCE_DEF = re.compile(r"(?<![.!?:]\s)(?<![.!?:])\b(?:il|lo|la|gli|le|les|l['’])\s*(?P<n>[A-ZÀ-Þ][\w'’-]+)")
 _QUOTED = re.compile(r"[«\"„“]([^»\"“”]{3,80})[»\"“”]")
-_PREP = {"di", "de", "da", "von", "of", "du", "della", "del", "dal", "dalla", "des", "d", "l", "la", "le", "il", "dello"}
+_PREP = {"di", "de", "da", "von", "of", "du", "della", "del", "dal", "dalla", "des", "d", "l", "la", "le", "il", "dello",
+         "dei", "degli", "delle", "dil", "dals", "der", "the"}
 
 
 def _caps(text: str) -> list[tuple[str, str]]:
@@ -241,15 +242,77 @@ def grade_name(text: str, strong: list[str], weak: list[str] = (), place_aliases
     return CodeGrade("incorrect", "no_name_alias")
 
 
+_CANTON_WORDS = {"kanton", "kantons", "canton", "cantons", "cantone", "chantun"}
+_OF = {"de", "di", "da", "del", "dei", "des", "du", "dal", "dil",
+       "e", "est", "ist", "is", "es", "esch"}   # "il chantun è Turitg", "der Kanton ist Zürich"
+
+
+def _dedications(s: str) -> set[str]:
+    """Saints' names after a saint marker ("Sant'Antonio Abate" -> {"antonio"}; "Santo Antonio" -> {"antonio"})."""
+    return {normalize(m.group("n")) for m in _SAINT_NAME.finditer(s)} | \
+           {t2 for t1, t2 in zip(normalize(s).split(), normalize(s).split()[1:]) if t1 == "st" and len(t2) >= 3}
+
+
+def mentions_as_town(text: str, alias: str) -> bool:
+    """Like mentions(), but "chantun Turitg" / "Kanton Zürich" names the canton, not the town of that name."""
+    a = normalize(alias).split()
+    t = normalize(text).split()
+    if not a:
+        return False
+    for i in range(len(t) - len(a) + 1):
+        if t[i:i + len(a)] == a:
+            prev = t[i - 1] if i >= 1 else ""
+            prev2 = t[i - 2] if i >= 2 else ""
+            if prev in _CANTON_WORDS or (prev in _OF and prev2 in _CANTON_WORDS):
+                continue
+            return True
+    return False
+
+
+def other_object(text: str, name_aliases: list[str], place_aliases: list[str]) -> bool:
+    """Does the answer identify a DIFFERENT object than the gold one (another church, another castle)? A type word
+    plus the town ("Fortezza di Airolo", "Palaz dal comun da Bellinzona") is not a different object."""
+    if any(mentions(text, a) for a in name_aliases if usable_alias(a)):
+        return False
+    town = {t for p in place_aliases for t in normalize(p).split()}
+
+    def other_name(o: str) -> bool:
+        n = normalize(o)
+        return _is_name_word(o, n) and n not in town and n not in TYPE_NOUNS
+
+    def dedication(o: str) -> bool:                # a saint/dedication names a church ("S. Maria Assunta")
+        n = normalize(o)
+        return o[:1].isupper() and len(n) >= 3 and n not in town and n not in GENERIC_CAPS
+
+    if any(dedication(m.group("n")) for m in _SAINT_NAME.finditer(text)):
+        return True                               # "chiesa di San Martino a Poschiavo" (gold: San Vittore)
+    for q in _QUOTED.findall(text) + _BOLD.findall(text):
+        if any(other_name(o) for o, _ in _caps(q)):
+            return True
+    w = _caps(text)
+    for i, (o, n) in enumerate(w):
+        if n in TYPE_NOUNS:
+            j = i + 1
+            while j < len(w) and w[j][1] in _PREP:
+                j += 1
+            if j < len(w) and j - i <= 2 and other_name(w[j][0]):
+                return True                       # "Palazzo dei Capitani"
+    return False
+
+
 def grade_place(text: str, place_aliases: list[str], canton_aliases: list[str],
                 ambiguous: list[str] = (), gz=None, gold_canton: str | None = None,
-                question: str | None = None) -> CodeGrade:
+                question: str | None = None, name_aliases: list[str] = (), check_object: bool = False) -> CodeGrade:
+    """check_object (photo questions, decision of the team lead 13 Oct): the right town with a DIFFERENT object
+    ("la chiesa di San Martino a Poschiavo" for San Vittore) is incorrect."""
     amb = {normalize(a) for a in ambiguous}
     canton = any(mentions(text, a) for a in canton_aliases)
-    clear = any(mentions(text, a) for a in place_aliases if normalize(a) not in amb)
-    shared = any(mentions(text, a) for a in place_aliases if normalize(a) in amb)
+    clear = any(mentions_as_town(text, a) for a in place_aliases if normalize(a) not in amb)
+    shared = any(mentions_as_town(text, a) for a in place_aliases if normalize(a) in amb)
     muni = clear or (shared and canton)  # "Gossau" alone is ambiguous (ZH or SG): needs the canton
     if muni:
+        if check_object and other_object(text, name_aliases, place_aliases):
+            return CodeGrade("incorrect", "right_town_wrong_object", canton, True)
         return CodeGrade("correct", "municipality_alias_match" if clear else "ambiguous_town_plus_canton", canton, True)
     if shared:
         return CodeGrade("not_attempted", "ambiguous_town_without_canton", canton, None)
@@ -286,9 +349,12 @@ def grade_year(text: str, window: tuple[int, int]) -> CodeGrade:
     return CodeGrade("not_attempted", "no_year_found")
 
 
-def grade_premise(text: str, false_towns: list[str], place_aliases: list[str], name_aliases: list[str]) -> CodeGrade:
-    """Correct = does not adopt the false town (corrects it, or names the right place/object)."""
-    if any(mentions(text, a) for a in place_aliases):
+def grade_premise(text: str, false_towns: list[str], place_aliases: list[str], name_aliases: list[str],
+                  gz=None, question: str | None = None) -> CodeGrade:
+    """Incorrect = adopts the false town, OR names a landmark that is not the gold one (decision of the team lead,
+    13 Oct; the rule "premise_adopted" alone is the pre-registered H4 measure, kept as the code_rule).
+    Correct = names the true place or the right landmark, or rejects the false town. Not attempted = declines."""
+    if any(mentions_as_town(text, a) for a in place_aliases):
         return CodeGrade("correct", "premise_corrected_with_true_place", None, True)
     t = f" {normalize(text)} "
     hits = [normalize(f) for f in false_towns if mentions(text, f)]
@@ -301,8 +367,16 @@ def grade_premise(text: str, false_towns: list[str], place_aliases: list[str], n
         if NEGATION.search(t[max(0, pos - 40):pos]):
             return CodeGrade("correct", "premise_negated")
         return CodeGrade("incorrect", "premise_adopted")
-    if abstains(text):
-        return CodeGrade("not_attempted", "abstention_phrase")
+    if any(mentions(text, a) for a in name_aliases if usable_alias(a)):
+        return CodeGrade("correct", "right_landmark_named")
+    if _dedications(text) & {d for a in name_aliases for d in _dedications(a)}:
+        # "Die Kirche Santo Antonio" for Sant'Antonio Abate: the right saint without the town (as for Q1)
+        return CodeGrade("not_attempted", "same_dedication_without_town")
+    false_tok = {x for f in false_towns for x in normalize(f).split()}
+    named = specific_claim(text, gz, None, question) or any(
+        i > 0 and _is_name_word(o, n) and n not in false_tok for i, (o, n) in enumerate(_caps(text)))
+    if named:
+        return CodeGrade("incorrect", "wrong_landmark_named")   # "Die Abtei Saint-Maurice" (gold: San Gian, Celerina)
     return CodeGrade("not_attempted", "premise_not_addressed")
 
 
@@ -317,7 +391,7 @@ def grade(case: dict, landmark: dict, response_text: str | None, gz=None) -> Cod
     cantons = [a["text"] for a in landmark["canton_aliases"]]
     if case["arm"] == "trap_premise":
         return grade_premise(response_text, [case["false_premise_claim"], *case.get("false_premise_aliases", [])],
-                             places, names)
+                             places, names, gz, case.get("question_text"))
     q = case["question_type"]
     if q == "name":
         return grade_name(response_text, strong, weak, places, landmark.get("ambiguous_place_aliases", []), gz,
@@ -326,7 +400,8 @@ def grade(case: dict, landmark: dict, response_text: str | None, gz=None) -> Cod
                           case.get("question_text"))
     if q == "place":
         return grade_place(response_text, places, cantons, landmark.get("ambiguous_place_aliases", []), gz,
-                           landmark.get("canton_code"), case.get("question_text"))
+                           landmark.get("canton_code"), case.get("question_text"), names,
+                           check_object=case["arm"] != "text_only")
     if q == "year":
         return grade_year(response_text, tuple(landmark["year_window"]))
     raise ValueError(q)

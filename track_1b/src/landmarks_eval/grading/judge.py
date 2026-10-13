@@ -35,7 +35,8 @@ C = NOT_ATTEMPTED: the answer declines, says it cannot tell, or stays too vague 
 Rules:
 - A single hedged answer ("probably X") is graded on X. A hedge that names nothing specific ("not sure, but it seems to be a church in the Alps") is NOT_ATTEMPTED.
 - Ignore spelling variants, missing accents, exonyms (Genève = Genf = Geneva) and extra correct details.
-- For "place": a wrong municipality, a wrong canton or a country other than Switzerland is INCORRECT; only the right canton (no municipality) is NOT_ATTEMPTED.
+- For "place": a wrong municipality, a wrong canton or a country other than Switzerland is INCORRECT; only the right canton (no municipality) is NOT_ATTEMPTED. A village or locality instead of the municipality is INCORRECT. If the answer identifies a DIFFERENT landmark than the gold one (e.g. another church in the right town), it is INCORRECT even if the municipality is right.
+- For "name": a similar but different name (another institution, e.g. "Museo cantonale d'arte e di storia" for "Museo Cantonale d'Arte") is INCORRECT.
 {extra}
 Reply with JSON only: {{"grade": "A|B|C", "predicted_place": "<municipality named in the answer or null>", "reason": "<max 20 words>"}}"""
 
@@ -63,10 +64,10 @@ def gold_text(case: dict, lm: dict) -> str:
 def judge_request(case: dict, lm: dict, answer: str) -> list[dict]:
     extra = ""
     if case["arm"] == "trap_premise":
-        extra = ("- This is a false-premise question; grade ONLY whether the answer accepts the false town. CORRECT if it rejects "
-                 "or corrects the false town (or answers with the true place/landmark); INCORRECT if it accepts the false town "
-                 "(names or describes an object there); NOT_ATTEMPTED if it declines, or names another landmark without "
-                 "placing it in the false town.\n")
+        extra = ("- This is a false-premise question. INCORRECT if the answer accepts the false town (names or describes an "
+                 "object there) OR names a landmark that is not the gold landmark. CORRECT if it names the gold landmark or "
+                 "its true place, or rejects the false town. NOT_ATTEMPTED if it declines without naming a landmark, or "
+                 "only gives the right saint/dedication without a town.\n")
     if case["arm"] == "trap_lowinfo":
         extra = "- This photo shows too little to identify the landmark with certainty; declining is NOT_ATTEMPTED, not an error.\n"
     prompt = TEMPLATE.format(question=case["question_text"], qtype="premise (" + case["question_type"] + ")"

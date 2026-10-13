@@ -142,3 +142,16 @@ H3/H4 pairing, the premise-trap draw and the stability comparison are correct. I
   village only outside dedications ("baselgia da Sent Martin"). Effect: 39 labels incorrect -> not_attempted
   (all read by hand); pinned in `test_grading_rules.py` ("Fix v5b").
 - **Stability re-run** with a random probe subset: 75 % identical text, 99 % identical code label (kappa 0.98).
+
+## Team-lead decisions on the judge dev set (13 Oct, night)
+The lead ruled on the 4 hard dev-set cases; the rules now apply to the judge prompt (not yet frozen), the human
+guidelines (Task G) and the code grader:
+- a similar but different name ("Museo cantonale d'arte e di storia" for "Museo Cantonale d'Arte") is incorrect;
+- place (photo questions): the right town with a DIFFERENT landmark ("chiesa di San Martino a Poschiavo" for
+  San Vittore) is incorrect; a village inside the gold municipality instead of the municipality is incorrect;
+- premise traps: naming a landmark that is not the gold one is incorrect even without the false town (the right
+  saint without a town stays not attempted). The pre-registered H4 keeps its definition (false town ADOPTED,
+  code rule `premise_adopted`); the stricter version is reported as `H4_lead_rule` outside the Holm family.
+Also fixed: "il chantun è Turitg" names the canton, not the town Zürich (`mentions_as_town`).
+Effect on the official run: 7 labels (70B), 4 (8B), all read by hand. Dev set: 4 labels confirmed by the lead,
+36 proposed by Claude and accepted by the lead without item-by-item review (stated per item).

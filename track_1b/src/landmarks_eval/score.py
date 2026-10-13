@@ -82,7 +82,7 @@ def compute_scores(dataset: Path, results: Path, bootstrap: int = 2000) -> dict:
         rows.append({"item_id": iid, "landmark_qid": lm["qid"], "arm": c["arm"], "qtype": c["question_type"],
                      "lang": c["lang"], "tier": lm["fame_tier"], "region": lm["language_region"],
                      "type": lm["type_group"], "label": j["final_label"], "code": j["code_label"],
-                     "judge": j["judge_label"], "canton_correct": j["canton_correct"],
+                     "judge": j["judge_label"], "canton_correct": j["canton_correct"], "code_rule": j.get("code_rule"),
                      "text": (resp.get(iid) or {}).get("response_text") or ""})
     graded = [r for r in rows if r["label"]]
     lab = lambda rs: [r["label"] for r in rs]

@@ -42,7 +42,12 @@ You see the question, the gold answer (with accepted alternatives) and the model
 - **Not attempted:** the answer declines ("I can't tell"), or is too vague to check ("a church in Switzerland", "the 16th century"), without contradicting the gold.
 
 Edge cases:
-- **Hedging:** "Probably X" is graded on X.
+- **Hedging:** "Probably X" is graded on X. A hedge that names nothing specific ("not sure, it seems to be a church") is **Not attempted**.
+- **Wrong object, right town** (place questions): if the answer names a *different* landmark than the gold one ("San Martino church in Poschiavo" for San Vittore), it is **Incorrect** even though the town is right.
+- **Village instead of municipality:** naming a village or locality inside the gold municipality (Cinuos-chel for S-chanf) is **Incorrect**; the question asks for the municipality.
+- **Similar names:** a similar but different name ("Museo cantonale d'arte e di storia" for "Museo Cantonale d'Arte") is **Incorrect**.
+- **Trick questions** (the question states a false town): **Incorrect** if the answer accepts the false town *or* names a landmark that is not the gold one; **Correct** if it names the gold landmark or rejects the false town; **Not attempted** if it declines.
+- **Only the right canton** (place questions, no municipality): **Not attempted**; a wrong canton or another country is **Incorrect**.
 - **Spelling:** spelling variants, missing accents and exonyms (Genève = Genf = Geneva) are fine.
 - **Saint or type names only:** if the gold says *[only with the town]*, a bare "St. Antonius chapel" without the right town is **Not attempted**.
 - **Shared town names:** for places marked *also the name of another municipality*, the canton must be right too.

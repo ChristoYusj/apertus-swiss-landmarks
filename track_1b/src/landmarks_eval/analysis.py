@@ -285,17 +285,26 @@ def hypotheses(rows: list[dict], gz: Gazetteer, lms: dict, cases: dict, bootstra
                     "only_text_correct": b, "only_photo_correct": c, "mcnemar_p": mcnemar(b, c)}
         pvals[key] = res[key]["mcnemar_p"]
 
-    # H4: premise adopted (incorrect) vs paired control (same photo, plain name question) incorrect
+    # H4 as registered: the premise is ADOPTED (code rule "premise_adopted", a textual property) vs the paired
+    # control (same photo, plain name question) incorrect. The lead's grading rule (13 Oct) also counts a wrong
+    # landmark as incorrect; that version is reported next to it as H4_lead_rule (not in the Holm family).
     lab = {r["item_id"]: r["label"] for r in rows}
-    pairs = [(r["label"] == "incorrect", lab.get(cases[r["item_id"]].get("paired_control_item_id")) == "incorrect")
-             for r in rows if r["arm"] == "trap_premise" and cases[r["item_id"]].get("paired_control_item_id") in lab]
-    b = sum(x and not y for x, y in pairs)
-    c = sum(y and not x for x, y in pairs)
-    res["H4"] = {"pairs": len(pairs), "premise_incorrect": sum(x for x, _ in pairs), "control_incorrect": sum(y for _, y in pairs),
-                 "premise_incorrect_rate": _pct(sum(x for x, _ in pairs), len(pairs)),
-                 "premise_incorrect_ci95_wilson": wilson(sum(x for x, _ in pairs), len(pairs)),
-                 "control_incorrect_rate": _pct(sum(y for _, y in pairs), len(pairs)),
-                 "only_premise_incorrect": b, "only_control_incorrect": c, "mcnemar_p": mcnemar(b, c)}
+
+    def h4(premise_bad):
+        pairs = [(premise_bad(r), lab.get(cases[r["item_id"]].get("paired_control_item_id")) == "incorrect")
+                 for r in rows if r["arm"] == "trap_premise" and cases[r["item_id"]].get("paired_control_item_id") in lab]
+        b = sum(x and not y for x, y in pairs)
+        c = sum(y and not x for x, y in pairs)
+        return {"pairs": len(pairs), "premise_incorrect": sum(x for x, _ in pairs), "control_incorrect": sum(y for _, y in pairs),
+                "premise_incorrect_rate": _pct(sum(x for x, _ in pairs), len(pairs)),
+                "premise_incorrect_ci95_wilson": wilson(sum(x for x, _ in pairs), len(pairs)),
+                "control_incorrect_rate": _pct(sum(y for _, y in pairs), len(pairs)),
+                "only_premise_incorrect": b, "only_control_incorrect": c, "mcnemar_p": mcnemar(b, c)}
+
+    res["H4"] = {**h4(lambda r: r.get("code_rule") == "premise_adopted"),
+                 "definition": "premise adopted (pre-registered); premise_incorrect = adopted the false town"}
+    res["H4_lead_rule"] = {**h4(lambda r: r["label"] == "incorrect"),
+                           "definition": "final label incorrect: adopted the false town OR named a wrong landmark"}
     pvals["H4"] = res["H4"]["mcnemar_p"]
     res["holm"] = holm(pvals)
     # the registered hypotheses are directional; a significant effect in the other direction is not support
