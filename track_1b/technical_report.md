@@ -143,10 +143,11 @@ Overall, name correct 0.2 %, place correct 1.1 %, year never answered (0 of 272)
 confident fabrication in Romansh, on identical images.
 
 **2. In Romansh the model moves landmarks to Graubünden** (exploratory, location extracted with the gazetteer).
-Of 200 landmarks outside Graubünden, the Romansh answer places **99** in Graubünden; the French, Italian and
-German answers for the same photos place 0, 0 and 1 there (paired McNemar, p < 10⁻⁶). Overall 59 % of Romansh
-place answers say Graubünden (true share 24 %). The municipalities named are mostly German- and Italian-speaking
-Graubünden towns (Chur, Davos, Poschiavo): the pull is toward the canton associated with Romansh.
+Of 200 landmarks outside Graubünden, the Romansh answer places **98** in Graubünden; the French and Italian
+answers for the same photos place none there and the German answers 14 (paired McNemar RM vs FR/IT/DE,
+p < 10⁻⁶). Overall 59 % of Romansh place answers say Graubünden (true share 24 %). The municipalities named are
+mostly German- and Italian-speaking Graubünden towns (Chur, Davos, Poschiavo): the pull is toward the canton
+associated with Romansh rather than toward Romansh-speaking villages. The 8B model shows the same pull (28 %).
 
 **3. Famous names absorb unknown objects.** Twelve different landmarks, mostly castles and towers, are called "Castel Tarasp" (the
 iconic Engadine castle), nine Swiss landmarks become "Castle Vaduz" (Liechtenstein), and castles in French and Italian
@@ -158,7 +159,7 @@ answers become "Château de Chillon". Disentis Abbey becomes "Kloster Einsiedeln
 |---|---|
 | H1 fame cliff (name) | not supported: hallucination 100 % (low) vs 99.3 % (high); floor effect |
 | H1b fame cliff (place) | not supported (Δ = +1.3 pp, CI −3.7 to +6.0) |
-| H2 majority-region pull | not supported: wrong towns for non-DE landmarks are 64 % German-speaking vs 65 % of all municipalities |
+| H2 majority-region pull | not supported: wrong towns for non-DE landmarks are 60 % German-speaking vs 65 % of all municipalities (registered comparison points the other way, p_Holm = 0.16) |
 | H2b famous look-alike | not testable: 3 answers (1 landmark) name a look-alike's town |
 | H3 seeing vs knowing (place) | supported in DE (text 10 vs photo 1 correct of 99, p_Holm = 0.02); FR same direction (8 vs 1, p_Holm = 0.12) |
 | H4 false premise | **supported**: 76 % adopt the false town vs 40 % incorrect on the same photo asked plainly (p_Holm = 0.0002) |
@@ -166,7 +167,11 @@ answers become "Château de Chillon". Disentis Abbey becomes "Kloster Einsiedeln
 Knowing the name helps, and fame matters there: text-only place accuracy is 13.6 % for high-fame vs 3.7 % for
 low-fame landmarks, while from the photo both are ≈ 0 %. The bottleneck is visual recognition.
 
-**5. Agreement.** Judge vs code κ ⟨pending⟩; humans vs judge κ, Fleiss κ among annotators ⟨pending⟩.
+**5. Smaller model.** Apertus 1.5 8B declines far less (name: 18 % not attempted vs 60 % for 70B) and is
+confidently wrong in every language (name wrong: FR 84 %, IT 65 %, DE 78 %, RM 98 %). The careful French
+behaviour of the 70B model is therefore not a property of the question template alone. ⟨code⟩
+
+**6. Agreement.** Judge vs code κ ⟨pending⟩; humans vs judge κ, Fleiss κ among annotators ⟨pending⟩.
 
 ## Dataset Limitations
 - Results are for one prompt template per language; Romansh templates were not reviewed by a native speaker
