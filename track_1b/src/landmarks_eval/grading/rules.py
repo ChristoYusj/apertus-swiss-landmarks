@@ -15,6 +15,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from . import contradict as C
 from .normalize import TYPE_WORDS, normalize, specific_tokens, usable_alias
 
 ABSTAIN_PATTERNS = [
@@ -47,6 +48,8 @@ ABSTAIN_PATTERNS = [
     r"difficile de (determiner|dire|identifier)", r"n est pas (immediatement )?claire?", r"je n ai pas d informations",
     r"nessuna informaziun", r"betga? segir", r"betg visibel", r"\bnon identifitgabel\b", r"non indicheda",
     r"non inditga",                                    # Sursilvan "Non inditgà" (review 3)
+    # review 4: every spelling of "non identifi..." and a one-word "nothing" as the whole answer
+    r"\bnon identifi\w*", r"^\s*(nin|nagin|nagina|nagut|nichts|keine?|rien|aucune?|niente|nessun[oa]?|none|nothing)\s*$",
     r"impossible (de|d) (donner|indiquer|fournir|nommer|preciser)",
     # the 70B's one-word Romansh answer "Nesgir" (4x) is its "Na segir" (not sure) run together; whole answer only
     r"^\s*nesgir\s*$",
@@ -213,14 +216,31 @@ STARTERS = {"quai", "quei", "quel", "quella", "quello", "questa", "questo", "que
             "tuttavia", "purtroppo", "however", "without", "unfortunately", "quests", "questas"}
 
 
+# an Alpine area may be Switzerland: "in Italia o in un'area alpina" offers Switzerland too (review 4)
+ALPINE = {"alpi", "alpen", "alpes", "alps", "alpina", "alpino", "alpine", "alpin", "alpinen", "alpini", "alpins"}
+_NEG_BEFORE = re.compile(r"\b(pas|nicht|non|not|betg|kein|keine|nessun|aucun)\b(?:\W+\w+){0,2}\W*$")
+
+
 def _foreign_claim(text: str, gz) -> bool:
-    """"Probabilmente in Italia" contradicts a Swiss landmark; "in Italia o in Svizzera" offers Switzerland too."""
+    """"Probabilmente in Italia" contradicts a Swiss landmark; "in Italia o in Svizzera" (or "... o in un'area
+    alpina") offers Switzerland too, but "pas en Suisse" does not."""
     if gz is None:
         return False
     if any(k == "country" for m in gz.mentions(text) for k, _ in m["payloads"]):
         t = f" {normalize(text)} "
-        return not any(f" {w} " in t for w in SWITZERLAND)
+        for w in SWITZERLAND | ALPINE:
+            for m in re.finditer(f" {w} ", t):
+                if not _NEG_BEFORE.search(t[:m.start() + 1]):
+                    return False
+        return True
     return False
+
+
+def _committed_abroad(text: str, gz, question: str | None) -> bool:
+    """A sentence WITHOUT an abstention phrase that places the landmark abroad, in an answer that also declines
+    ("Je ne suis pas sûr. ... Sasso Corbaro est un lieu en Lombardie, en Italie.")."""
+    t = _strip_echo(text, question)
+    return any(not _abstain_phrase(s) and _foreign_claim(s, gz) for s in re.split(r"(?<=[.!?;])\s+|\n", t))
 
 
 def _swiss_area(word: str, gz) -> bool:
@@ -419,9 +439,18 @@ def _strip_places(text: str, place_aliases) -> str:
 
 def grade_name(text: str, strong: list[str], weak: list[str] = (), place_aliases: list[str] = (),
                ambiguous: list[str] = (), gz=None, gold_canton: str | None = None, canton_aliases: list[str] = (),
-               gold_bfs: int | None = None, question: str | None = None) -> CodeGrade:
+               gold_bfs: int | None = None, question: str | None = None, gold_types: set[str] = frozenset()) -> CodeGrade:
     """strong = distinctive names; weak = saint/type names shared by many buildings (need the town).
-    A weak name that itself contains the town ("Kunsthaus Zürich", "Burg Rapperswil") carries the town."""
+    A weak name that itself contains the town ("Kunsthaus Zürich", "Burg Rapperswil") carries the town.
+    gold_types: the landmark's building classes (contradict.gold_type_classes); a vague answer that states another
+    type or denomination contradicts the gold and is incorrect (review 4)."""
+
+    def vague(rule: str) -> CodeGrade:
+        if C.type_conflict(rest, gold_types):
+            return CodeGrade("incorrect", "type_contradicts_gold")
+        if C.confession_conflict(text, [*strong, *weak]):
+            return CodeGrade("incorrect", "confession_contradicts_gold")
+        return CodeGrade("not_attempted", rule)
     if any(mentions_whole(text, a) for a in _specific(strong)):
         return CodeGrade("correct", "name_alias_match")
     hits = [a for a in weak if usable_alias(a) and mentions_whole(text, a)]
@@ -450,13 +479,14 @@ def grade_name(text: str, strong: list[str], weak: list[str] = (), place_aliases
         other = _strip_dedications(rest)               # "Église Saint-Pierre de Neuilly-sur-Seine": another place
         if specific_claim(other, gz, gold_canton, question) or (not _abstain_phrase(text) and names_anything(other, gz)):
             return CodeGrade("incorrect", "same_dedication_other_name")
-        return CodeGrade("not_attempted", "same_dedication_without_town")
+        return vague("same_dedication_without_town")
     claim = specific_claim(rest, gz, gold_canton, question)
     if _abstain_phrase(text) and not claim:
-        return CodeGrade("not_attempted", "hedged_guess_names_nothing_specific")
+        return vague("hedged_guess_names_nothing_specific")
     if not _abstain_phrase(text) and not claim and not names_anything(rest, gz):
-        # pre-registered "vague answers = not attempted": "Kapelle", "Bahnhof", "Questa è una chiesa."
-        return CodeGrade("not_attempted", "names_nothing")
+        # pre-registered "vague answers = not attempted": "Kapelle", "Bahnhof", "Questa è una chiesa." -- unless the
+        # stated type contradicts the gold (review 4)
+        return vague("names_nothing")
     return CodeGrade("incorrect", "no_name_alias")
 
 
@@ -568,7 +598,11 @@ def grade_place(text: str, place_aliases: list[str], canton_aliases: list[str],
     if shared:
         return CodeGrade("not_attempted", "ambiguous_town_without_canton", canton, None)
     if abstains(text) and not _contrast_claim(text, gz, gold_canton, question):
+        if _committed_abroad(text, gz, question):  # "pas sûr ... Sasso Corbaro est un lieu en Lombardie, Italie."
+            return CodeGrade("incorrect", "abstention_but_located_abroad", canton, False)
         return CodeGrade("not_attempted", "abstention_phrase", canton, False)
+    if C.region_conflict(text, gold_canton):       # "Zentralschweiz" for a landmark in Bern (review 4)
+        return CodeGrade("incorrect", "region_excludes_gold_canton", canton, False)
     # the right municipality was not named. Checkable (-> incorrect): another town (known to the gazetteer or
     # not), a village instead of the municipality (team-lead rule), a foreign country, a wrong canton, several
     # cantons, a named object. Not checkable (-> not attempted): the right canton alone, "possibly in Switzerland",
@@ -587,8 +621,12 @@ def grade_place(text: str, place_aliases: list[str], canton_aliases: list[str],
 
 
 def first_year(text: str) -> int | None:
-    m = YEAR.search(normalize(text))
-    return int(m.group(1)) if m else None
+    t = normalize(text)
+    m = YEAR.search(t)
+    if m:
+        return int(m.group(1))
+    m = C.EARLY_YEAR.search(t)                      # "ca. 450", "450 n. Chr." (review 4)
+    return int(m.group(1) or m.group(2)) if m else None
 
 
 def grade_year(text: str, window: tuple[int, int]) -> CodeGrade:
@@ -597,7 +635,11 @@ def grade_year(text: str, window: tuple[int, int]) -> CodeGrade:
         ok = window[0] <= y <= window[1]
         return CodeGrade("correct" if ok else "incorrect", "first_year_in_window" if ok else "first_year_outside_window",
                          year_within_window=ok)
-    if CENTURY.search(normalize(text)):
+    cs = C.centuries(text)
+    if cs:
+        # a century is too vague to be correct, but one that excludes the gold year contradicts it (review 4)
+        if C.century_excludes(cs, window):
+            return CodeGrade("incorrect", "century_outside_window", year_within_window=False)
         return CodeGrade("not_attempted", "century_only_too_vague")
     if abstains(text):
         return CodeGrade("not_attempted", "abstention_phrase")
@@ -657,10 +699,12 @@ def grade(case: dict, landmark: dict, response_text: str | None, gz=None) -> Cod
                              places, names, gz, case.get("question_text"), landmark.get("canton_code"))
     q = case["question_type"]
     if q == "name":
+        gold_types = C.gold_type_classes(names, [v for v in (landmark.get("labels") or {}).values() if v],
+                                         landmark.get("type_group"))
         return grade_name(response_text, strong, weak, places, landmark.get("ambiguous_place_aliases", []), gz,
                           landmark.get("canton_code"), cantons,
                           int(landmark["municipality_bfs"]) if landmark.get("municipality_bfs") else None,
-                          case.get("question_text"))
+                          case.get("question_text"), gold_types)
     if q == "place":
         return grade_place(response_text, places, cantons, landmark.get("ambiguous_place_aliases", []), gz,
                            landmark.get("canton_code"), case.get("question_text"), names,

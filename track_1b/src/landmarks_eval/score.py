@@ -152,6 +152,17 @@ def compute_scores(dataset: Path, results: Path, bootstrap: int = 2000) -> dict:
         s["human_audit"] = agreement(human, judg, cases)
         if (results / "human_audit_repeat.jsonl").exists():
             s["human_audit"]["self_consistency"] = self_consistency(human, load_jsonl(results / "human_audit_repeat.jsonl"))
+    adj_path = results / "disagreement_adjudication.jsonl"
+    if adj_path.exists():
+        # sensitivity analysis (not the registered result): the judge's label replaced by the adjudicated label where
+        # an independent two-read adjudication of a judge-vs-code disagreement settled it
+        adj = {a["item_id"]: a["adjudicated_label"] for a in load_jsonl(adj_path) if a.get("adjudicated_label")}
+        alt = [{**r, "label": adj.get(r["item_id"], r["label"])} for r in graded]
+        alt_main = [r for r in alt if r["arm"] == "photo_main"]
+        s["sensitivity_adjudicated"] = {
+            "replaced": sum(1 for r in graded if r["item_id"] in adj and adj[r["item_id"]] != r["label"]),
+            "overall_by_arm_qtype": table(alt, lambda r: (r["arm"], r["qtype"])),
+            "photo_main_by_lang_qtype": table(alt_main, lambda r: (r["lang"], r["qtype"]))}
     gz = load_gazetteer(dataset)
     if gz is not None:  # hypotheses H1b-H4 + location analysis need the gazetteer shipped with the dataset
         s["hypotheses"] = hypotheses(graded, gz, lms, cases, bootstrap=bootstrap)

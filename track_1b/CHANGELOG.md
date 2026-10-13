@@ -251,3 +251,29 @@ right_canton_only, similar_but_different_name, ...) and a seeded random 150 per 
   reported (stated as a limitation).
 - The online audit page (`tools/audit_online`) and the offline page show the same items in the same order;
   answers not in French get a labelled English machine gloss (`landmarks-eval glosses`, gpt-oss-120b, names kept).
+
+## Full judge run and review 4: every judge-vs-code disagreement re-read (14 Oct)
+- Judge `judge-v1` (`openai/gpt-oss-120b:groq`) on all 5,532 answers (70B and 8B): 0 API errors, 0 unparsed.
+  Final labels = the judge's (registered). Results with judge labels: 70B name wrong FR 10 / IT 24 / DE 40 /
+  RM 66 %; H4 supported (78 % vs 28 %); H3_de no longer significant after Holm (p = 0.02, p_Holm = 0.11).
+- **Review 4.** All 192 disagreements (75 + 117) were re-read by independent adjudicator agents against the
+  written rules; where the judge looked wrong a second blind read followed. Judge right 85, code grader right
+  101, unsettled 6 (`responses/<model>/disagreement_adjudication.jsonl`, marked AI-assisted, not a human audit).
+  - Judge errors (frozen, reported as a limitation): vague answers whose building type FITS the landmark graded
+    incorrect (57), "[only with the town]" names ignored (31), refusals or premise repeats read as claims (7),
+    missed contradictions (6). Sensitivity analysis (`scores.json: sensitivity_adjudicated`): replacing the
+    judge's label where the re-read settled it changes RM name wrong 66 % -> 58 % (70B), 89 % -> 80 % (8B);
+    every other cell moves by about 1 pp or less.
+  - **Code grader (post-hoc rule change, `grading/contradict.py`):** SimpleQA's "not attempted" requires that
+    the answer does not contradict the gold, and the code grader ignored contradictions in vague answers. Now a
+    vague answer is incorrect when it states a building type the landmark is not (coarse classes from the gold's
+    names; a fitting type stays not attempted; "X or a historic building" commits to no type; the inventory's
+    museum type group is not trusted), a denomination the gold contradicts, a century that excludes the gold
+    year (Romansh ordinals and Roman numerals now read), or a Swiss region that excludes the gold canton. Also:
+    early years with a cue ("ca. 450"), "Italy or an Alpine area" is not a foreign claim, a firm sentence
+    placing the landmark abroad counts after a refusal, more refusal spellings. Not adopted (single-read
+    evidence, would reverse earlier reviewed decisions): name-shaped phrases of common nouns, the text-only
+    object check. Effect vs the adjudication: 51 code errors fixed, 0 broken, 34 remain; 14 further labels
+    where judge and code had agreed changed (12 centuries outside the window, 2 contradicting types), all
+    checked against the gold. Judge-vs-code kappa 0.937 -> 0.950 (70B), 0.917 -> 0.933 (8B).
+  - 17 regression tests ("Review 4"); 248 tests pass.

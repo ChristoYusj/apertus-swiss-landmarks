@@ -1,15 +1,15 @@
 # Technical report — Swiss Heritage Factuality: does Apertus recognise Switzerland's landmarks?
 
-> **DRAFT 13 Oct.** Numbers marked ⟨code⟩ are from the deterministic code grader only; the primary LLM judge
-> and the blind human audit are pending and will replace them. Do not quote ⟨code⟩ numbers as final.
+> **DRAFT 14 Oct.** Final labels are the frozen LLM judge's (`judge-v1`); the blind human audit of a 20 % sample
+> is in progress (⟨pending⟩).
 
 > We built a four-language (FR/DE/IT/RM) benchmark of 2,766 questions about 264 Swiss heritage landmarks from the
 > federal inventory (KGS), stratified by language region and fame, with photo, text-only and trap variants and
 > per-item licences. Apertus 1.5 70B almost never recognises a landmark from its photo, and when it commits to a
-> name it is almost always wrong (328 of 329 committed names) ⟨code⟩. Whether it commits at all depends on the
-> question's language: on the same photos it mostly declines in French (9 % of name answers confidently wrong) but
-> answers in Romansh (52 % of names and 97 % of places wrong), where it also relocates half of all non-Graubünden
-> landmarks to Graubünden.
+> name it is almost always wrong (372 of 376 committed names). Whether it commits at all depends on the
+> question's language: on the same photos it mostly declines in French (10 % of name answers confidently wrong)
+> but answers in Romansh (66 % of names and 97 % of places wrong), where it also relocates half of all
+> non-Graubünden landmarks to Graubünden.
 
 **Track:** Apertus Readiness - Track 1B (Swiss Voices), dimension: core-task intelligence (factuality)  
 **Event:** Online  
@@ -96,8 +96,9 @@ responses are kept in `metadata/excluded_items.jsonl` with the reason.
 - *Task P, photo screening:* the team screens every shipped photo jointly (one decision per landmark): privacy
   (recognisable people, licence plates, private interiors → exclude, never blur), "wrong object", the best second
   view, and "too generic" photos for the low-information trap ⟨pending⟩.
-- *Task G, grading audit:* three team members (A1–A3) label a seeded, stratified 20 % of graded answers blind
-  (they do not see the judge's or the code grader's labels), 100 items by all three ⟨pending⟩.
+- *Task G, grading audit:* a seeded, stratified 20 % of the 70B answers (546) is labelled blind (no judge or
+  code labels shown; English machine gloss for non-French answers). The team has one annotator, so 40 items are
+  shown a second time, unannounced and ≥ 150 items later, to measure self-consistency ⟨pending⟩.
 
 **Consent and personal data.** No person is a data subject: photos with recognisable people are excluded,
 EXIF is stripped. Annotators sign the consent form in `docs/consent_form_template.md` (pseudonymous IDs).
@@ -122,7 +123,9 @@ EXIF is stripped. Annotators sign the consent form in `docs/consent_form_templat
 - **Graders:** (1) a deterministic code grader on 100 % (alias matching with the distinctiveness and ambiguity
   rules, abstention and hedge detection in all four languages, a gazetteer of all Swiss cantons and current and
   former municipalities); (2) an independent open-weights judge, `openai/gpt-oss-120b` (not Apertus), on 100 %,
-  prompt tuned on a 40-item dev set and frozen before the human audit ⟨pending⟩; final label = judge's.
+  pinned to one provider, temperature 0; prompt tuned on a 40-item dev set with labels confirmed by the team lead
+  (final prompt: 40/40 agreement, two runs identical) and frozen before the full run and the audit sample;
+  final label = judge's.
 - **Statistics:** cluster bootstrap over landmarks (2,000 resamples) for CIs; exact McNemar for paired
   contrasts; Holm correction across the registered tests; Wilson intervals for rates.
 
@@ -133,22 +136,23 @@ Every response is stored with a content hash of its request; `verify` replays th
 code label** (κ = 0.98; the one change is a vague hedge that, asked again, named two candidate cantons), and all 20 probe items
 kept their label over four answers: the endpoint is not bit-for-bit deterministic, but the grades are stable.
 
-### Results ⟨code⟩
+### Results
 
 **1. Recognition from a photo almost never succeeds, and committed answers are almost always wrong.**
 
 | photo_main (n per cell = 264) | FR | IT | DE | RM |
 |---|---|---|---|---|
-| Name: not attempted (declines, or only a vague description) | 91 % | 76 % | 61 % | **47 %** |
-| Name: confidently wrong | 9 % | 24 % | 39 % | **52 %** |
+| Name: not attempted (declines, or too vague to check) | 90 % | 75 % | 59 % | **33 %** |
+| Name: confidently wrong | 10 % | 24 % | 40 % | **66 %** |
 | Place: confidently wrong | 2 % | 2 % | 30 % | **97 %** |
 
-Overall, name correct 0.1 %, place correct 0.8 %, year never answered (0 of 272). Among committed name answers
-99.7 % are wrong (328 of 329). The same instruction ("if you are not sure, say so") produces honest refusals in
-French and confident fabrication in Romansh, on identical images. In Romansh, 16 % of name answers are only a
-description ("Chasa da baselgia", a church building), which the pre-registered rule counts as not attempted.
+Overall, name correct 0.4 % (4 of 1,056), place correct 0.9 %, years almost never answered (2 of 272, both
+wrong). Among committed name answers 98.9 % are wrong (372 of 376). The same instruction ("if you are not sure, say so") produces honest refusals in
+French and confident fabrication in Romansh, on identical images. Many Romansh name answers are only a building
+type ("Chasa da baselgia", a church building): not attempted when the type fits the landmark, incorrect when it
+does not (SimpleQA: not attempted means "without contradicting the gold").
 
-![Same 264 photos, four question languages (Apertus 1.5 70B, code grader).](docs/figures/fig1_languages.png){width=100%}
+![Same 264 photos, four question languages (Apertus 1.5 70B, LLM judge).](docs/figures/fig1_languages.png){width=100%}
 
 **2. In Romansh the model moves landmarks to Graubünden** (exploratory, location extracted with the gazetteer).
 Of 200 landmarks outside Graubünden, the Romansh answer places **99** in Graubünden; the French and Italian
@@ -165,29 +169,37 @@ answers become "Château de Chillon". Disentis Abbey becomes "Kloster Einsiedeln
 
 **4. Registered hypotheses** (Holm-adjusted):
 
-| | Result ⟨code⟩ |
+| | Result |
 |---|---|
-| H1 fame cliff (name) | not supported: hallucination 100 % (low) vs 99.2 % (high); floor effect |
-| H1b fame cliff (place) | not supported (Δ = +1.6 pp, CI −2.0 to +5.6) |
+| H1 fame cliff (name) | not supported: hallucination 97.6 % (low) vs 99.2 % (high); floor effect |
+| H1b fame cliff (place) | not supported (Δ = +0.6 pp, CI −4.6 to +5.3) |
 | H2 majority-region pull | not supported: wrong towns for non-DE landmarks are 60 % German-speaking vs 65 % of all municipalities (registered comparison points the other way, p_Holm = 0.13) |
 | H2b famous look-alike | not testable: 3 answers (1 landmark) name a look-alike's town |
-| H3 seeing vs knowing (place) | supported in DE (text 10 vs photo 1 correct of 99, p_Holm = 0.02); FR same direction (8 vs 1, p_Holm = 0.13) |
-| H4 false premise | **supported**: 78 % adopt the false town vs 24 % incorrect on the same photo asked plainly (p_Holm < 0.0001); counting a wrongly named building as incorrect too (team rule), 82 % |
+| H3 seeing vs knowing (place) | not significant after Holm: same direction in DE (text 9 vs photo 1 correct of 99, p = 0.02, p_Holm = 0.11) and FR (8 vs 1, p_Holm = 0.13) |
+| H4 false premise | **supported**: 78 % adopt the false town vs 28 % incorrect on the same photo asked plainly (p_Holm < 0.0001); counting a wrongly named building as incorrect too (team rule), 86 % |
 
-Knowing the name helps, and fame matters there: text-only place accuracy is 13.6 % for high-fame vs 3.7 % for
+Knowing the name helps, and fame matters there: text-only place accuracy is 12.5 % for high-fame vs 3.7 % for
 low-fame landmarks, while from the photo both are ≈ 0 %. The bottleneck is visual recognition.
 
 ![Left: municipality correct with the name given vs from the photo, by fame (H3). Right: incorrect on the plain photo question vs with a false town in the question (H4).](docs/figures/fig3_know_vs_see.png){width=100%}
 
-**5. Smaller model.** Apertus 1.5 8B declines less (name: 39 % not attempted vs 69 % for 70B) and is
-confidently wrong more often in every language (name wrong: FR 68 %, IT 45 %, DE 62 %, RM 69 %). Its fame effect
+**5. Smaller model.** Apertus 1.5 8B declines less (name: 29 % not attempted vs 64 % for 70B) and is
+confidently wrong more often in every language (name wrong: FR 77 %, IT 47 %, DE 69 %, RM 89 %). Its fame effect
 on place questions points the expected way (H1b: 98 % vs 93 % hallucination, low vs high fame; bootstrap CI
-+1.0 to +9.7 pp) but is not significant after Holm (p_Holm = 0.08). Unlike 70B, 8B is not more misled by the
-false premise than by the plain question (68 % adopt the false town vs 72 % wrong on the control, n.s.): it is
++1.0 to +9.8 pp) but is not significant after Holm (p_Holm = 0.08). Unlike 70B, 8B is not more misled by the
+false premise than by the plain question (68 % adopt the false town vs 80 % wrong on the control, n.s.): it is
 already wrong on the plain question. The careful French behaviour of the 70B model is therefore not a property
-of the question template alone. ⟨code⟩
+of the question template alone.
 
-**6. Agreement.** Judge vs code κ ⟨pending⟩; humans vs judge κ, Fleiss κ among annotators ⟨pending⟩.
+**6. Agreement and judge errors.** Judge vs code grader: κ = 0.95 (70B; 97.8 % identical labels) and 0.93 (8B;
+96.6 %). All 192 disagreements were re-read independently against the written rules (AI-assisted, a second blind
+read where the judge looked wrong; `disagreement_adjudication.jsonl`): the judge was right in 85, the code grader in
+101, 6 stayed unsettled. The judge's main error is strictness on vague answers whose building type fits the
+landmark ("church building" for a church, 57 items), plus saint names without a town (31). Replacing the judge's
+label wherever the re-read settled it lowers the Romansh name-wrong rate from 66 % to 58 % (70B; 8B 89 % → 80 %)
+and moves no other cell by more than about 1 pp, so the language pattern is not a grading artefact. The
+registered results keep the frozen judge's labels. Human vs judge, and the annotator's self-consistency
+⟨pending⟩.
 
 ## Dataset Limitations
 - Results are for one prompt template per language; Romansh templates were not reviewed by a native speaker
@@ -195,9 +207,10 @@ of the question template alone. ⟨code⟩
   future work.
 - Gold comes from Wikidata; errors there propagate (mitigated by the audit and the human spot check ⟨pending⟩).
 - Fame is proxied by Wikipedia article counts. Low accuracy everywhere limits the power of fame contrasts (floor).
-- The code grader cannot judge vagueness perfectly; it is a second rater, the judge is primary. Known gaps:
-  descriptive museum names ("Musée cantonal des beaux-arts") count as vague, and a wrong building type with the
-  right town ("the castle of Bellinzona" for its town hall) is not detected in name answers.
+- Neither automatic grader is perfect. The frozen judge is too strict on vague answers that fit the landmark
+  (see Agreement). The code grader (second rater) misses fine-grained contradictions: Romansh "house of X"
+  phrases, a denomination the gold does not state, name-shaped phrases built from common nouns ("Tour de
+  l'Horloge" for another tower), and descriptive museum names.
 - Post-run corrections to the code grader and item validity were made after seeing answers; each is
   documented with its effect in `CHANGELOG.md` and pinned by regression tests. Two independent reviews read every
   answer the code grader marked incorrect; the second one moved 109 (70B) and 356 (8B) labels, mostly refusals

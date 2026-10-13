@@ -378,7 +378,7 @@ _GZ2 = Gazetteer({
         {"bfs": 2196, "names": ["fribourg", "freiburg"], "canton": "FR", "region": "FR", "current": True},
         {"bfs": 2097, "names": ["romont fr", "romont"], "canton": "FR", "region": "FR", "current": True},
         {"bfs": 5192, "names": ["lugano"], "canton": "TI", "region": "IT", "current": True}],
-    "countries": {"IT": ["italia", "italien"], "FR": ["france", "francia"], "SI": ["slovenia"], "EE": ["estonia"],
+    "countries": {"IT": ["italia", "italien", "italie"], "FR": ["france", "francia"], "SI": ["slovenia"], "EE": ["estonia"],
                   "DK": ["danimarca"]}})
 
 
@@ -568,3 +568,63 @@ def test_review3_same_saint(text, weak, places, label):
 def test_review3_sursilvan_refusal():
     assert grade_place("Vischnanca: Non inditgà; Chantun: Non inditgà", ["Thun"], ["Bern"], gz=_GZ2,
                        gold_canton="BE").label == "not_attempted"
+
+
+# --- Review 4 (14 Oct): two independent reads of all 192 judge-vs-code disagreements ---------------------------
+# A vague answer is still an error when it contradicts the gold (SimpleQA: not attempted = "without contradicting").
+from landmarks_eval.grading import contradict as C  # noqa: E402
+
+
+def _types(names, group=None, labels=()):
+    return C.gold_type_classes(names, list(labels), group)
+
+
+@pytest.mark.parametrize("text,gold_names,group,label", [
+    # a type that fits stays vague; a type the landmark is not contradicts it
+    ("Chasa da baselgia", ["Kapelle St. Murezi"], "church", "not_attempted"),
+    ("Clutger da la baselgia", ["Reformierte Kirche Soglio"], "church", "not_attempted"),
+    ("Chasa communala", ["Temple français"], "church", "incorrect"),
+    ("Non sono sicuro al 100% senza ulteriori informazioni, ma l'edificio sembra essere un mulino storico.",
+     ["Schloss Pleujouse"], "castle", "incorrect"),
+    ("Non sono sicuro al 100% senza ulteriori informazioni, ma l'edificio sembra essere una chiesa.",
+     ["Holzbrücke Ladiswil"], "bridge", "incorrect"),
+    # a generic alternative commits to no type
+    ("Non sono sicuro, ma potrebbe essere un castello o un edificio storico.", ["Kirche St. Peter"], "church", "not_attempted"),
+    # the head of a compound name is its type: "Town hall fountain" is a fountain
+    ("Rathaus", ["Rathausbrunnen (1833)", "Town hall fountain"], "fountain", "incorrect"),
+    # a museum type group alone is not trusted (a heritage railway is filed under museums)
+    ("viaduct", ["Dampfbahn Furka-Bergstrecke"], "museum", "not_attempted"),
+    # a denomination the gold states and the answer contradicts
+    ("Chasa da baselgia evangelica refurmada", ["Katholische Kirche Cosmas und Damian"], "church", "incorrect"),
+])
+def test_review4_type_contradiction(text, gold_names, group, label):
+    assert grade_name(text, gold_names, gz=_GZ2, gold_canton="VD", gold_types=_types(gold_names, group)).label == label
+
+
+@pytest.mark.parametrize("text,window,label", [
+    ("L'edifizi è vegnì construì en il 17avel tschientaner.", (1828, 1838), "incorrect"),   # Romansh ordinal
+    ("Il a été construit au XIIIe siècle.", (760, 770), "incorrect"),                     # Roman numerals
+    ("Es wurde im 11. Jahrhundert gegründet.", (1180, 1190), "incorrect"),
+    ("Il monument è construì en il 12avel tschientaner.", (1089, 1099), "incorrect"),
+    ("Im 12. Jahrhundert.", (1180, 1190), "not_attempted"),                                # the century contains it
+    ("ca. 450 n. Chr.", (495, 505), "incorrect"),                                           # an early year with a cue
+    ("um 500", (495, 505), "correct"),
+])
+def test_review4_centuries_and_early_years(text, window, label):
+    assert grade_year(text, window).label == label
+
+
+def test_review4_refusals_regions_and_foreign_places():
+    assert grade_name("Non identificada", NAMES, gz=_GZ2, gold_canton="VD").label == "not_attempted"
+    assert grade_name("Nin", NAMES, gz=_GZ2, gold_canton="VD").label == "not_attempted"
+    # "Italy or an Alpine area" offers Switzerland; "not in Switzerland" does not
+    assert grade_name("Non sono sicuro, ma potrebbe essere un castello in Italia o in un'area alpina.", NAMES, gz=_GZ2,
+                      gold_canton="VD").label == "not_attempted"
+    assert grade_name("Ce n'est pas en Suisse, probablement en Italie.", NAMES, gz=_GZ2, gold_canton="VD").label == "incorrect"
+    # a region that excludes the gold canton
+    t = "Unsicher; wahrscheinlich ein Schloss am Vierwaldstättersee in der Zentralschweiz."
+    assert grade_place(t, ["Spiez"], ["Bern"], gz=_GZ2, gold_canton="BE").label == "incorrect"
+    assert grade_place(t, ["Luzern"], ["Luzern"], gz=_GZ2, gold_canton="LU").label != "incorrect"
+    # a refusal followed by a firm sentence that places it abroad
+    t = ("Je ne suis pas sûr. Il n'existe pas de pont de ce nom en Suisse; la Maira coule dans le Piémont, en Italie.")
+    assert grade_place(t, ["Bregaglia"], ["Grisons"], gz=_GZ2, gold_canton="GR").label == "incorrect"
