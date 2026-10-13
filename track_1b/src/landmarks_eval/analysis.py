@@ -101,9 +101,13 @@ class Gazetteer:
                 payloads = [p for p in payloads if p[0] != "municipality"]
             if name in CONTEXT_ONLY and not any(t in PLACE_CUES for t in toks[max(0, i - 2):i]):
                 payloads = []
-            if name == "sent" and (any(_is_church(t) for t in toks[max(0, i - 3):i])
-                                   or (i + 1 < len(tt) and tt[i + 1][1][:1].isupper())):
-                payloads = []   # "baselgia da Sent Martin": a dedication, not the village of Sent
+            if name == "sent" and i + 1 < len(tt):
+                # "baselgia da Sent Martin": a saint's name directly after "Sent" makes it a dedication;
+                # "Gemeinde Sent, Kanton Graubünden" or "in Sent." is the village
+                end, nxt = tt[i][2], tt[i + 1][1]
+                at = text.find(nxt, end)
+                if nxt[:1].isupper() and at >= 0 and text[end:at].strip() == "":
+                    payloads = []
             if i > 0 and toks[i - 1] in CANTON_WORDS and any(k == "canton" for k, _ in payloads):
                 payloads = [p for p in payloads if p[0] == "canton"]   # "im Kanton Bern" is the canton, not the town
             if payloads:

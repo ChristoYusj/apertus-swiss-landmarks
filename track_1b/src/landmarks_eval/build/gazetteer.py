@@ -27,12 +27,25 @@ COUNTRIES = {
     "IT": ["Italia", "Italie", "Italien", "Italy"], "FR": ["France", "Frankreich", "Francia", "Frantscha"],
     "DE": ["Deutschland", "Germany", "Allemagne", "Germania"], "AT": ["Österreich", "Austria", "Autriche"],
     "LI": ["Liechtenstein"], "SI": ["Slovenia", "Slowenien", "Slovénie", "Slovenija"],
-    "ES": ["Spain", "Spanien", "Espagne", "Spagna", "España"], "GB": ["England", "Angleterre", "Inghilterra"],
+    "ES": ["Spain", "Spanien", "Espagne", "Spagna", "España"], "GB": ["England", "Angleterre", "Inghilterra", "Scotland", "Schottland", "Écosse", "Scozia"],
     "CZ": ["Tschechien", "Czech Republic", "République tchèque", "Repubblica Ceca"],
     "BE": ["Belgium", "Belgien", "Belgique", "Belgio"], "NL": ["Niederlande", "Netherlands", "Pays-Bas", "Paesi Bassi"],
     "HR": ["Croatia", "Kroatien", "Croatie", "Croazia"], "PL": ["Poland", "Polen", "Pologne", "Polonia"],
     "HU": ["Hungary", "Ungarn", "Hongrie", "Ungheria"], "PT": ["Portugal", "Portogallo"],
+    # added after the second review ("Danimarca" was missing)
+    "DK": ["Denmark", "Dänemark", "Danemark", "Danimarca"], "SE": ["Sweden", "Schweden", "Suède", "Svezia"],
+    "NO": ["Norway", "Norwegen", "Norvège", "Norvegia"], "FI": ["Finland", "Finnland", "Finlande", "Finlandia"],
+    "EE": ["Estonia", "Estland", "Estonie"], "LU": ["Luxembourg", "Luxemburg", "Lussemburgo"],
+    "SK": ["Slovakia", "Slowakei", "Slovaquie", "Slovacchia"], "RO": ["Romania", "Rumänien", "Roumanie"],
+    "GR": ["Greece", "Griechenland", "Grèce", "Grecia"], "IE": ["Ireland", "Irland", "Irlande", "Irlanda"],
+    "BA": ["Bosnia", "Bosnien", "Bosnie"],
+    "ME": ["Montenegro", "Monténégro"], "RS": ["Serbia", "Serbien", "Serbie"],
+    "TR": ["Turkey", "Türkei", "Turquie", "Turchia"], "RU": ["Russia", "Russland", "Russie"],
+    "US": ["United States", "USA", "Stati Uniti", "États-Unis", "Vereinigte Staaten"],
+    "BY": ["Belarus", "Weissrussland", "Bielorussia", "Biélorussie"],
 }
+# Municipality names the Wikidata labels lack but the answers use (Sursilvan "Cuera" for Chur, BFS 3901)
+MUNI_EXTRA = {3901: ["Cuera"]}
 
 
 # BFS municipality numbers are allocated in one block per canton; a former municipality's canton follows
@@ -79,6 +92,8 @@ def build_gazetteer(work: Path, ds: Path) -> dict:
             liechtenstein.add(r["text"]["value"])
         elif b < 7000:               # >= 9000: lakes and other areas without a municipality
             former[b].add(r["text"]["value"])
+    for b, extra in MUNI_EXTRA.items():
+        current[b]["names"].update(extra)
 
     # a former municipality takes the canton and language region of the current municipality it became
     successors: dict[int, set] = defaultdict(set)

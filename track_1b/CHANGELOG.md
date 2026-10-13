@@ -155,3 +155,44 @@ guidelines (Task G) and the code grader:
 Also fixed: "il chantun è Turitg" names the canton, not the town Zürich (`mentions_as_town`).
 Effect on the official run: 7 labels (70B), 4 (8B), all read by hand. Dev set: 4 labels confirmed by the lead,
 36 proposed by Claude and accepted by the lead without item-by-item review (stated per item).
+
+## Second independent review of the code grader (13 Oct, late night) and fixes
+A second reviewer (separate agent, read-only) read every answer the code grader marked incorrect, for both
+models. Its findings and what changed (`grading/rules.py`, `build/gazetteer.py`, `analysis.py`):
+- **Refusals graded as wrong (must fix):** phrasings the patterns did not know ("Non è sicuro identificare…",
+  "Ich bin mir nicht sicher, wo…", "nicht eindeutig aus dem Bild ableitbar", "mir nicht bekannt", "Je ne dispose
+  pas d'informations", "Betga segir", "Nessuna informaziun", "Non indicheda", "impossible de donner un nom",
+  "Je ne trouve pas", and the 70B's one-word Romansh "Nesgir" = "Na segir" run together) are now abstentions.
+  "Not sure, BUT it is X" is graded on X (contrast words ma/mais/aber/but/cependant/...).
+- **Similar-name rule was not in the code (must fix):** an alias continued by more name words ("Museo cantonale
+  d'arte e di storia" for "Museo Cantonale d'Arte") is now `incorrect` (`similar_but_different_name`).
+- **Premise: a rejected false town beat a wrong landmark (must fix):** "the Kapellbrücke in Luzern, not in Baden"
+  is now `incorrect` (`premise_negated_wrong_landmark`). An abstention that repeats the false town after a
+  contrast word ("…, mais … de quel bâtiment il s'agit à Alto Malcantone") is not adoption; the adjective form of
+  the false town ("Reuenthaler Staumauer" for Full-Reuenthal) is adoption.
+- **"Right canton only" let wrong places through (must fix):** before an answer counts as "right canton only"
+  (not attempted), any remaining name word makes it incorrect: villages ("Neuthal, Kanton Zürich", "Vésenaz"),
+  towns the gazetteer lacks ("Setteln"), "Italien, Tessin". Two or more named cantons are competing candidates
+  and incorrect whichever is the gold (was graded by order).
+- **Bare type words (must fix, pre-registered rule):** an answer that names nothing ("Kapelle", "Bahnhof",
+  "Chasa da baselgia", "Covered Bridge") is not attempted. The list of words that made "names something" fire was
+  printed for every answer of both models and read; common nouns found there were added to `GENERIC_CAPS`.
+- **Echo of the shown name:** the name shown in a text-only question is still removed, but its words are removed
+  only inside the answer's own quotes. "Schloss Tarasp befindet sich in der Gemeinde Tarasp" now counts Tarasp
+  as the claimed place (a former municipality, so incorrect under the village rule); before, the word-by-word
+  removal hid it, and also hid "Fribourg" in "Fribourg, canton de Fribourg" for the Romont fortifications.
+- Smaller: more countries in the gazetteer (Denmark/"Danimarca", Estonia, Sweden, …, USA; Scotland under GB);
+  "Cuera" (Sursilvan) for Chur; "Sent" is the village unless a capitalised word follows directly ("Sent
+  Martin"); "dédiée à Cosmas" introduces a saint, not a place; "d'Enfer" is split so the capital is seen;
+  a missing space ("chantunSurselva") is split; sentence-initial connectives ("Sans", "Cependant") are not names.
+- Not changed (reported as known limitations): descriptive museum names count as vague; a wrong building type
+  with the right town in a NAME answer is not detected; Q663436 text-only place stays a lucky correct (text-only
+  questions get no object check); "am Vierwaldstättersee … Zentralschweiz" stays not attempted.
+- **Effect:** 70B 109 labels moved (100 incorrect -> not_attempted, 8 not_attempted -> incorrect, 1 correct ->
+  incorrect: the similar name); 8B 356 moved (349 incorrect -> not_attempted, 6 not_attempted -> incorrect,
+  1 correct -> incorrect: the Kapellbrücke premise). Every changed label was read by hand, in four passes, each
+  diffed against the previous one. Registered results: 70B H3_de and H4 still supported (H4 78 % vs 28 %);
+  8B H1b no longer significant after Holm (p_Holm 0.04 -> 0.08). Stability re-graded offline with the new grader
+  (`stability --regrade`, no requests): unchanged, 99 % same label.
+- 51 regression tests with the real answers ("Review 2" in `test_grading_rules.py`); 38 of them fail on the
+  previous grader. 205 tests pass.

@@ -73,6 +73,7 @@ def main(argv: list[str] | None = None) -> int:
     st.add_argument("--n", type=int, default=100)
     st.add_argument("--probe", type=int, default=20)
     st.add_argument("--repeats", type=int, default=2)
+    st.add_argument("--regrade", action="store_true", help="no requests: re-label the stored stability responses")
 
     for name in ("run", "grade", "score", "verify", "live"):
         p = sub.add_parser(name)
@@ -146,11 +147,12 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.cmd == "stability":
         ep = Endpoint.from_env("LLM")
-        if ep is None:
+        if ep is None and not args.regrade:
             print("LLM_NAME, LLM_BASE_URL and LLM_API_KEY must be set.", file=sys.stderr)
             return 2
         from .stability import stability
-        rep = stability(dataset, args.results, ep, n=args.n, probe=args.probe, repeats=args.repeats)
+        rep = stability(dataset, args.results, ep, n=args.n, probe=args.probe, repeats=args.repeats,
+                        regrade=args.regrade)
         print(json.dumps({k: v for k, v in rep.items() if k != "probe"} | {"probe": {k: v for k, v in rep["probe"].items()
                                                                                if k != "detail"}}, indent=1))
         return 0

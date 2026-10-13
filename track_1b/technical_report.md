@@ -6,9 +6,10 @@
 > We built a four-language (FR/DE/IT/RM) benchmark of 2,766 questions about 264 Swiss heritage landmarks from the
 > federal inventory (KGS), stratified by language region and fame, with photo, text-only and trap variants and
 > per-item licences. Apertus 1.5 70B almost never recognises a landmark from its photo, and when it commits to a
-> name it is wrong about 99 % of the time ⟨code⟩. Whether it commits at all depends on the question's
-> language: on the same photos it declines in French (10 % confidently wrong) but answers confidently in Romansh
-> (72 % wrong), where it also relocates half of all non-Graubünden landmarks to Graubünden.
+> name it is almost always wrong (334 of 335 committed names) ⟨code⟩. Whether it commits at all depends on the
+> question's language: on the same photos it mostly declines in French (9 % of name answers confidently wrong) but
+> answers in Romansh (52 % of names and 97 % of places wrong), where it also relocates half of all non-Graubünden
+> landmarks to Graubünden.
 
 **Track:** Apertus Readiness - Track 1B (Swiss Voices), dimension: core-task intelligence (factuality)  
 **Event:** Online  
@@ -126,7 +127,7 @@ EXIF is stripped. Annotators sign the consent form in `docs/consent_form_templat
 Temperature 0, top_p 1, max_tokens 300, seed 1234, one image (base64 JPEG) + one question, no system prompt.
 Every response is stored with a content hash of its request; `verify` replays the stored answers.
 **Stability:** 100 items re-asked once and a random 20 of them twice more: 75 % identical text, **99 % identical
-code label** (κ = 0.98; the one change is a vague hedge reworded into another vague hedge), and all 20 probe items
+code label** (κ = 0.98; the one change is a vague hedge that, asked again, named two candidate cantons), and all 20 probe items
 kept their label over four answers: the endpoint is not bit-for-bit deterministic, but the grades are stable.
 
 ### Results ⟨code⟩
@@ -135,16 +136,17 @@ kept their label over four answers: the endpoint is not bit-for-bit deterministi
 
 | photo_main (n per cell = 264) | FR | IT | DE | RM |
 |---|---|---|---|---|
-| Name: declines ("not sure") | 90 % | 75 % | 51 % | **27 %** |
-| Name: confidently wrong | 10 % | 25 % | 49 % | **72 %** |
-| Place: confidently wrong | 2 % | 2 % | 31 % | **98 %** |
+| Name: not attempted (declines, or only a vague description) | 91 % | 75 % | 60 % | **47 %** |
+| Name: confidently wrong | 9 % | 25 % | 40 % | **52 %** |
+| Place: confidently wrong | 2 % | 2 % | 30 % | **97 %** |
 
-Overall, name correct 0.2 %, place correct 1.1 %, year never answered (0 of 272). Among committed name answers
-99.5 % are wrong. The same instruction ("if you are not sure, say so") produces honest refusals in French and
-confident fabrication in Romansh, on identical images.
+Overall, name correct 0.1 %, place correct 0.8 %, year never answered (0 of 272). Among committed name answers
+99.7 % are wrong (334 of 335). The same instruction ("if you are not sure, say so") produces honest refusals in
+French and confident fabrication in Romansh, on identical images. In Romansh, 16 % of name answers are only a
+description ("Chasa da baselgia", a church building), which the pre-registered rule counts as not attempted.
 
 **2. In Romansh the model moves landmarks to Graubünden** (exploratory, location extracted with the gazetteer).
-Of 200 landmarks outside Graubünden, the Romansh answer places **98** in Graubünden; the French and Italian
+Of 200 landmarks outside Graubünden, the Romansh answer places **99** in Graubünden; the French and Italian
 answers for the same photos place none there and the German answers 14 (paired McNemar RM vs FR/IT/DE,
 p < 10⁻⁶). Overall 59 % of Romansh place answers say Graubünden (true share 24 %). The municipalities named are
 mostly German- and Italian-speaking Graubünden towns (Chur, Davos, Poschiavo): the pull is toward the canton
@@ -158,20 +160,23 @@ answers become "Château de Chillon". Disentis Abbey becomes "Kloster Einsiedeln
 
 | | Result ⟨code⟩ |
 |---|---|
-| H1 fame cliff (name) | not supported: hallucination 100 % (low) vs 99.3 % (high); floor effect |
-| H1b fame cliff (place) | not supported (Δ = +1.3 pp, CI −3.7 to +6.0) |
-| H2 majority-region pull | not supported: wrong towns for non-DE landmarks are 60 % German-speaking vs 65 % of all municipalities (registered comparison points the other way, p_Holm = 0.16) |
+| H1 fame cliff (name) | not supported: hallucination 100 % (low) vs 99.2 % (high); floor effect |
+| H1b fame cliff (place) | not supported (Δ = +1.6 pp, CI −2.0 to +5.6) |
+| H2 majority-region pull | not supported: wrong towns for non-DE landmarks are 60 % German-speaking vs 65 % of all municipalities (registered comparison points the other way, p_Holm = 0.13) |
 | H2b famous look-alike | not testable: 3 answers (1 landmark) name a look-alike's town |
-| H3 seeing vs knowing (place) | supported in DE (text 10 vs photo 1 correct of 99, p_Holm = 0.02); FR same direction (8 vs 1, p_Holm = 0.12) |
-| H4 false premise | **supported**: 76 % adopt the false town vs 38 % incorrect on the same photo asked plainly (p_Holm = 0.0001); counting a wrongly named building as incorrect too (team rule), 82 % |
+| H3 seeing vs knowing (place) | supported in DE (text 10 vs photo 1 correct of 99, p_Holm = 0.02); FR same direction (8 vs 1, p_Holm = 0.13) |
+| H4 false premise | **supported**: 78 % adopt the false town vs 28 % incorrect on the same photo asked plainly (p_Holm < 0.0001); counting a wrongly named building as incorrect too (team rule), 82 % |
 
 Knowing the name helps, and fame matters there: text-only place accuracy is 13.6 % for high-fame vs 3.7 % for
 low-fame landmarks, while from the photo both are ≈ 0 %. The bottleneck is visual recognition.
 
-**5. Smaller model.** Apertus 1.5 8B declines far less (name: 18 % not attempted vs 60 % for 70B) and is
-confidently wrong in every language (name wrong: FR 84 %, IT 62 %, DE 78 %, RM 98 %); for 8B the fame effect
-on place questions is significant (H1b, p_Holm = 0.04), as a secondary result. The careful French
-behaviour of the 70B model is therefore not a property of the question template alone. ⟨code⟩
+**5. Smaller model.** Apertus 1.5 8B declines less (name: 36 % not attempted vs 68 % for 70B) and is
+confidently wrong more often in every language (name wrong: FR 69 %, IT 47 %, DE 64 %, RM 75 %). Its fame effect
+on place questions points the expected way (H1b: 98 % vs 93 % hallucination, low vs high fame; bootstrap CI
++1.0 to +9.7 pp) but is not significant after Holm (p_Holm = 0.08). Unlike 70B, 8B is not more misled by the
+false premise than by the plain question (68 % adopt the false town vs 78 % wrong on the control, n.s.): it is
+already wrong on the plain question. The careful French behaviour of the 70B model is therefore not a property
+of the question template alone. ⟨code⟩
 
 **6. Agreement.** Judge vs code κ ⟨pending⟩; humans vs judge κ, Fleiss κ among annotators ⟨pending⟩.
 
@@ -181,9 +186,13 @@ behaviour of the 70B model is therefore not a property of the question template 
   future work.
 - Gold comes from Wikidata; errors there propagate (mitigated by the audit and the human spot check ⟨pending⟩).
 - Fame is proxied by Wikipedia article counts. Low accuracy everywhere limits the power of fame contrasts (floor).
-- The code grader cannot judge vagueness perfectly; it is a second rater, the judge is primary.
+- The code grader cannot judge vagueness perfectly; it is a second rater, the judge is primary. Known gaps:
+  descriptive museum names ("Musée cantonal des beaux-arts") count as vague, and a wrong building type with the
+  right town ("the castle of Bellinzona" for its town hall) is not detected in name answers.
 - Post-run corrections to the code grader and item validity were made after seeing answers; each is
-  documented with its effect in `CHANGELOG.md` and pinned by regression tests.
+  documented with its effect in `CHANGELOG.md` and pinned by regression tests. Two independent reviews read every
+  answer the code grader marked incorrect; the second one moved 109 (70B) and 356 (8B) labels, mostly refusals
+  phrased in ways the patterns did not know (all changed labels were read by hand).
 
 ## Lessons Learnt and Recommendations
 - For Apertus: abstention behaviour is language-dependent; calibration training should include Romansh and

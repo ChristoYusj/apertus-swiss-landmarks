@@ -66,7 +66,8 @@ def judge_request(case: dict, lm: dict, answer: str) -> list[dict]:
     if case["arm"] == "trap_premise":
         extra = ("- This is a false-premise question. INCORRECT if the answer accepts the false town (names or describes an "
                  "object there) OR names a landmark that is not the gold landmark. CORRECT if it names the gold landmark or "
-                 "its true place, or rejects the false town. NOT_ATTEMPTED if it declines without naming a landmark, or "
+                 "its true place, or rejects the false town. NOT_ATTEMPTED if it declines without naming a landmark (also "
+                 "when it repeats the town from the question: \"I am not sure which building in X this is\"), or "
                  "only gives the right saint/dedication without a town.\n")
     if case["arm"] == "trap_lowinfo":
         extra = "- This photo shows too little to identify the landmark with certainty; declining is NOT_ATTEMPTED, not an error.\n"

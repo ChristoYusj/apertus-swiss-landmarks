@@ -26,8 +26,10 @@ from .run import GEN_PARAMS, load_jsonl, stratified_sample, write_jsonl
 SEED = 20261016
 
 
-def stability(dataset: Path, results: Path, ep: Endpoint, n: int = 100, probe: int = 20, repeats: int = 2,
-              workers: int = 4, log=print) -> dict:
+def stability(dataset: Path, results: Path, ep: Endpoint | None, n: int = 100, probe: int = 20, repeats: int = 2,
+              workers: int = 4, log=print, regrade: bool = False) -> dict:
+    """regrade=True: no requests; re-label the stored stability_responses.jsonl with the current code grader
+    (used after a grader fix, so stability.json and the report describe the same grader)."""
     cases = {c["item_id"]: c for c in load_jsonl(dataset / "data" / "test_cases.jsonl")}
     lms = {l["qid"]: l for l in load_jsonl(dataset / "data" / "landmarks.jsonl")}
     official = {r["item_id"]: r for r in load_jsonl(results / "responses.jsonl") if r["status"] == "ok"}
@@ -35,8 +37,16 @@ def stability(dataset: Path, results: Path, ep: Endpoint, n: int = 100, probe: i
     sample = stratified_sample(pool, n, seed=SEED)[:n]
     probes = random.Random(SEED + 1).sample(sample, min(probe, len(sample)))  # a random subset, not the first k ids
     jobs = [(c, 1) for c in sample] + [(c, k) for c in probes for k in range(2, repeats + 2)]
-    log(f"stability: {len(sample)} items rerun once, {min(probe, len(sample))} of them {repeats} more times "
-        f"({len(jobs)} requests to {ep.model})")
+    if regrade:
+        rows = load_jsonl(results / "stability_responses.jsonl")
+        assert sorted((r["item_id"], r["repeat"]) for r in rows) == sorted((c["item_id"], k) for c, k in jobs), \
+            "stored stability responses do not match this sample (n/probe/repeats)"
+        model = rows[0]["model"]
+        log(f"stability: re-grading {len(rows)} stored responses (no requests)")
+    else:
+        model = ep.model
+        log(f"stability: {len(sample)} items rerun once, {min(probe, len(sample))} of them {repeats} more times "
+            f"({len(jobs)} requests to {ep.model})")
 
     def ask(job):
         c, k = job
@@ -46,9 +56,10 @@ def stability(dataset: Path, results: Path, ep: Endpoint, n: int = 100, probe: i
                 "response_text": res.text, "finish_reason": res.finish_reason, "error": res.error,
                 "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")}
 
-    with cf.ThreadPoolExecutor(max_workers=workers) as ex:
-        rows = list(ex.map(ask, jobs))
-    write_jsonl(results / "stability_responses.jsonl", rows)
+    if not regrade:
+        with cf.ThreadPoolExecutor(max_workers=workers) as ex:
+            rows = list(ex.map(ask, jobs))
+        write_jsonl(results / "stability_responses.jsonl", rows)
 
     gz = load_gazetteer(dataset)
 
@@ -68,7 +79,7 @@ def stability(dataset: Path, results: Path, ep: Endpoint, n: int = 100, probe: i
         probe_items.append({"item_id": c["item_id"], "n_answers": len(answers), "distinct_texts": len(set(answers)),
                             "distinct_labels": len({label(c["item_id"], t) for t in answers})})
     report = {
-        "model": ep.model, "params": GEN_PARAMS, "seed": SEED, "requests": len(jobs), "api_errors": len(rows) - len(ok),
+        "model": model, "params": GEN_PARAMS, "seed": SEED, "requests": len(jobs), "api_errors": len(rows) - len(ok),
         "rerun_n": len(first),
         "identical_text_rate": rnd(same_text / len(first)) if first else None,
         "identical_text_ci95": wilson(same_text, len(first)),

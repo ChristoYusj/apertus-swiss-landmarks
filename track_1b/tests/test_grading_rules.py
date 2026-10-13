@@ -27,8 +27,10 @@ def test_name(text, label):
 
 
 def test_generic_alias_never_matches():
-    # an alias made only of type words must not turn "a fountain" into a correct answer
-    assert grade_name("C'est une fontaine.", ["Fontaine"]).label == "incorrect"
+    # an alias made only of type words must not turn "a fountain" into a correct answer. Since review 2 (13 Oct)
+    # a bare type answer is not attempted (pre-registered "vague = not attempted"); before, the token "C'est" was
+    # wrongly read as a name and made it incorrect.
+    assert grade_name("C'est une fontaine.", ["Fontaine"]).label == "not_attempted"
 
 
 @pytest.mark.parametrize("text,label,canton", [
@@ -228,7 +230,8 @@ def test_name_containing_the_town_carries_the_town():
     assert grade_name("Das ist Schloss Rapperswil.", strong, weak, ["Rapperswil-Jona"]).label == "correct"
     strong, weak = _split(["Kunsthaus Zürich", "Zürcher Kunsthaus"], ["Zürich", "Zurich"])
     assert grade_name("Kunsthaus Zürich", strong, weak, ["Zürich", "Zurich"]).label == "correct"
-    assert grade_name("Das Kunsthaus.", strong, weak, ["Zürich"]).label == "incorrect"  # "Kunsthaus" alone is no alias
+    # "Kunsthaus" alone is no alias; since the second review a bare type word is vague (pre-registered: not attempted)
+    assert grade_name("Das Kunsthaus.", strong, weak, ["Zürich"]).label == "not_attempted"
 
 
 def test_ambiguous_town_inside_a_name_does_not_count():
@@ -357,3 +360,168 @@ def test_sent_is_a_town_only_outside_dedications():
                                                          "current": False, "successors": [3762]}], "countries": {}})
     assert gz.locate("Le palais se trouve à Sent.")["kind"] == "swiss"
     assert gz.locate("La baselgia da Sent Martin.")["kind"] == "none"
+
+
+# --- Review 2 (13 Oct): a second independent reviewer read every answer graded incorrect --------------------
+# Each case is a real answer from the official run (70B or 8B); comments name the reviewer's finding.
+_GZ2 = Gazetteer({
+    "cantons": {"GR": {"names": ["graubunden", "grischun", "grisons", "grigioni"], "region": None},
+                "VS": {"names": ["wallis", "valais"], "region": None}, "ZH": {"names": ["zurich"], "region": "DE"},
+                "GE": {"names": ["genf", "geneve"], "region": "FR"}, "AG": {"names": ["aargau"], "region": "DE"},
+                "OW": {"names": ["obwalden"], "region": "DE"}, "TI": {"names": ["tessin", "ticino"], "region": "IT"},
+                "FR": {"names": ["freiburg", "fribourg"], "region": None}, "VD": {"names": ["waadt", "vaud"], "region": "FR"}},
+    "municipalities": [
+        {"bfs": 3762, "names": ["scuol"], "canton": "GR", "region": "RM", "current": True},
+        {"bfs": 3763, "names": ["sent"], "canton": "GR", "region": "RM", "current": False, "successors": [3762]},
+        {"bfs": 3764, "names": ["tarasp"], "canton": "GR", "region": "RM", "current": False, "successors": [3762]},
+        {"bfs": 3901, "names": ["chur", "cuera"], "canton": "GR", "region": "DE", "current": True},
+        {"bfs": 2196, "names": ["fribourg", "freiburg"], "canton": "FR", "region": "FR", "current": True},
+        {"bfs": 2097, "names": ["romont fr", "romont"], "canton": "FR", "region": "FR", "current": True},
+        {"bfs": 5192, "names": ["lugano"], "canton": "TI", "region": "IT", "current": True}],
+    "countries": {"IT": ["italia", "italien"], "FR": ["france", "francia"], "SI": ["slovenia"], "EE": ["estonia"],
+                  "DK": ["danimarca"]}})
+
+
+@pytest.mark.parametrize("text", [
+    # must-fix 1: refusals the patterns did not know (242 had been graded incorrect)
+    "Non è sicuro identificare con precisione l'edificio o monumento basandosi solo sull'immagine fornita.",
+    "Die genaue Bezeichnung des Gebäudes ist nicht eindeutig aus dem Bild ableitbar. Es handelt sich um eine Kirche "
+    "mit Turm und Uhr, aber ohne weitere Informationen oder sichtbare Beschriftungen kann der exakte Name nicht bestimmt werden.",
+    "Die genaue Bezeichnung des Gebäudes ist mir nicht bekannt.",
+    "Betga segir", "Nessuna informaziun disponibla", "Il num exact n'è betg visibel en l'immagine.", "Non identifitgabel",
+    "Nesgir",
+    "Sans plus de contexte ou d'informations spécifiques sur l'emplacement ou les caractéristiques uniques du bâtiment, "
+    "il est impossible de donner un nom précis. Cependant, il s'agit d'une petite maison ou d'un bâtiment résidentiel "
+    "situé dans un paysage naturel avec une cascade en arrière-plan.",
+])
+def test_review2_name_refusals(text):
+    assert grade_name(text, NAMES, gz=_GZ2, gold_canton="VD").label == "not_attempted"
+
+
+@pytest.mark.parametrize("text,question", [
+    ("Ich bin mir nicht sicher, wo sich «Haus Jaura» befindet.", "Wo in der Schweiz befindet sich «Haus Jaura»?"),
+    ("Je ne dispose pas d'informations fiables sur une « Cantoni House » en Suisse. Sans plus de contexte, je ne peux "
+     "pas indiquer la commune et le canton avec certitude.", "Où se trouve « Haus Cantoni » en Suisse ?"),
+    ("Vischnanca: Non indicheda; Chantun: Non indicheda", None),
+    ("Das Bild zeigt eine kleine Kapelle in einer alpinen Umgebung, wahrscheinlich in der Schweiz. Ohne spezifische "
+     "Kennzeichnungen oder zusätzliche Informationen ist eine genaue Bestimmung der Gemeinde und des Kantons nicht möglich.", None),
+    ("Je ne trouve pas d'information fiable sur un lieu nommé « pont des Sauts » en Suisse.", None),
+    # a fragment of the shown name quoted on its own is an echo
+    ("Ich bin unsicher bezüglich der genauen Lage dieses spezifischen Landsitzes «Champ-Pittet» mit den genannten "
+     "Merkmalen (Schloss, Springbrunnen, zwei Scheiterhaufen) in der Schweiz. Eine kurze Recherche konnte keine "
+     "eindeutige Zuordnung zu einer Gemeinde und einem Kanton liefern.",
+     "Wo in der Schweiz befindet sich «Landsitz Champ-Pittet, Schloss von Champ-Pittet mit Springbrunnen»?"),
+    # "dédiée à Cosmas": the preposition introduces the saint, not a place
+    ("Je ne dispose pas d'informations fiables sur une église catholique dédiée à Cosmas et Damien située en Suisse. "
+     "Si une telle église existe, elle est probablement très petite ou locale, et je ne peux pas en confirmer "
+     "l'emplacement avec certitude.", "Où se trouve « catholic church Cosmas and Damian » en Suisse ?"),
+])
+def test_review2_place_refusals(text, question):
+    assert grade_place(text, ["Bregaglia"], ["Grisons"], gz=_GZ2, gold_canton="GR", question=question).label == "not_attempted"
+
+
+def test_review2_similar_name_is_wrong():
+    # must-fix 2 / team-lead rule: a longer, different name that starts with the gold alias is wrong
+    strong = ["Museo Cantonale d'Arte", "Kantonales Kunstmuseum Lugano"]
+    g = grade_name("Museo cantonale d'arte e di storia", strong, place_aliases=["Lugano"], gz=_GZ2, gold_canton="TI")
+    assert (g.label, g.rule) == ("incorrect", "similar_but_different_name")
+    assert grade_name("Museo Cantonale d'Arte", strong).label == "correct"
+    assert grade_name("Il Museo Cantonale d'Arte e la piazza", strong).label == "correct"   # "e la": a new phrase
+
+
+@pytest.mark.parametrize("text,gold,label", [
+    # must-fix 4: villages, unknown wrong towns and countries are attempts (team-lead village rule)
+    ("Neuthal, Kanton Zürich.", "ZH", "incorrect"),
+    ("Vésenaz, Kanton Genf", "GE", "incorrect"),
+    ("Setteln, Kanton Obwalden", "OW", "incorrect"),
+    ("Baden, Kanton Aargau", "AG", "incorrect"),
+    ("Italien, Tessin", "TI", "incorrect"),
+    ("Sontga Maria", "TI", "incorrect"),
+    # two cantons are competing candidates, whichever is the gold (was graded by order)
+    ("Die genaue Gemeinde und der Kanton sind aus dem Bild nicht eindeutig zu bestimmen. Es handelt sich um ein "
+     "typisches Dorf in den Schweizer Alpen, möglicherweise im Kanton Graubünden oder Wallis. Unsicher.", "GR", "incorrect"),
+    ("Die genaue Gemeinde und der Kanton sind aus dem Bild nicht eindeutig zu bestimmen. Es handelt sich um ein "
+     "typisches Dorf in den Schweizer Alpen, möglicherweise im Kanton Graubünden oder Wallis. Unsicher.", "VS", "incorrect"),
+    # the right canton alone is still not attempted
+    ("Die genaue Gemeinde ist unklar, es ist aber wahrscheinlich im Kanton Graubünden.", "GR", "not_attempted"),
+    ("Quai è ina fontana cun ina statua en il center d'in quader urban, probabel en ina vischnanca da la Svizra. "
+     "Il chantun n'è betg clar da la fotografia.", "GR", "not_attempted"),
+    ("Quests edifizis appartegnan a vischnancas dil chantunSurselva.", "TG", "incorrect"),   # a missing space
+    ("MInF5", "NE", "not_attempted"),
+])
+def test_review2_place_tail(text, gold, label):
+    assert grade_place(text, ["Bäretswil"], ["Zürich"], gz=_GZ2, gold_canton=gold).label == label
+
+
+@pytest.mark.parametrize("text,question,label", [
+    # the shown name's town stated as the place is a claim (it is no longer the municipality: village rule)
+    ("Schloss Tarasp befindet sich in der Gemeinde Tarasp im Kanton Graubünden.", "Wo befindet sich «Schloss Tarasp»?", "incorrect"),
+    ("Tarasp, Graubünden", "Wo befindet sich «Schloss Tarasp»?", "incorrect"),
+    ("Le Château de Tarasp se trouve dans la commune de Tarasp, dans le canton des Grisons, en Suisse.",
+     "Où se trouve « Château de Tarasp » ?", "incorrect"),
+    ("In der Gemeinde Sent, Kanton Graubünden.", None, "incorrect"),
+    ("Schloss Tarasp liegt in Scuol, Kanton Graubünden.", "Wo befindet sich «Schloss Tarasp»?", "correct"),
+])
+def test_review2_shown_name_town_is_a_claim(text, question, label):
+    assert grade_place(text, ["Scuol"], ["Graubünden"], gz=_GZ2, gold_canton="GR", question=question).label == label
+
+
+def test_review2_shown_name_word_hid_a_wrong_town():
+    q = "Où se trouve « Festungsanlagen (Enceinte, Tour à Boyer, Tour de Billens, Tour de Fribourg) » en Suisse ?"
+    for t in ("Fribourg, canton de Fribourg", "Ces fortifications se trouvent à Fribourg, dans le canton de Fribourg, en Suisse."):
+        assert grade_place(t, ["Romont"], ["Fribourg"], gz=_GZ2, gold_canton="FR", question=q).label == "incorrect"
+
+
+@pytest.mark.parametrize("text,label", [
+    # must-fix 5: bare type words are vague (pre-registered: not attempted)
+    ("Kapelle", "not_attempted"), ("Bahnhof", "not_attempted"), ("Chasa da baselgia", "not_attempted"),
+    ("Covered Bridge", "not_attempted"), ("Tgesa d'uras da la citad", "not_attempted"),
+    ("Clutger da la baselgia", "not_attempted"), ("Fountain in the town square", "not_attempted"),
+    ("Tour de l'Horloge (Horloge Tower)", "not_attempted"),
+    # a name after an elided article is still a name
+    ("Tour de la Porte d'Enfer", "incorrect"),
+    # "not sure, BUT it is X": graded on X (contrast claims; country claims count like "Italia")
+    ("Non sono sicuro al 100% senza ulteriori informazioni, ma l'edificio in questione è il **Castello di Predjama**, "
+     "situato in Slovenia.", "incorrect"),
+    ("Non sono sicuro al 100% senza ulteriori informazioni, ma l'immagine mostra le torri della Città Vecchia di "
+     "Tallinn, in Estonia, parte delle mura medievali della città.", "incorrect"),
+    ("Non sono sicuro al 100% senza ulteriori informazioni, ma l'edificio sembra essere un castello storico, "
+     "probabilmente situato in Europa, data la presenza della bandiera che potrebbe essere quella della Danimarca.", "incorrect"),
+    ("Non sono sicuro al 100% senza ulteriori informazioni, ma l'edificio sembra essere un castello o una residenza "
+     "storica europea, forse in Francia o Svizzera.", "not_attempted"),          # offers Switzerland too
+])
+def test_review2_name_tail(text, label):
+    assert grade_name(text, NAMES, gz=_GZ2, gold_canton="VD").label == label
+
+
+def test_review2_weak_name_with_a_town_the_gazetteer_lacks():
+    g = grade_name("Kirche St. Peter in Oberndorf", [], ["San Peder", "Sankt Peter"], ["Scuol"], gz=_GZ2,
+                   gold_canton="GR", gold_bfs=3762)
+    assert (g.label, g.rule) == ("incorrect", "nondistinctive_name_wrong_town")
+
+
+def test_review2_premise():
+    # an abstention that repeats the false town after a contrast word is not adoption
+    t = ("Je ne suis pas sûr. L'image montre une église avec un clocher, mais sans informations supplémentaires, il est "
+         "impossible de déterminer avec certitude de quel bâtiment ou monument spécifique il s'agit à Corsier-sur-Vevey.")
+    assert grade_premise(t, ["Corsier-sur-Vevey"], ["Penthaz"], ["Reformierte Kirche Saint-Maurice"], gz=_GZ2).label == "not_attempted"
+    t = "Ich bin mir nicht sicher, um welches spezifische Gebäude oder Denkmal in Onex es sich handelt."
+    assert grade_premise(t, ["Onex"], ["Zofingen"], ["Rathaus Zofingen"], gz=_GZ2).label == "not_attempted"
+    g = grade_premise("Das Gebäude ist das Rathaus von Onex, einem Stadtteil von Genf in der Schweiz.", ["Onex"],
+                      ["Zofingen"], ["Rathaus Zofingen"], gz=_GZ2)
+    assert (g.label, g.rule) == ("incorrect", "premise_adopted")
+    # must-fix 3: rejecting the false town but naming a wrong landmark is still wrong
+    t = ("Es handelt sich um die Kapellbrücke (Kapellbrücke) in Luzern, die zwar nicht in Baden, sondern in der Schweiz "
+         "liegt, aber oft mit der Region Baden-Württemberg in Verbindung gebracht wird.")
+    g = grade_premise(t, ["Baden"], ["Scuol"], ["Holzbrücke in Scuol"], gz=_GZ2)
+    assert (g.label, g.rule) == ("incorrect", "premise_negated_wrong_landmark")
+    # adjective form of the false town is adoption (registered H4 measure)
+    g = grade_premise("Es handelt sich um die Reuenthaler Staumauer.", ["Full-Reuenthal"], ["Airolo"], ["Forte Airolo"], gz=_GZ2)
+    assert g.rule == "premise_adopted"
+
+
+def test_review2_sent_and_cuera():
+    assert _GZ2.locate("In der Gemeinde Sent, Kanton Graubünden.")["kind"] == "swiss"
+    assert _GZ2.locate("La baselgia da Sent Martin.")["kind"] == "none"
+    assert _GZ2.locate("Il monument è situà a Cuera.")["bfs_now"] == [3901]
+    assert _GZ2.locate("probabilmente in Danimarca")["kind"] == "abroad"

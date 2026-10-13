@@ -40,7 +40,18 @@ ABSTAIN_PATTERNS = [
     # en
     r"i (do not|don t) know", r"(cannot|can t|unable to) (identify|determine|tell|say|recognize|recognise)",
     r"not (sure|certain)", r"no (way|information) to", r"\bunknown\b", r"\buncertain\b", r"^\s*n a\s*$",
+    # added 13 Oct after the second independent review read every answer graded incorrect (242 refusals missed)
+    r"non e sicuro", r"(bin|sind) (mir |uns )?nicht (ganz )?sicher",
+    r"nicht (eindeutig |sicher |genau )?aus dem bild( allein)? (ableitbar|bestimmbar|zu bestimmen|erkennbar)",
+    r"\bableitbar\b", r"mir nicht bekannt", r"(ist|sind) .{0,70}nicht moglich", r"je ne trouve pas", r"ne dispose pas d", r"non identifiable",
+    r"difficile de (determiner|dire|identifier)", r"n est pas (immediatement )?claire?", r"je n ai pas d informations",
+    r"nessuna informaziun", r"betga? segir", r"betg visibel", r"\bnon identifitgabel\b", r"non indicheda",
+    r"impossible (de|d) (donner|indiquer|fournir|nommer|preciser)",
+    # the 70B's one-word Romansh answer "Nesgir" (4x) is its "Na segir" (not sure) run together; whole answer only
+    r"^\s*nesgir\s*$",
 ]
+# "not sure, BUT it is X": a contrast after the abstention introduces a guess (graded on X, see _contrast_claim)
+_CONTRAST = re.compile(r"\b(ma|mais|aber|but|pero|però|tuttavia|however|cependant|jedoch|toutefois)\b", re.I)
 # A guess after the hedge ("not sure, BUT it seems to be X") is an attempt, graded on X.
 GUESS_PATTERNS = [
     r"\bmais\b.{0,30}\b(semble|ressemble|pourrait|serait)", r"il pourrait s agir", r"\bprobablement\b", r"\bpeut etre\b",
@@ -78,6 +89,16 @@ def hedged(text: str) -> bool:
     return bool(_ABSTAIN.search(t)) and bool(_GUESS.search(t))
 
 
+def _abstain_phrase(text: str) -> bool:
+    return bool(_ABSTAIN.search(normalize(text)))
+
+
+def _contrast_claim(text: str, gz=None, gold_canton: str | None = None, question: str | None = None) -> bool:
+    """"Non sono sicuro, ma l'edificio è il Castello di Predjama": the part after the contrast names something."""
+    m = _CONTRAST.search(text)
+    return bool(m) and specific_claim(text[m.end():], gz, gold_canton, question)
+
+
 # Fix v5 (pre-registered rule "vague answers = not attempted"): a hedged guess that names nothing specific
 # ("Non sono sicuro, ma sembra una chiesa") is not an attempt. Capitalised words that are NOT names in the
 # answers (German nouns, hedging vocabulary; listed from every capitalised mid-sentence word of the run):
@@ -103,6 +124,11 @@ GENERIC_CAPS = {
     "deutschschweiz", "zentralschweiz", "innerschweiz", "ostschweiz", "westschweiz", "vierwaldstattersee",
     "eisenbahnbrucke", "landmark", "weiler", "objekt", "institution", "tippfehler", "irrtum", "verwechslung",
     "beschriftung", "ortsangaben", "frage", "punkt", "punkte", "interesse", "fasnacht",
+    # added 13 Oct from the list of every word that made names_anything() fire (review 2): common nouns, mostly
+    # Romansh/Latin/English type words ("Tgesa d'uras" = clock house, "Clutger" = bell tower, "Covered Bridge")
+    "tgesa", "chapella", "clutger", "colonna", "mines", "covered", "prieure", "museu", "cultura", "ffs", "cff", "sbb",
+    "bunker", "chalet", "menhir", "steinmenhir", "statua", "horologium", "fontane", "brunnenanlage", "claustrum",
+    "teatre", "teater", "rovine", "ruinas",
 }
 _SAINT_NAME = re.compile(r"\b(?:St|Sankt|San|Santa|Santo|Sant|Saint|Sainte|Ste|Sogn|Sontga|Son|SS|Santi|S)\.?[\s\-']+"
                          r"(?P<n>[A-ZÀ-Þ][\w'’-]+)")
@@ -125,6 +151,12 @@ TYPE_NOUNS = {
 # a capitalised word right after a locative preposition names a place; cantons, countries and generic words
 # ("in Graubünden", "in Svizzera", "in Europa") are excluded by the caller and GENERIC_CAPS
 _PREP_PLACE = re.compile(r"(?:\b(?:a|in|nel|nella|en|vicino a|près de)|(?<!\w)à)\s+(?P<n>[A-ZÀ-Þ][\w'’-]+)")
+# "dédiée à Cosmas", "dedicata a San Rocco", "geweiht an": the preposition introduces a saint, not a place
+_DEDICATED = re.compile(r"(d[ée]di[ée]e?s?|consacr[ée]e?s?|dedicat[aoie]|dedicad[ao]s?|dedicaus?|geweiht|dedicated)\s*$", re.I)
+
+
+def _place_preps(text: str):
+    return [m for m in _PREP_PLACE.finditer(text) if not _DEDICATED.search(text[max(0, m.start() - 20):m.start()])]
 _BOLD = re.compile(r"\*\*([^*]{3,80})\*\*")
 # Italian/French definite article + capitalised word mid-sentence: in these languages a capitalised noun after the
 # article is a name ("il Castello di Mir"); German capitalises every noun, so German articles are not used.
@@ -145,30 +177,99 @@ def _is_name_word(orig: str, norm: str) -> bool:
 
 
 def _strip_echo(text: str, question: str | None) -> str:
-    """Remove the name the QUESTION showed («Grimmenturm») from the answer: repeating it is not a claim."""
+    """Remove the name the QUESTION showed («Grimmenturm») from the answer: repeating it is not a claim. A word of
+    the shown name is also removed when the answer quotes it on its own ("«Champ-Pittet»"), but NOT when the answer
+    states it as the place ("in der Gemeinde Tarasp" for «Schloss Tarasp»: Tarasp is no longer a municipality, so
+    that is a claim; fix of 13 Oct, word-by-word stripping everywhere had hidden it)."""
     if not question:
         return text
     for shown in re.findall(r"[«\"„“]\s*([^»\"“”]+?)\s*[»\"“”]", question):
         text = re.sub(re.escape(shown), " ", text, flags=re.I)
+        words = [w for w in re.findall(r"[^\W\d_][\w'’-]{2,}", shown) if w[:1].isupper()]
+
+        def unquote(m: re.Match) -> str:
+            q = m.group(0)
+            for w in words:
+                q = re.sub(r"(?<![\w-])" + re.escape(w) + r"(?![\w-])", " ", q)
+            return q
+        text = re.sub(r"[«\"„“][^»\"“”]*[»\"“”]", unquote, text)
     return text
+
+
+SWITZERLAND = {"schweiz", "suisse", "svizzera", "svizra", "switzerland", "svizzer", "schwiiz"}
+# first words of a sentence that are never names ("Quai è ...", "Questa è ...", "Ce bâtiment ...")
+STARTERS = {"quai", "quei", "quel", "quella", "quello", "questa", "questo", "quest", "ce", "cet", "cette", "ceci",
+            "cela", "il", "la", "le", "les", "lo", "das", "dies", "diese", "dieser", "dieses", "es", "er", "sie", "this",
+            "that", "it", "there", "hier", "voici", "ecco", "si", "sa", "el", "ella", "elle", "je", "ich", "non", "nua",
+            "wo", "ou", "dove", "where", "oui", "ja", "nein", "betg", "un", "una", "uno", "une", "ein", "eine", "the",
+            "die", "der", "dal", "dalla", "en", "in", "im", "a", "au", "nel", "nella", "gemeinde", "kanton", "commune",
+            "comune", "vischnanca", "chantun", "canton", "cantone", "ort", "lieu", "luogo", "lieu", "situ", "situa",
+            # sentence-initial connectives ("Sans plus de contexte ...", "Cependant, ..."), added 13 Oct
+            "sans", "cependant", "toutefois", "malheureusement", "ohne", "leider", "jedoch", "aber", "senza",
+            "tuttavia", "purtroppo", "however", "without", "unfortunately", "quests", "questas"}
+
+
+def _foreign_claim(text: str, gz) -> bool:
+    """"Probabilmente in Italia" contradicts a Swiss landmark; "in Italia o in Svizzera" offers Switzerland too."""
+    if gz is None:
+        return False
+    if any(k == "country" for m in gz.mentions(text) for k, _ in m["payloads"]):
+        t = f" {normalize(text)} "
+        return not any(f" {w} " in t for w in SWITZERLAND)
+    return False
+
+
+def _swiss_area(word: str, gz) -> bool:
+    """A canton, a country or "Switzerland": an area, not a municipality or an object."""
+    if normalize(word) in SWITZERLAND:
+        return True
+    if gz is None:
+        return False
+    loc = gz.locate(word)
+    return loc["kind"] == "abroad" or loc["kind"] == "switzerland_only" or (loc["kind"] == "swiss" and loc["level"] == "canton")
+
+
+def names_anything(text: str, gz=None) -> bool:
+    """Does the answer contain any name at all (a capitalised word that is not a type word, a generic noun, an area
+    or a sentence opener)? "Kapelle", "Chasa da baselgia", "In der Schweiz." name nothing; "Neuthal, Kanton Zürich",
+    "Sveti Stefan" do. Saints' dedications count as names ("Chiesa di Santa Maria Assunta")."""
+    if _dedications(text):
+        return True
+    for sent in re.split(r"(?<=[.!?;:])\s+|\n", text):
+        sent = re.sub(r"(?<=[a-zß-ÿ]{3})(?=[A-ZÀ-Þ])", " ", sent)   # "chantunSurselva" (a missing space), not "MInF5"
+        words = re.findall(r"[^\W_][\w-]*", sent)      # "Porte d'Enfer" -> "Porte", "d", "Enfer"
+        for i, w in enumerate(words):
+            n = normalize(w)
+            if not w[:1].isupper() or any(ch.isdigit() for ch in w) or len(n) < 3:
+                continue
+            if n in TYPE_WORDS or n in GENERIC_CAPS or (i == 0 and n.split()[0] in STARTERS) or n in STARTERS:
+                continue
+            if _swiss_area(w, gz):
+                continue
+            return True
+    return False
 
 
 def specific_claim(text: str, gz=None, gold_canton: str | None = None, question: str | None = None) -> bool:
     """Does the answer commit to something checkable: a named object, a town, a foreign country or a wrong canton?
     The name shown in the question is ignored (an echo is not a claim)."""
     text = _strip_echo(text, question)
+    if _foreign_claim(text, gz):
+        return True
     if gz is not None:
         loc = gz.locate(text)
-        if loc["kind"] == "abroad":
-            return True
         if loc["kind"] == "swiss" and (loc["level"] == "municipality" or (loc.get("canton") and loc["canton"] != gold_canton)):
+            return True
+        named_cantons = {p["canton"] for m in gz.mentions(text) if not any(k == "municipality" for k, _ in m["payloads"])
+                         for k, p in m["payloads"] if k == "canton"}
+        if len(named_cantons) >= 2:               # "Kanton Graubünden oder Wallis": competing candidates
             return True
     if any(_is_name_word(m.group("n"), normalize(m.group("n"))) for m in _SAINT_NAME.finditer(text)):
         return True
     for m in _TOWN_CUE.finditer(text):             # "in der Gemeinde Schiedhalden" (a town the gazetteer lacks)
         if _is_name_word(m.group("n"), normalize(m.group("n"))):
             return True
-    for m in _PREP_PLACE.finditer(text):           # "situà a Cuera", "forse in Sud America": a named place
+    for m in _place_preps(text):           # "situà a Cuera", "forse in Sud America": a named place
         n = m.group("n")
         if _is_name_word(n, normalize(n)) and not (gz is not None and gz.locate(n)["kind"] != "none"
                                                    and gz.locate(n).get("level") != "municipality"):
@@ -176,8 +277,9 @@ def specific_claim(text: str, gz=None, gold_canton: str | None = None, question:
     for q in _QUOTED.findall(text) + _BOLD.findall(text):
         if any(_is_name_word(o, n) for o, n in _caps(q)):
             return True
-    for m in _ROMANCE_DEF.finditer(text):           # "il Castello di Mir", "l'Abbazia di Ettal" (not "una chiesa")
-        if _is_name_word(m.group("n"), normalize(m.group("n"))) or normalize(m.group("n")) in TYPE_NOUNS:
+    for m in _ROMANCE_DEF.finditer(text):           # "il Teatro alla Scala", "l'Abbazia di Ettal" (not "una chiesa")
+        n = m.group("n")
+        if _is_name_word(n, normalize(n)) and not _swiss_area(n, gz):   # "dans le Tessin" is an area, not a name
             return True
     w = _caps(text)
     for i, (o, n) in enumerate(w):
@@ -216,29 +318,97 @@ def _right_town(text: str, hits: list[str], place_aliases, ambiguous, canton_ali
     return bool(town_tokens & in_name) or (canton and bool(amb_tokens & in_name))
 
 
+_CONJ = {"e", "ed", "et", "und", "and"}
+_ARTICLES = {"il", "lo", "la", "l", "i", "gli", "le", "les", "un", "una", "uno", "une", "der", "die", "das", "dem", "den",
+             "des", "ein", "eine", "einem", "einer", "the", "a", "an", "ses", "son", "sa", "sein", "seine", "seinem", "suo",
+             "sua", "suoi", "its", "il", "ils", "elle", "es", "si", "sono", "est", "ist"}
+
+
+def _word_pairs(text: str) -> list[tuple[str, str]]:
+    out = []
+    for m in re.finditer(r"[^\W_]+", text):
+        for piece in normalize(m.group()).split():
+            out.append((m.group(), piece))
+    return out
+
+
+def mentions_whole(text: str, alias: str) -> bool:
+    """The alias occurs as a complete name, not as the start of a longer, different one: "Museo cantonale d'arte
+    e di storia" does not name "Museo Cantonale d'Arte" (team-lead rule, 13 Oct). A conjunction followed by an
+    article starts a new phrase ("... de la Justice et la place de la Palud") and does not count."""
+    a = normalize(alias).split()
+    w = _word_pairs(text)
+    if not a:
+        return False
+    for i in range(len(w) - len(a) + 1):
+        if [p for _, p in w[i:i + len(a)]] == a:
+            j = i + len(a)
+            if j + 1 < len(w) and w[j][0] in _CONJ and normalize(w[j + 1][0]) not in _ARTICLES:
+                continue                          # "... d'arte e di storia": a longer name
+            return True
+    return False
+
+
+def extended_alias(text: str, alias: str) -> bool:
+    """The alias occurs only as the start of a longer, different name ("Museo cantonale d'arte e di storia" for
+    "Museo Cantonale d'Arte"): under the team lead's similar-name rule (13 Oct) that is a wrong answer."""
+    return mentions(text, alias) and not mentions_whole(text, alias)
+
+
+def _other_town(text: str, gz, gold_bfs: int | None, place_aliases) -> bool:
+    """The answer names a municipality (known to the gazetteer or not) or a country other than the gold one."""
+    if _foreign_claim(text, gz):
+        return True
+    if gz is not None:
+        loc = gz.locate(text)
+        if loc["kind"] == "swiss" and loc["level"] == "municipality" and loc.get("bfs_now") and gold_bfs not in loc["bfs_now"]:
+            return True
+    gold_tok = {t for p in place_aliases for t in normalize(p).split()}
+    for m in _place_preps(text) + list(_TOWN_CUE.finditer(text)):   # "Kirche St. Peter in Oberndorf"
+        n = m.group("n")
+        if gz is not None and gz.locate(n)["kind"] != "none":
+            continue                              # a known place: the gazetteer decided above (Ardez is now Scuol)
+        if _is_name_word(n, normalize(n)) and normalize(n) not in gold_tok:
+            return True
+    return False
+
+
+def _strip_places(text: str, place_aliases) -> str:
+    """Remove the GOLD town from the answer: "una chiesa a Lugano" for a Lugano landmark claims no wrong place."""
+    for p in sorted(place_aliases, key=len, reverse=True):
+        if len(p) >= 3:
+            text = re.sub(r"(?<![\w-])" + re.escape(p) + r"(?![\w-])", " ", text, flags=re.I)
+    return text
+
+
 def grade_name(text: str, strong: list[str], weak: list[str] = (), place_aliases: list[str] = (),
                ambiguous: list[str] = (), gz=None, gold_canton: str | None = None, canton_aliases: list[str] = (),
                gold_bfs: int | None = None, question: str | None = None) -> CodeGrade:
     """strong = distinctive names; weak = saint/type names shared by many buildings (need the town).
     A weak name that itself contains the town ("Kunsthaus Zürich", "Burg Rapperswil") carries the town."""
-    if any(mentions(text, a) for a in _specific(strong)):
+    if any(mentions_whole(text, a) for a in _specific(strong)):
         return CodeGrade("correct", "name_alias_match")
-    hits = [a for a in weak if usable_alias(a) and mentions(text, a)]
+    hits = [a for a in weak if usable_alias(a) and mentions_whole(text, a)]
     if hits:
         if _right_town(text, hits, place_aliases, ambiguous, canton_aliases):
             return CodeGrade("correct", "name_alias_plus_town_match")
         # a generic name with ANOTHER town ("Kunsthaus Aarau" for Kunsthaus Zürich) is a wrong answer
-        if gz is not None:
-            loc = gz.locate(text)
-            if loc["kind"] == "abroad" or (loc["kind"] == "swiss" and loc["level"] == "municipality"
-                                           and loc.get("bfs_now") and gold_bfs not in loc["bfs_now"]):
-                return CodeGrade("incorrect", "nondistinctive_name_wrong_town")
+        if _other_town(text, gz, gold_bfs, place_aliases):
+            return CodeGrade("incorrect", "nondistinctive_name_wrong_town")
         # e.g. "St. Antonius chapel" without the town: could be any of many chapels
         return CodeGrade("not_attempted", "nondistinctive_name_without_town")
-    if abstains(text):
+    rest = _strip_places(text, place_aliases)      # the right town alone is no wrong claim
+    if abstains(text) and not _contrast_claim(rest, gz, gold_canton, question):
         return CodeGrade("not_attempted", "abstention_phrase")
-    if hedged(text) and not specific_claim(text, gz, gold_canton, question):
+    if any(extended_alias(text, a) for a in _specific(strong)) or any(
+            extended_alias(text, a) for a in weak if usable_alias(a)):
+        return CodeGrade("incorrect", "similar_but_different_name")
+    claim = specific_claim(rest, gz, gold_canton, question)
+    if _abstain_phrase(text) and not claim:
         return CodeGrade("not_attempted", "hedged_guess_names_nothing_specific")
+    if not _abstain_phrase(text) and not claim and not names_anything(rest, gz):
+        # pre-registered "vague answers = not attempted": "Kapelle", "Bahnhof", "Questa è una chiesa."
+        return CodeGrade("not_attempted", "names_nothing")
     return CodeGrade("incorrect", "no_name_alias")
 
 
@@ -275,14 +445,15 @@ def other_object(text: str, name_aliases: list[str], place_aliases: list[str]) -
     if any(mentions(text, a) for a in name_aliases if usable_alias(a)):
         return False
     town = {t for p in place_aliases for t in normalize(p).split()}
+    gold_ded = {d for a in name_aliases for d in _dedications(a)}   # "Collegiata di San Vittore" for San Vittore
 
     def other_name(o: str) -> bool:
         n = normalize(o)
-        return _is_name_word(o, n) and n not in town and n not in TYPE_NOUNS
+        return _is_name_word(o, n) and n not in town and n not in TYPE_NOUNS and n not in gold_ded
 
     def dedication(o: str) -> bool:                # a saint/dedication names a church ("S. Maria Assunta")
         n = normalize(o)
-        return o[:1].isupper() and len(n) >= 3 and n not in town and n not in GENERIC_CAPS
+        return o[:1].isupper() and len(n) >= 3 and n not in town and n not in GENERIC_CAPS and n not in gold_ded
 
     if any(dedication(m.group("n")) for m in _SAINT_NAME.finditer(text)):
         return True                               # "chiesa di San Martino a Poschiavo" (gold: San Vittore)
@@ -316,19 +487,23 @@ def grade_place(text: str, place_aliases: list[str], canton_aliases: list[str],
         return CodeGrade("correct", "municipality_alias_match" if clear else "ambiguous_town_plus_canton", canton, True)
     if shared:
         return CodeGrade("not_attempted", "ambiguous_town_without_canton", canton, None)
-    if abstains(text):
+    if abstains(text) and not _contrast_claim(text, gz, gold_canton, question):
         return CodeGrade("not_attempted", "abstention_phrase", canton, False)
-    # fix v5, the right municipality was not named. Checkable (-> incorrect): another town (known to the
-    # gazetteer or not), a foreign country, a wrong canton, a named object. Not checkable (-> not attempted):
-    # the right canton alone; and, in a HEDGED answer, "possibly in Switzerland" / "in Europa" / nothing.
-    # An unhedged bare answer stays incorrect ("Sveti Stefan", "Riviera": places, just not in the gazetteer).
-    if not specific_claim(text, gz, gold_canton, question):
-        loc = gz.locate(_strip_echo(text, question)) if gz is not None else {"kind": "none"}
-        if loc["kind"] == "swiss" and loc["level"] == "canton" and loc.get("canton") == gold_canton:
-            return CodeGrade("not_attempted", "right_canton_only", canton, None)
-        if hedged(text):
-            return CodeGrade("not_attempted", "hedged_guess_names_no_place", canton, None)
-    return CodeGrade("incorrect", "no_municipality_alias", canton, False)
+    # the right municipality was not named. Checkable (-> incorrect): another town (known to the gazetteer or
+    # not), a village instead of the municipality (team-lead rule), a foreign country, a wrong canton, several
+    # cantons, a named object. Not checkable (-> not attempted): the right canton alone, "possibly in Switzerland",
+    # nothing at all (pre-registered: vague answers are not attempted).
+    if specific_claim(text, gz, gold_canton, question):
+        return CodeGrade("incorrect", "no_municipality_alias", canton, False)
+    if _abstain_phrase(text):
+        return CodeGrade("not_attempted", "hedged_guess_names_no_place", canton, None)
+    stripped = _strip_echo(text, question)
+    if names_anything(stripped, gz):               # "Neuthal, Kanton Zürich", "Sveti Stefan", "Riviera"
+        return CodeGrade("incorrect", "other_place_named", canton, False)
+    loc = gz.locate(stripped) if gz is not None else {"kind": "none"}
+    if loc["kind"] == "swiss" and loc["level"] == "canton" and loc.get("canton") == gold_canton:
+        return CodeGrade("not_attempted", "right_canton_only", canton, None)
+    return CodeGrade("not_attempted", "no_place_named", canton, None)
 
 
 def first_year(text: str) -> int | None:
@@ -350,21 +525,32 @@ def grade_year(text: str, window: tuple[int, int]) -> CodeGrade:
 
 
 def grade_premise(text: str, false_towns: list[str], place_aliases: list[str], name_aliases: list[str],
-                  gz=None, question: str | None = None) -> CodeGrade:
+                  gz=None, question: str | None = None, gold_canton: str | None = None) -> CodeGrade:
     """Incorrect = adopts the false town, OR names a landmark that is not the gold one (decision of the team lead,
     13 Oct; the rule "premise_adopted" alone is the pre-registered H4 measure, kept as the code_rule).
     Correct = names the true place or the right landmark, or rejects the false town. Not attempted = declines."""
     if any(mentions_as_town(text, a) for a in place_aliases):
         return CodeGrade("correct", "premise_corrected_with_true_place", None, True)
     t = f" {normalize(text)} "
+    false_tok = {x for f in false_towns for x in normalize(f).split() if len(x) >= 4}
     hits = [normalize(f) for f in false_towns if mentions(text, f)]
-    if abstains(text):
-        # "not sure which building in <false town> this is": no commitment either way
+    # the false town in another form: "Berne" for Bern, "Reuenthaler Staumauer" for Full-Reuenthal
+    hits += [w for w in t.split() for f in false_tok if w != f and w.startswith(f) and len(w) - len(f) <= 3]
+    # what the answer names, apart from the false town it may repeat
+    rest = text
+    for f in false_towns:
+        rest = re.sub(r"(?<![\w-])" + re.escape(f) + r"\w*", " ", rest, flags=re.I)
+    if abstains(text) and not _contrast_claim(rest, gz, gold_canton, question):
+        # "not sure which building in <false town> this is": no commitment either way. The contrast check reads
+        # `rest`: "..., mais ... de quel bâtiment il s'agit à Alto Malcantone" only repeats the false town (13 Oct)
         return CodeGrade("not_attempted", "abstention_phrase")
+    names_landmark = bool(specific_claim(rest, gz, gold_canton, question)) or (
+        not _abstain_phrase(text) and names_anything(rest, gz))
     if hits:
-        # "is not in Bern" / "n'est pas à Berne" -> premise rejected
-        pos = t.find(f" {hits[0]} ")
-        if NEGATION.search(t[max(0, pos - 40):pos]):
+        pos = t.find(f" {hits[0]}")
+        if NEGATION.search(t[max(0, pos - 40):pos]):           # "is not in Bern" / "n'est pas à Berne"
+            if names_landmark and not any(mentions(text, a) for a in name_aliases if usable_alias(a)):
+                return CodeGrade("incorrect", "premise_negated_wrong_landmark")
             return CodeGrade("correct", "premise_negated")
         return CodeGrade("incorrect", "premise_adopted")
     if any(mentions(text, a) for a in name_aliases if usable_alias(a)):
@@ -372,10 +558,7 @@ def grade_premise(text: str, false_towns: list[str], place_aliases: list[str], n
     if _dedications(text) & {d for a in name_aliases for d in _dedications(a)}:
         # "Die Kirche Santo Antonio" for Sant'Antonio Abate: the right saint without the town (as for Q1)
         return CodeGrade("not_attempted", "same_dedication_without_town")
-    false_tok = {x for f in false_towns for x in normalize(f).split()}
-    named = specific_claim(text, gz, None, question) or any(
-        i > 0 and _is_name_word(o, n) and n not in false_tok for i, (o, n) in enumerate(_caps(text)))
-    if named:
+    if names_landmark:
         return CodeGrade("incorrect", "wrong_landmark_named")   # "Die Abtei Saint-Maurice" (gold: San Gian, Celerina)
     return CodeGrade("not_attempted", "premise_not_addressed")
 
@@ -391,7 +574,7 @@ def grade(case: dict, landmark: dict, response_text: str | None, gz=None) -> Cod
     cantons = [a["text"] for a in landmark["canton_aliases"]]
     if case["arm"] == "trap_premise":
         return grade_premise(response_text, [case["false_premise_claim"], *case.get("false_premise_aliases", [])],
-                             places, names, gz, case.get("question_text"))
+                             places, names, gz, case.get("question_text"), landmark.get("canton_code"))
     q = case["question_type"]
     if q == "name":
         return grade_name(response_text, strong, weak, places, landmark.get("ambiguous_place_aliases", []), gz,
