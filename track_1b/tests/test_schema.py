@@ -17,7 +17,7 @@ LANDMARK = dict(
     canton_aliases=[{"text": "Vaud", "lang": "fr", "source": "wikidata:label"}],
     municipality_bfs="5586", municipality_name="Lausanne",
     place_aliases=[{"text": "Lausanne", "lang": "fr", "source": "bfs:name"}],
-    language_region="FR", sitelinks=1, fame_tier="low", fame_rank_in_region=0.9,
+    language_region="FR", sitelinks=1, wikipedia_articles=0, fame_tier="low", fame_rank_in_region=0.9,
     coords=(46.5216, 6.6325), p18_file="Fontaine.jpg",
     inception_raw="1585-01-01T00:00:00Z", inception_precision=9, gold_year=1585, year_window=(1580, 1590),
     name_leaks_place=False, stratum="FR|low", selection_seed=20261013,
@@ -63,7 +63,7 @@ def mutate(base, **changes):
 @pytest.mark.parametrize("model,row", [
     (Landmark, LANDMARK),
     (Landmark, mutate(LANDMARK, gold_year=None, year_window=None, inception_precision=7)),
-    (Landmark, mutate(LANDMARK, lookalike_set_id="justice-fountain", fame_tier="high", fame_rank_in_region=0.0)),
+    (Landmark, mutate(LANDMARK, lookalike_set_id="justice-fountain", fame_tier="high", wikipedia_articles=5, fame_rank_in_region=0.0)),
     (TestCase, CASE),
     (TestCase, mutate(CASE, item_id="Q1-text_only-place-de", arm="text_only", question_type="place", lang="de", image_id=None)),
     (TestCase, mutate(CASE, item_id="Q1-trap_premise-year-fr", arm="trap_premise", question_type="year",
@@ -87,6 +87,7 @@ def test_valid_rows_accepted(model, row):
     (Landmark, mutate(LANDMARK, gold_year=1700)),                    # year outside window
     (Landmark, mutate(LANDMARK, coords=(48.8566, 2.3522))),          # Paris, not Switzerland
     (Landmark, mutate(LANDMARK, unexpected="x")),                    # extra field
+    (Landmark, mutate(LANDMARK, wikipedia_articles=4)),              # tier inconsistent with fame
     (TestCase, mutate(CASE, image_id=None)),                         # photo item without image
     (TestCase, mutate(CASE, item_id="Q2-photo_main-name-fr")),       # id does not match fields
     (TestCase, mutate(CASE, expected_behavior="reject_premise")),    # premise only on premise traps

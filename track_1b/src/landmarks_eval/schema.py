@@ -107,6 +107,7 @@ class Landmark(Strict):
     language_region: Region
     region_method: Literal["BFS SPRGEB2020"] = "BFS SPRGEB2020"
     sitelinks: int = Field(ge=0)
+    wikipedia_articles: int = Field(ge=0)
     fame_tier: FameTier
     fame_rank_in_region: float = Field(ge=0, le=1)  # 0 = most famous in its region
     coords: tuple[float, float]  # (lat, lon)
@@ -148,6 +149,9 @@ class Landmark(Strict):
             raise ValueError("at least one name alias required")
         if not self.place_aliases or not self.canton_aliases:
             raise ValueError("place and canton aliases required")
+        expected_tier = "low" if self.wikipedia_articles == 0 else "mid" if self.wikipedia_articles <= 2 else "high"
+        if self.fame_tier.value != expected_tier:
+            raise ValueError(f"fame_tier {self.fame_tier.value} inconsistent with {self.wikipedia_articles} Wikipedia articles")
         return self
 
 
