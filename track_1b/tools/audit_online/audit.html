@@ -32,7 +32,7 @@ details.help summary{cursor:pointer;font-weight:600}
 
 <header>
   <h1>Grading audit</h1>
-  <label>I am <select id="who"><option value="">choose…</option><option>A1</option><option>A2</option><option>A3</option></select></label>
+  <label>I am <select id="who"><option value="">choose…</option></select></label>
   <div class="bar" aria-hidden="true"><i id="prog"></i></div><span id="count" class="meta"></span>
   <span id="mode" class="chip">Connecting…</span>
   <button id="next" type="button">Next unlabelled ↓</button>
@@ -42,7 +42,7 @@ details.help summary{cursor:pointer;font-weight:600}
   <div id="notice" class="notice" hidden></div>
   <details class="help" open>
     <summary>How to grade (read once)</summary>
-    <p>Work <b>alone</b>: choose your ID, grade your items, and don't discuss items until all three of you have finished. The page only ever shows <b>your own</b> labels, never the model's grade, the judge's or another annotator's.</p>
+    <p>Work <b>alone</b>: choose your ID and grade your items without looking anything up or asking anyone (if several people grade, don't discuss items until everyone has finished). The page never shows the model's grade or the judge's, only <b>your own</b> labels.</p>
     <p>For each item compare the <b>model answer</b> with the <b>gold answer</b> and choose:</p>
     <ul>
       <li><b>Correct</b>: it names the gold landmark / the right municipality / a year in the window, and nothing contradicts the gold.</li>
@@ -139,6 +139,7 @@ function choose(a) {
   }, err => notice("Live connection stopped (" + (err && err.code || "error") + "). Reload the page; your saved labels are kept."));
 }
 
+Object.keys(D.orders).forEach(a => { const o = document.createElement("option"); o.textContent = a; $("#who").append(o); });
 $("#who").onchange = e => choose(e.target.value);
 $("#next").onclick = () => { if (!who) return; const id = (D.orders[who] || []).find(i => !(LAB[i] || {}).label);
   if (!id) { notice("All your items are labelled. Thank you!"); return; }

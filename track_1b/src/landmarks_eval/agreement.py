@@ -66,5 +66,18 @@ def agreement(human_rows: list[dict], judgements: dict, cases: dict) -> dict:
     return out
 
 
+def self_consistency(first_rows: list[dict], repeat_rows: list[dict]) -> dict | None:
+    """Test-retest agreement of one annotator on the items shown twice (protocol v3: one annotator, so this
+    replaces the agreement between three annotators)."""
+    first = {(r["item_id"], r["annotator_id"]): r["label"] for r in first_rows}
+    pairs = [(first[(r["item_id"], r["annotator_id"])], r["label"]) for r in repeat_rows
+             if (r["item_id"], r["annotator_id"]) in first]
+    if not pairs:
+        return None
+    return {"n": len(pairs), "raw_agreement": sum(a == b for a, b in pairs) / len(pairs),
+            "cohen_kappa": cohen_kappa([a for a, _ in pairs], [b for _, b in pairs]),
+            "changes": {f"{a}->{b}": n for (a, b), n in sorted(Counter(pairs).items()) if a != b}}
+
+
 def _short(c):
     return None if c is None else {k: c[k] for k in ("n", "cohen_kappa", "raw_agreement")}

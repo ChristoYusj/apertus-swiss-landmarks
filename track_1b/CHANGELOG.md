@@ -239,3 +239,15 @@ right_canton_only, similar_but_different_name, ...) and a seeded random 150 per 
 - **Frozen as `judge-v1` by the commit containing this entry**, before the full judge run and before the human
   audit sample is drawn. Judging is parallel (`JUDGE_CONCURRENCY`) and resumable (cache by response hash and
   prompt version, file written every 200 items). New command `landmarks-eval judge-dev`.
+
+## Human audit protocol v3: one annotator (14 Oct, before the sample was drawn)
+- The team has ONE annotator for Task G, not three (deviation from analysis_plan.md, which registered three
+  annotators with a 100-item overlap and Fleiss' kappa). The sample is unchanged in size and design: a seeded,
+  stratified 20 % of the 70B answers (the track's "20 % human check"), excluding the judge dev set.
+- Instead of agreement between annotators, 40 sampled items are shown a second time, each at least 150 items
+  after its first showing, without notice; test-retest agreement (raw, Cohen's kappa) is reported as the
+  annotator's self-consistency (`agreement.self_consistency`, `human_audit_repeat.jsonl`).
+- Judge-vs-human and code-vs-human agreement are reported as planned. Inter-annotator agreement cannot be
+  reported (stated as a limitation).
+- The online audit page (`tools/audit_online`) and the offline page show the same items in the same order;
+  answers not in French get a labelled English machine gloss (`landmarks-eval glosses`, gpt-oss-120b, names kept).

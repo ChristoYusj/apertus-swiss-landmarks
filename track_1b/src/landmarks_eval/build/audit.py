@@ -1,12 +1,15 @@
 """Task G (docs/annotation_guidelines.md): the blind human grading audit.
 
   draw_sample()   seeded random 20 % of graded answers, stratified by arm x language x judge label (code label
-                  where no judge label exists yet), excluding the judge dev set; 100 items go to all three
-                  annotators (agreement), the rest are split evenly (analysis_plan.md, "Human audit")
-  build_page()    one offline HTML page for A1-A3 on one shared computer: each annotator works under their own
-                  ID and never sees the others' labels, the model's grades or the judge's; progress autosaves,
-                  "Save progress" downloads audit_labels.json at any time, "Load saved file" resumes
-  merge_labels()  audit_labels.json (one or several) -> <results>/human_audit.jsonl (schema HumanLabel)
+                  where no judge label exists yet), excluding the judge dev set (analysis_plan.md, "Human audit").
+                  Protocol v3 (14 Oct, the team has ONE annotator): every item goes to A1; instead of agreement
+                  between three annotators, REPEATS items are shown a second time, at least REPEAT_GAP items after
+                  the first time, to measure the annotator's self-consistency (test-retest)
+  page_data()     items + the annotator's order with the repeats inserted (no grades: the page is blind)
+  build_page()    one offline HTML page; progress autosaves, "Save progress" downloads audit_labels.json,
+                  "Load saved file" resumes. tools/audit_online builds the same items as an online page
+  merge_labels()  audit_labels.json (one or several) -> <results>/human_audit.jsonl (first labels) and
+                  human_audit_repeat.jsonl (the second labels of the repeated items)
 """
 
 from __future__ import annotations
@@ -23,9 +26,12 @@ from ..schema import HumanLabel
 
 SEED = 20261017
 SHARE = 0.20
-OVERLAP = 100
-ANNOTATORS = ("A1", "A2", "A3")
-GUIDELINE_VERSION = "v2"
+ANNOTATORS = ("A1",)
+OVERLAP = 0                    # items labelled by every annotator (pre-registered: 100 with three annotators)
+REPEATS = 40
+REPEAT_GAP = 150
+REPEAT_SUFFIX = "~r"           # page/label id of an item's second showing (allowed in a database document id)
+GUIDELINE_VERSION = "v3-single"
 Q_GLOSS = {
     "name.photo": "What is this building or monument? Give its precise name.",
     "place.photo": "Where is this building or monument? Give the municipality and the canton.",
@@ -53,15 +59,39 @@ def draw_sample(dataset: Path, results: Path, dev_ids: set[str] = frozenset()) -
     sample.sort()
     order = sample[:]
     rng.shuffle(order)
-    overlap = set(order[:OVERLAP])
+    n_over = OVERLAP if len(ANNOTATORS) > 1 else 0
+    overlap = set(order[:n_over])
     who = {i: list(ANNOTATORS) for i in overlap}
-    for n, i in enumerate(order[OVERLAP:]):
-        who[i] = [ANNOTATORS[n % 3]]
+    for n, i in enumerate(order[n_over:]):
+        who[i] = [ANNOTATORS[n % len(ANNOTATORS)]]
     return {"seed": SEED, "share": SHARE, "stratified_by": "arm x lang x judge label (code label if no judge label)",
+            "protocol": GUIDELINE_VERSION, "annotators": list(ANNOTATORS),
             "judge_labels_used": all(j["judge_label"] for j in judg), "n_graded": len(judg), "n_sample": len(sample),
             "n_overlap": len(overlap), "dev_items_excluded": len(dev_ids),
             "per_annotator": {a: sum(a in w for w in who.values()) for a in ANNOTATORS},
             "items": [{"item_id": i, "annotators": who[i], "in_overlap": i in overlap} for i in sample]}
+
+
+def _orders(sample: dict) -> tuple[dict, list]:
+    """Each annotator's shuffled order; with one annotator, REPEATS items from the first half are shown again at a
+    random place at least REPEAT_GAP items later (the second showing has the id <item>~r)."""
+    rng = random.Random(SEED + 1)
+    orders, repeats = {}, []
+    for a in ANNOTATORS:
+        mine = [s["item_id"] for s in sample["items"] if a in s["annotators"]]
+        rng.shuffle(mine)
+        orders[a] = mine
+    if len(ANNOTATORS) == 1 and REPEATS:
+        a = ANNOTATORS[0]
+        order = orders[a]
+        eligible = order[:max(0, min(len(order) // 2, len(order) - REPEAT_GAP))]   # the gap must fit after them
+        chosen = rng.sample(eligible, min(REPEATS, len(eligible)))
+        for iid in sorted(chosen, key=order.index, reverse=True):     # insert from the back: earlier slots stay valid
+            lo = order.index(iid) + REPEAT_GAP
+            pos = rng.randint(min(lo, len(order)), len(order))
+            order.insert(pos, iid + REPEAT_SUFFIX)
+        repeats = [{"item_id": i, "repeat_id": i + REPEAT_SUFFIX, "annotator": a} for i in sorted(chosen)]
+    return orders, repeats
 
 
 def _q_gloss(c: dict) -> str:
@@ -70,14 +100,17 @@ def _q_gloss(c: dict) -> str:
 
 
 def page_data(dataset: Path, results: Path, dev_ids: set[str] = frozenset()) -> tuple[dict, dict]:
-    """(items + per-annotator orders for a labelling page, the drawn sample). Shared by the offline page and the
-    online version (tools/audit_online)."""
+    """(items + per-annotator orders for a labelling page, the drawn sample incl. the repeat schedule). Shared by
+    the offline page and the online version (tools/audit_online)."""
     cases = {c["item_id"]: c for c in load_jsonl(dataset / "data" / "test_cases.jsonl")}
     lms = {l["qid"]: l for l in load_jsonl(dataset / "data" / "landmarks.jsonl")}
     resp = {r["item_id"]: r for r in load_jsonl(results / "responses.jsonl")}
     gl_path = results / "glosses.jsonl"
     gloss = {g["item_id"]: g["gloss_en"] for g in load_jsonl(gl_path)} if gl_path.exists() else {}
     sample = draw_sample(dataset, results, dev_ids)
+    orders, repeats = _orders(sample)
+    sample["repeats"] = repeats
+    sample["repeat_gap_min"] = REPEAT_GAP
     items = []
     for s in sample["items"]:
         c = cases[s["item_id"]]
@@ -85,12 +118,9 @@ def page_data(dataset: Path, results: Path, dev_ids: set[str] = frozenset()) -> 
                       "qtype": c["question_type"], "question": c["question_text"], "q_gloss": _q_gloss(c),
                       "gold": gold_text(c, lms[c["landmark_qid"]]), "answer": resp[s["item_id"]]["response_text"] or "",
                       "a_gloss": gloss.get(s["item_id"])})  # NO judge or code label in the page (blind)
-    rng = random.Random(SEED + 1)
-    orders = {}
-    for a in ANNOTATORS:
-        mine = [it["id"] for it in items if a in it["who"]]
-        rng.shuffle(mine)
-        orders[a] = mine
+    by_id = {it["id"]: it for it in items}
+    for r in repeats:                                   # the second showing: identical content, its own id
+        items.append({**by_id[r["item_id"]], "id": r["repeat_id"], "who": [r["annotator"]]})
     return {"items": items, "orders": orders}, sample
 
 
@@ -105,7 +135,9 @@ def build_page(dataset: Path, results: Path, out_dir: Path, dev_ids: set[str] = 
 
 
 def merge_labels(results: Path, files: list[Path], sample_path: Path) -> dict:
-    sample = {s["item_id"]: s for s in json.loads(sample_path.read_text(encoding="utf-8"))["items"]}
+    sample_all = json.loads(sample_path.read_text(encoding="utf-8"))
+    sample = {s["item_id"]: s for s in sample_all["items"]}
+    repeat_of = {r["repeat_id"]: r for r in sample_all.get("repeats", [])}
     best: dict[tuple, dict] = {}
     for f in files:
         sub = json.loads(Path(f).read_text(encoding="utf-8"))
@@ -113,23 +145,32 @@ def merge_labels(results: Path, files: list[Path], sample_path: Path) -> dict:
             raise SystemExit(f"{f}: not an audit_labels.json file")
         for a, labs in sub["labels"].items():
             for iid, v in labs.items():
-                if iid not in sample or a not in sample[iid]["annotators"] or not v.get("label"):
+                if not v.get("label"):
+                    continue
+                if iid in repeat_of:
+                    if a != repeat_of[iid]["annotator"]:
+                        continue
+                elif iid not in sample or a not in sample[iid]["annotators"]:
                     continue
                 key = (iid, a)
                 if key not in best or v.get("t", "") > best[key].get("t", ""):  # latest decision wins
                     best[key] = {**v, "guideline_version": sub.get("guideline_version", GUIDELINE_VERSION)}
-    rows = []
+    rows, rep_rows = [], []
     for (iid, a), v in sorted(best.items()):
-        row = {"item_id": iid, "annotator_id": a, "label": v["label"], "in_overlap": sample[iid]["in_overlap"],
+        base = repeat_of[iid]["item_id"] if iid in repeat_of else iid
+        row = {"item_id": base, "annotator_id": a, "label": v["label"], "in_overlap": sample[base]["in_overlap"],
                "guideline_version": v["guideline_version"], "timestamp": v.get("t") or dt.datetime.now(dt.timezone.utc).isoformat(),
                "used_translation": bool(v.get("used_translation")), "unsure": bool(v.get("unsure"))}
         HumanLabel.model_validate(row)
-        rows.append(row)
+        (rep_rows if iid in repeat_of else rows).append(row)
     write_jsonl(results / "human_audit.jsonl", rows)
+    if repeat_of:
+        write_jsonl(results / "human_audit_repeat.jsonl", rep_rows)
     expected = {a: sum(a in s["annotators"] for s in sample.values()) for a in ANNOTATORS}
     done = {a: sum(r["annotator_id"] == a for r in rows) for a in ANNOTATORS}
     return {"labels": len(rows), "done_per_annotator": done, "expected_per_annotator": expected,
-            "complete": done == expected}
+            "repeats_done": len(rep_rows), "repeats_expected": len(repeat_of),
+            "complete": done == expected and len(rep_rows) == len(repeat_of)}
 
 
 PAGE = r"""<!doctype html><html lang="en"><head><meta charset="utf-8">
@@ -152,13 +193,13 @@ button.primary{background:var(--accent);border-color:var(--accent);color:#fff}.b
 .meta{font-size:12px;color:var(--mute)}.saved{font-size:12px;color:var(--mute)}input[type=file]{display:none}
 </style></head><body>
 <header><h1>Grading audit</h1>
-<label>I am <select id="who"><option value="">choose…</option><option>A1</option><option>A2</option><option>A3</option></select></label>
+<label>I am <select id="who"><option value="">choose…</option></select></label>
 <div class="bar"><i id="prog"></i></div><span id="count" class="meta"></span>
 <button id="next">Next unlabelled ↓</button><button id="save" class="primary">Save progress</button>
 <button id="loadbtn" type="button">Load saved file</button><input type="file" id="load" accept=".json,application/json">
 <span id="saved" class="saved"></span></header>
 <main>
-<div class="help"><b>Read the guidelines (Task G) first.</b> Work <b>alone</b>: choose your ID, label your items, and do not discuss items until all three have finished. You only ever see your own labels.
+<div class="help"><b>Read the guidelines (Task G) first.</b> Work <b>alone</b>: choose your ID and label your items without looking anything up (if several people label, do not discuss items until everyone has finished). You only ever see your own labels.
 For each item choose <b>Correct</b>, <b>Incorrect</b> or <b>Not attempted</b> by comparing the model's answer with the gold answer. Tick <i>used translation</i> if you relied on the English gloss, and <i>unsure</i> if it was a hard call.
 Every click is saved in this browser. Press <b>Save progress</b> whenever you stop (downloads <code>audit_labels.json</code> with everyone's progress on this computer); <b>Load saved file</b> continues from such a file.</div>
 <div id="list"></div></main>
@@ -192,6 +233,7 @@ function card(id, k){ const it = ITEMS[id], s = mine()[id] || {}, c = el("div", 
 function redraw(id){ const o = D.orders[who]; document.getElementById("c-" + id).replaceWith(card(id, o.indexOf(id))); progress() }
 function render(){ const L = $("#list"); L.textContent = ""; if (!who){ L.textContent = "Choose your ID (A1, A2 or A3) at the top."; progress(); return }
   D.orders[who].forEach((id, k) => L.appendChild(card(id, k))); progress() }
+Object.keys(D.orders).forEach(a => { const o = document.createElement("option"); o.textContent = a; $("#who").append(o) });
 $("#who").onchange = e => { who = e.target.value; render(); window.scrollTo(0, 0) };
 $("#next").onclick = () => { if (!who) return; const id = D.orders[who].find(i => !(mine()[i] || {}).label);
   if (!id) return alert("All your items are labelled. Press Save progress."); document.getElementById("c-" + id).scrollIntoView({behavior: "smooth"}) };

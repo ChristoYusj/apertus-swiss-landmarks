@@ -38,32 +38,54 @@ def test_sample_is_stratified_seeded_and_excludes_dev(tmp_path):
     ids = [x["item_id"] for x in s1["items"]]
     assert "Q1-x0001" not in ids
     assert abs(len(ids) - 0.2 * 599) <= 4                               # 20 %, rounded per stratum
-    assert s1["n_overlap"] == 100 and sum(x["in_overlap"] for x in s1["items"]) == 100
-    assert all(len(x["annotators"]) == (3 if x["in_overlap"] else 1) for x in s1["items"])
-    assert max(s1["per_annotator"].values()) - min(s1["per_annotator"].values()) <= 1
+    # protocol v3: one annotator labels the whole sample, no overlap
+    assert s1["n_overlap"] == 0 and all(x["annotators"] == ["A1"] and not x["in_overlap"] for x in s1["items"])
+    assert s1["per_annotator"] == {"A1": len(ids)}
 
 
-def test_page_is_blind_and_merge_keeps_latest(tmp_path):
-    ds, res = _dataset(tmp_path)
+def _labels_page(tmp_path, n=1200):
+    ds, res = _dataset(tmp_path, n=n)
     page = audit.build_page(ds, res, tmp_path / "out")
     html = page.read_text(encoding="utf-8")
     data = json.loads(re.search(r"const D = (\{.*?\}), VERSION", html, re.S).group(1).replace("<\\/", "</"))
-    assert not any(k in it for it in data["items"] for k in ("code_label", "judge_label", "final_label", "label"))
     sample = json.loads((tmp_path / "out" / "audit_sample.json").read_text())
-    ov = next(x["item_id"] for x in sample["items"] if x["in_overlap"])
-    solo = next(x for x in sample["items"] if not x["in_overlap"])
-    other = next(a for a in ("A1", "A2", "A3") if a not in solo["annotators"])
+    return ds, res, data, sample
+
+
+def test_page_is_blind_and_repeats_are_spaced(tmp_path):
+    ds, res, data, sample = _labels_page(tmp_path)
+    assert not any(k in it for it in data["items"] for k in ("code_label", "judge_label", "final_label", "label"))
+    order = data["orders"]["A1"]
+    reps = sample["repeats"]
+    assert len(reps) == 40 and len(order) == sample["n_sample"] + 40 and len(set(order)) == len(order)
+    for r in reps:                                      # each repeat comes at least 150 items after the first showing
+        assert order.index(r["repeat_id"]) - order.index(r["item_id"]) >= 150
+    items = {it["id"]: it for it in data["items"]}
+    r = reps[0]
+    assert {k: v for k, v in items[r["repeat_id"]].items() if k != "id"} == {k: v for k, v in items[r["item_id"]].items() if k != "id"}
+    assert audit.page_data(ds, res)[1]["repeats"] == reps   # seeded schedule
+
+
+def test_merge_keeps_latest_and_splits_repeats(tmp_path):
+    ds, res, data, sample = _labels_page(tmp_path)
+    rep = sample["repeats"][0]
+    solo = next(x["item_id"] for x in sample["items"] if x["item_id"] != rep["item_id"])
     f1 = tmp_path / "a.json"
-    f1.write_text(json.dumps({"format": "audit-v1", "guideline_version": "v2", "labels": {
-        "A1": {ov: {"label": "correct", "t": "2026-10-15T08:00:00Z"}},
-        other: {solo["item_id"]: {"label": "correct", "t": "2026-10-15T08:00:00Z"}}}}))   # not assigned -> ignored
+    f1.write_text(json.dumps({"format": "audit-v1", "guideline_version": "v3-single", "labels": {
+        "A1": {solo: {"label": "correct", "t": "2026-10-15T08:00:00Z"},
+               rep["item_id"]: {"label": "incorrect", "t": "2026-10-15T08:00:00Z"},
+               rep["repeat_id"]: {"label": "not_attempted", "t": "2026-10-15T10:00:00Z", "unsure": True}},
+        "A2": {solo: {"label": "incorrect", "t": "2026-10-15T08:00:00Z"}}}}))       # not assigned -> ignored
     f2 = tmp_path / "b.json"
-    f2.write_text(json.dumps({"format": "audit-v1", "guideline_version": "v2", "labels": {
-        "A1": {ov: {"label": "incorrect", "t": "2026-10-15T09:00:00Z", "used_translation": True}}}}))
-    rep = audit.merge_labels(res, [f1, f2], tmp_path / "out" / "audit_sample.json")
-    rows = [json.loads(l) for l in open(res / "human_audit.jsonl")]
-    assert rep["labels"] == 1 and rows[0]["label"] == "incorrect" and rows[0]["used_translation"] is True
-    assert rows[0]["in_overlap"] is True and rep["complete"] is False
+    f2.write_text(json.dumps({"format": "audit-v1", "guideline_version": "v3-single", "labels": {
+        "A1": {solo: {"label": "incorrect", "t": "2026-10-15T09:00:00Z", "used_translation": True}}}}))
+    out = audit.merge_labels(res, [f1, f2], tmp_path / "out" / "audit_sample.json")
+    rows = {r["item_id"]: r for r in map(json.loads, open(res / "human_audit.jsonl"))}
+    reps = [json.loads(l) for l in open(res / "human_audit_repeat.jsonl")]
+    assert out["labels"] == 2 and out["repeats_done"] == 1 and out["repeats_expected"] == 40 and out["complete"] is False
+    assert rows[solo]["label"] == "incorrect" and rows[solo]["used_translation"] is True     # latest decision wins
+    assert rows[rep["item_id"]]["label"] == "incorrect"                                    # first showing
+    assert reps == [{**reps[0], "item_id": rep["item_id"], "label": "not_attempted", "unsure": True}]
 
 
 def test_agreement_majority_and_kappas():
@@ -139,3 +161,15 @@ def test_online_audit_page_matches_offline_and_is_blind(tmp_path):
     assert not any(k in it for it in data(online)["items"] for k in ("code_label", "judge_label", "final_label", "label"))
     assert "__DATA__" not in online and "<!doctype" not in online.lower()   # the artifact publisher adds the skeleton
     assert (tmp_path / "on" / "audit_sample.json").read_text() == (tmp_path / "off" / "audit_sample.json").read_text()
+
+
+def test_self_consistency_of_one_annotator():
+    from landmarks_eval.agreement import self_consistency
+    first = [{"item_id": f"i{k}", "annotator_id": "A1", "label": lab} for k, lab in
+             enumerate(["incorrect", "incorrect", "not_attempted", "correct"])]
+    again = [{"item_id": "i0", "annotator_id": "A1", "label": "incorrect"},
+             {"item_id": "i2", "annotator_id": "A1", "label": "incorrect"},
+             {"item_id": "i3", "annotator_id": "A1", "label": "correct"}]
+    sc = self_consistency(first, again)
+    assert sc["n"] == 3 and abs(sc["raw_agreement"] - 2 / 3) < 1e-9 and sc["changes"] == {"not_attempted->incorrect": 1}
+    assert self_consistency(first, []) is None
