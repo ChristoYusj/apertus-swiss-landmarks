@@ -1,0 +1,330 @@
+<title>Landmark Photo Screening</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: one sticky control strip, then one card per landmark (main photo + its other views), single column. */
+:root {
+  --paper: #f3f5f4; --card: #ffffff; --ink: #18212b; --mute: #5d6a72; --line: #d9dfdd;
+  --signal: #c8261b; --ok: #1d7a4c; --warn: #9a5b00; --pick: #2453b8; --pick-soft: #e7eefc; --warn-soft: #fbf0dc;
+  --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --paper: #121619; --card: #1b2125; --ink: #e8ecea; --mute: #9aa6ab; --line: #2e373c;
+  --signal: #ff6b5e; --ok: #4cc38a; --warn: #f0a94a; --pick: #8bb0ff; --pick-soft: #1d2a45; --warn-soft: #3a2c14; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --paper: #121619; --card: #1b2125; --ink: #e8ecea; --mute: #9aa6ab; --line: #2e373c;
+  --signal: #ff6b5e; --ok: #4cc38a; --warn: #f0a94a; --pick: #8bb0ff; --pick-soft: #1d2a45; --warn-soft: #3a2c14; color-scheme: dark }
+* { box-sizing: border-box }
+[hidden] { display: none !important }
+body { background: var(--paper); color: var(--ink); font: 15px/1.5 var(--body); padding-inline: 16px; padding-block: 0 48px }
+h1 { font: 700 19px/1.2 var(--display); letter-spacing: .01em; margin: 0; text-wrap: balance }
+.wrap { max-width: 1100px; margin-inline: auto }
+header { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--paper); border-bottom: 1px solid var(--line);
+  margin-inline: -16px; padding: 10px 16px; display: flex; flex-direction: column; gap: 8px }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center }
+.grow { flex: 1 1 140px; min-width: 0 }
+.bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden }
+.bar > i { display: block; height: 100%; width: 0; background: var(--ok); transition: width .3s }
+.count { font: 500 13px var(--mono); color: var(--mute); font-variant-numeric: tabular-nums }
+.chip { font-size: 12.5px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--mute) }
+.chip.shared { border-color: var(--ok); color: var(--ok) }
+.chip.local { border-color: var(--warn); color: var(--warn); background: var(--warn-soft) }
+button, .btn { font: inherit; font-size: 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--ink);
+  padding: 6px 11px; cursor: pointer; min-height: 34px }
+button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--pick); outline-offset: 2px }
+button.primary { background: var(--signal); border-color: var(--signal); color: #fff }
+button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper) }
+button[disabled] { opacity: .45; cursor: default }
+label.inline { display: inline-flex; gap: 6px; align-items: center; font-size: 14px; cursor: pointer }
+input[type=number] { width: 84px; font: inherit; padding: 5px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--ink) }
+.note { font-size: 13px; color: var(--mute) }
+.notice { border: 1px solid var(--line); background: var(--card); border-radius: 10px; padding: 10px 12px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center }
+.notice[data-kind=warn] { border-color: var(--warn); background: var(--warn-soft) }
+details.help { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 4px 14px; margin-block: 14px }
+details.help summary { cursor: pointer; font-weight: 700; padding-block: 8px }
+details.help ol { padding-left: 20px; margin-block: 4px 10px } details.help li { margin-block: 4px }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin-block: 14px; display: flex; flex-direction: column; gap: 10px; scroll-margin-top: 130px }
+.card.done { border-color: var(--ok) }
+body.hide-done .card.done { display: none }
+.head { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap }
+.num { font: 500 12px var(--mono); color: var(--mute); font-variant-numeric: tabular-nums }
+.name { font: 600 16px/1.3 var(--display); min-width: 0 }
+.badge { font-size: 12px; color: var(--ok); font-weight: 700 }
+.where { font-size: 13px; color: var(--mute) } .where a { color: var(--pick) }
+.main { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 14px }
+.ph { position: relative; background: var(--line); border-radius: 8px; overflow: hidden; display: grid; place-items: center }
+.ph img { display: block; width: 100%; height: 100%; object-fit: contain; cursor: zoom-in }
+.main .ph { height: 320px } .alt .ph { height: 200px }
+.ph .wait { font-size: 12px; color: var(--mute) }
+.q { font-weight: 700; font-size: 14px; margin-top: 4px }
+.opts { display: flex; flex-wrap: wrap; gap: 6px }
+.tag { font-size: 12px; color: var(--warn); border: 1px solid var(--warn); border-radius: 999px; padding: 1px 8px; width: fit-content }
+.alts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px }
+.alt { border: 2px solid transparent; border-radius: 10px; padding: 6px; display: flex; flex-direction: column; gap: 6px }
+.alt.view { border-color: var(--pick); background: var(--pick-soft) } .alt.low { border-color: var(--warn); background: var(--warn-soft) }
+.lightbox { position: fixed; inset: 0; z-index: 20; background: rgba(0,0,0,.86); display: grid; place-items: center; padding: 16px; cursor: zoom-out }
+.lightbox img { max-width: 100%; max-height: 100%; border-radius: 6px }
+.empty { padding: 40px 0; color: var(--mute) }
+textarea.dump { width: 100%; height: 160px; font: 12px var(--mono); background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 8px }
+@media (max-width: 760px) { .main { grid-template-columns: 1fr } .main .ph { height: 260px } .alts { grid-template-columns: 1fr 1fr } .alt .ph { height: 150px } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important } }
+</style>
+
+<header>
+  <div class="row">
+    <h1>Landmark Photo Screening</h1>
+    <span id="mode" class="chip">Connecting…</span>
+    <div class="grow bar" aria-hidden="true"><i id="prog"></i></div>
+    <span id="count" class="count">0 / 264</span>
+  </div>
+  <div class="row">
+    <button id="next" type="button">Next unfinished ↓</button>
+    <label class="inline" for="goto">Go to card <input id="goto" type="number" min="1" max="264" inputmode="numeric"></label>
+    <label class="inline" for="hide"><input id="hide" type="checkbox"> Hide finished</label>
+    <span class="grow"></span>
+    <button id="save" type="button" class="primary">Download decisions</button>
+    <button id="loadbtn" type="button">Load a file</button>
+    <input id="load" type="file" accept=".json,application/json" hidden>
+  </div>
+  <div id="notice" class="notice" hidden></div>
+</header>
+
+<main class="wrap">
+  <details class="help" open>
+    <summary>How to screen (read once)</summary>
+    <ol>
+      <li><b>Main photo:</b> <i>OK</i>; or <i>Exclude</i> if a recognisable person, a readable licence plate, a private interior or personal text is visible (tiny, distant people are fine); or <i>Wrong object</i> if it does not show this landmark (another building, a map, a painting).</li>
+      <li><b>Other photos:</b> click <i>Use as 2nd view</i> on the best one: the same building, seen clearly, with no recognisable people. If none qualifies, click <i>None usable</i>.</li>
+      <li><b>Optional:</b> click <i>Too generic</i> on a photo (no people) that alone could not tell even an expert which object it is: a plain wall, a generic door, a typical interior.</li>
+    </ol>
+    <p class="note">When unsure: Exclude, and don't pick. Tap a photo to see it larger. Working as two? One person starts at card 1, the other at card 133 (use <i>Go to card</i>).</p>
+  </details>
+  <div id="list"><p class="empty">Loading the 264 landmarks…</p></div>
+</main>
+<div id="lightbox" class="lightbox" hidden><img id="lbimg" alt=""></div>
+
+<script>
+const KEY = "screening-online-v1", TOTAL_FALLBACK = 264;
+const $ = s => document.querySelector(s);
+let CARDS = [], ST = {}, MODE = "connecting", db = null, dl = null;
+const packs = {}, writing = {}, dirty = new Set(), byQid = {};
+
+function loadPack(k) {
+  if (!packs[k]) packs[k] = fetch("img/c" + String(k).padStart(2, "0") + ".json").then(r => {
+    if (!r.ok) throw new Error("photos " + r.status); return r.json(); });
+  return packs[k];
+}
+function complete(c) { const s = ST[c.qid] || {}; if (!s.main) return false;
+  if (s.main !== "ok" || !c.alts.length) return true; return !!s.alt; }
+function progress() { const n = CARDS.filter(complete).length, t = CARDS.length || TOTAL_FALLBACK;
+  $("#prog").style.width = (100 * n / t) + "%"; $("#count").textContent = n + " / " + t; }
+function setMode(m, text) { MODE = m; const el = $("#mode"); el.className = "chip " + m; el.textContent = text;
+  document.querySelectorAll(".opts button").forEach(b => b.disabled = (m === "connecting")); }
+function notice(html, kind) { const n = $("#notice"); if (!html) { n.hidden = true; return; } n.hidden = false; n.dataset.kind = kind || ""; n.innerHTML = html; }
+function persistLocal() { try { localStorage.setItem(KEY, JSON.stringify(ST)); } catch (e) {} }
+function clean(s) { const o = {}; for (const k of ["main", "main_id", "alt", "low", "t"]) if (s && s[k] !== undefined && s[k] !== null) o[k] = s[k]; return o; }
+
+function decide(qid, patch) {
+  if (MODE === "connecting") return;
+  const s = Object.assign({}, ST[qid] || {}, patch);
+  for (const k of Object.keys(patch)) if (patch[k] === undefined) delete s[k];
+  if (patch.alt && patch.alt !== "none" && s.low === patch.alt) delete s.low;   // a photo is a 2nd view OR too generic
+  if (patch.low && s.alt === patch.low) delete s.alt;
+  s.t = new Date().toISOString();
+  ST[qid] = s; paint(qid); progress();
+  if (MODE === "shared") queueWrite(qid); else persistLocal();
+}
+function queueWrite(qid) { dirty.add(qid); if (!writing[qid]) flush(qid); }
+async function flush(qid) {
+  writing[qid] = true;
+  while (dirty.has(qid)) {
+    dirty.delete(qid);
+    try { await db.doc("screening/" + qid).set(clean(ST[qid])); }
+    catch (e) {
+      if (e && e.code === "unavailable") { await new Promise(r => setTimeout(r, 800 + Math.random() * 800)); dirty.add(qid); continue; }
+      writing[qid] = false; return writeFailed(e);
+    }
+  }
+  writing[qid] = false;
+}
+function writeFailed(e) {
+  // no write permission (or the store is gone): keep every decision on this device instead
+  persistLocal();
+  setMode("local", "Saved on this device only");
+  notice("Your clicks are saved on <b>this device only</b>. When you finish, press <b>Download decisions</b> and send the file to the team lead.", "warn");
+}
+
+function btn(label, pressed, onClick) { const b = document.createElement("button"); b.type = "button"; b.textContent = label;
+  b.setAttribute("aria-pressed", pressed ? "true" : "false"); b.disabled = MODE === "connecting"; b.onclick = onClick; return b; }
+function photo(p, c, cls) {
+  const box = document.createElement("div"); box.className = "ph " + (cls || ""); box.dataset.img = p.id;
+  const w = document.createElement("span"); w.className = "wait"; w.textContent = "loading photo…"; box.append(w); return box; }
+function fillPhotos(card) {
+  const c = byQid[card.dataset.qid];
+  loadPack(c.pack).then(pack => {
+    card.querySelectorAll(".ph[data-img]").forEach(box => {
+      if (box.querySelector("img")) return;
+      const src = pack[box.dataset.img]; if (!src) { box.firstChild.textContent = "photo missing"; return; }
+      const img = document.createElement("img"); img.alt = c.name + " (" + box.dataset.img + ")";
+      img.src = "data:image/jpeg;base64," + src; img.onclick = () => openLightbox(img.src, img.alt);
+      box.textContent = ""; box.append(img);
+    });
+  }).catch(() => card.querySelectorAll(".ph .wait").forEach(w => w.textContent = "photo could not load: reload the page"));
+}
+function srcLink(url) { const a = document.createElement("a"); a.href = url; a.target = "_blank"; a.rel = "noopener"; a.textContent = "source"; return a; }
+
+function build(c, k) {
+  const el = document.createElement("article"); el.className = "card"; el.id = "c-" + c.qid; el.dataset.qid = c.qid; el.dataset.n = k + 1;
+  const head = document.createElement("div"); head.className = "head";
+  const num = document.createElement("span"); num.className = "num"; num.textContent = "#" + (k + 1);
+  const nm = document.createElement("span"); nm.className = "name"; nm.textContent = c.name;
+  const badge = document.createElement("span"); badge.className = "badge";
+  head.append(num, nm, badge);
+  const where = document.createElement("div"); where.className = "where";
+  where.append(c.town + " (" + c.canton + ") · main photo ", srcLink(c.main.page));
+  const main = document.createElement("div"); main.className = "main";
+  main.append(photo(c.main, c));
+  const side = document.createElement("div"); side.style.display = "flex"; side.style.flexDirection = "column"; side.style.gap = "6px";
+  if (c.main.faces > 0) { const t = document.createElement("span"); t.className = "tag"; t.textContent = "face detector: check for people"; side.append(t); }
+  const q1 = document.createElement("div"); q1.className = "q"; q1.textContent = "1. Main photo";
+  const o1 = document.createElement("div"); o1.className = "opts"; o1.dataset.slot = "main";
+  side.append(q1, o1);
+  if (c.alts.length) { const q2 = document.createElement("div"); q2.className = "q"; q2.textContent = "2. Other photos (" + c.alts.length + ")";
+    const o2 = document.createElement("div"); o2.className = "opts"; o2.dataset.slot = "none"; side.append(q2, o2); }
+  else { const p = document.createElement("p"); p.className = "note"; p.textContent = "No other photos for this landmark."; side.append(p); }
+  main.append(side);
+  el.append(head, where, main);
+  if (c.alts.length) {
+    const g = document.createElement("div"); g.className = "alts";
+    c.alts.forEach(p => { const a = document.createElement("div"); a.className = "alt"; a.dataset.alt = p.id;
+      a.append(photo(p, c));
+      if (p.faces > 0) { const t = document.createElement("span"); t.className = "tag"; t.textContent = "check for people"; a.append(t); }
+      const o = document.createElement("div"); o.className = "opts"; o.dataset.slot = "alt:" + p.id; a.append(o);
+      const s = document.createElement("div"); s.className = "where"; s.append(srcLink(p.page)); a.append(s); g.append(a); });
+    el.append(g);
+  }
+  return el;
+}
+function paint(qid) {
+  const c = byQid[qid], el = document.getElementById("c-" + qid); if (!c || !el) return;
+  const s = ST[qid] || {};
+  const o1 = el.querySelector('[data-slot="main"]'); o1.textContent = "";
+  o1.append(btn("OK", s.main === "ok", () => decide(qid, {main: "ok", main_id: c.main.id})),
+            btn("Exclude: person / private", s.main === "exclude", () => decide(qid, {main: "exclude", main_id: c.main.id})),
+            btn("Wrong object", s.main === "wrong", () => decide(qid, {main: "wrong", main_id: c.main.id})));
+  const o2 = el.querySelector('[data-slot="none"]');
+  if (o2) { o2.textContent = ""; o2.append(btn("None usable", s.alt === "none", () => decide(qid, {alt: s.alt === "none" ? undefined : "none"}))); }
+  el.querySelectorAll(".alt").forEach(a => {
+    const id = a.dataset.alt, o = a.querySelector(".opts"); o.textContent = "";
+    o.append(btn("Use as 2nd view", s.alt === id, () => decide(qid, {alt: s.alt === id ? undefined : id})),
+             btn("Too generic", s.low === id, () => decide(qid, {low: s.low === id ? undefined : id})));
+    a.classList.toggle("view", s.alt === id); a.classList.toggle("low", s.low === id);
+  });
+  const done = complete(c); el.classList.toggle("done", done);
+  el.querySelector(".badge").textContent = done ? "✓ done" : "";
+}
+
+function openLightbox(src, alt) { const lb = $("#lightbox"), im = $("#lbimg"); im.src = src; im.alt = alt; lb.hidden = false; }
+$("#lightbox").onclick = () => { $("#lightbox").hidden = true; };
+document.addEventListener("keydown", e => { if (e.key === "Escape") $("#lightbox").hidden = true; });
+
+function payload() {
+  const decisions = {}; for (const [q, s] of Object.entries(ST)) { const c = clean(s); if (Object.keys(c).length) decisions[q] = c; }
+  return {format: "team-consensus", annotator: "team", guideline_version: "v2-team", exported_at: new Date().toISOString(),
+          complete: CARDS.filter(complete).length, total: CARDS.length, decisions};
+}
+$("#save").onclick = async () => {
+  const text = JSON.stringify(payload(), null, 1);
+  if (dl) {
+    try { await dl.save({filename: "screening_team.json", data: text}); notice("Saved <b>screening_team.json</b>.", ""); return; }
+    catch (e) { if (e && e.code === "declined") { notice("Download cancelled.", ""); return; } }
+  }
+  try { await navigator.clipboard.writeText(text); notice("Copied the decisions. Paste them into a message to the team lead.", ""); }
+  catch (e) { notice('Copy this text and send it to the team lead:<br><textarea class="dump" readonly></textarea>', "warn");
+    const t = $("#notice textarea"); t.value = text; t.focus(); t.select(); }
+};
+
+$("#loadbtn").onclick = () => $("#load").click();
+$("#load").onchange = e => {
+  const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+  f.text().then(t => {
+    const j = JSON.parse(t);
+    if (j.format !== "team-consensus" || typeof j.decisions !== "object") throw new Error("this is not a screening_team.json file");
+    const incoming = Object.entries(j.decisions).filter(([q]) => byQid[q]);
+    notice("Load " + incoming.length + " landmark decisions from <b></b>? It replaces the current choice on those cards. " +
+           '<button id="lyes" type="button" class="primary">Load</button><button id="lno" type="button">Cancel</button>', "");
+    $("#notice b").textContent = f.name;
+    $("#lno").onclick = () => notice("");
+    $("#lyes").onclick = async () => {
+      notice("Loading…", "");
+      for (const [q, s] of incoming) { ST[q] = Object.assign(clean(s), {t: new Date().toISOString()}); paint(q);
+        if (MODE === "shared") { dirty.add(q); if (!writing[q]) await flush(q); } }
+      if (MODE !== "shared") persistLocal();
+      progress(); notice("Loaded " + incoming.length + " decisions.", "");
+    };
+  }).catch(err => notice("Could not load the file: " + String(err.message || err).replace(/</g, "&lt;"), "warn"));
+};
+
+$("#hide").onchange = e => document.body.classList.toggle("hide-done", e.target.checked);
+$("#next").onclick = () => { const c = CARDS.find(x => !complete(x)); if (!c) { notice("All landmarks are done. Press <b>Download decisions</b> as a backup.", ""); return; }
+  document.getElementById("c-" + c.qid).scrollIntoView({behavior: "smooth", block: "start"}); };
+$("#goto").onchange = e => { const n = Math.max(1, Math.min(CARDS.length, parseInt(e.target.value, 10) || 1)); const c = CARDS[n - 1];
+  if (c) { document.body.classList.remove("hide-done"); $("#hide").checked = false; document.getElementById("c-" + c.qid).scrollIntoView({behavior: "smooth", block: "start"}); } };
+
+async function start() {
+  try { CARDS = await fetch("data/cards.json").then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }); }
+  catch (e) { $("#list").innerHTML = '<p class="empty">The landmark list could not load. Reload the page.</p>'; return; }
+  CARDS.forEach(c => byQid[c.qid] = c);
+  const list = $("#list"); list.textContent = "";
+  const io = "IntersectionObserver" in window ? new IntersectionObserver(es => es.forEach(en => {
+    if (en.isIntersecting) { fillNear(); } }), {rootMargin: "800px 0px"}) : null;
+  CARDS.forEach((c, k) => { const el = build(c, k); list.append(el); paint(c.qid); if (io) io.observe(el); });
+  progress();
+  fillNear();
+  // the observer is not reliable in every app view: a scroll check does the same job
+  let ticking = false;
+  const onMove = () => { if (!ticking) { ticking = true; requestAnimationFrame(() => { ticking = false; fillNear(); }); } };
+  window.addEventListener("scroll", onMove, {passive: true}); window.addEventListener("resize", onMove);
+  connect();
+}
+const filled = new Set();
+function fillNear() {  // photos for the cards within about two screens of the visible area
+  const h = window.innerHeight || 800;
+  document.querySelectorAll(".card").forEach((el, k) => {
+    if (filled.has(el.dataset.qid) || el.offsetParent === null) return;
+    const r = el.getBoundingClientRect();
+    if ((r.bottom > -2 * h && r.top < 3 * h) || k < 4) { filled.add(el.dataset.qid); fillPhotos(el); }
+  });
+}
+
+async function connect() {
+  const cl = window.claude;
+  const [d, u, w] = cl && cl.use ? await Promise.all([cl.use("db"), cl.use("user"), cl.use("downloads")].map(p => p.catch(() => null))) : [null, null, null];
+  dl = w;
+  let canWrite = null;
+  if (u && u.can) { try { canWrite = await u.can("data.write"); } catch (e) { canWrite = null; } }
+  if (!d || canWrite === false) {
+    try { ST = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { ST = {}; }
+    CARDS.forEach(c => paint(c.qid)); progress();
+    setMode("local", "Saved on this device only");
+    notice("Your clicks are saved on <b>this device only</b>" + (d ? " (you can view, not edit, the shared decisions)" : "") +
+           ". When you finish, press <b>Download decisions</b> and send the file to the team lead.", "warn");
+    return;
+  }
+  db = d;
+  setMode("shared", "Shared live");
+  notice("");
+  db.collection("screening").onSnapshot(snap => {
+    for (const ch of snap.docChanges()) {
+      const q = ch.doc.id; if (!byQid[q] || writing[q] || dirty.has(q)) continue;   // our own pending write wins locally
+      if (ch.type === "removed") delete ST[q]; else ST[q] = Object.assign({}, ch.doc.data());
+      paint(q);
+    }
+    progress();
+  }, err => notice("Live updates stopped (" + (err && err.code || "error") + "). Reload the page to reconnect; your saved clicks are kept.", "warn"));
+}
+start();
+</script>
