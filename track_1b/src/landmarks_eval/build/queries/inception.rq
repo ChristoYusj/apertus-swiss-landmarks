@@ -1,0 +1,7 @@
+# Inception (P571) statements with time precision (9 = year, 8 = decade, 7 = century) and rank.
+SELECT ?i ?time ?prec ?rank WHERE {
+  VALUES ?h { wd:Q8274529 wd:Q12126757 wd:Q28971394 }
+  ?i wdt:P17 wd:Q39 ; wdt:P1435 ?h ; wdt:P18 ?img ; p:P571 ?st .
+  ?st psv:P571 ?v ; wikibase:rank ?rank .
+  ?v wikibase:timeValue ?time ; wikibase:timePrecision ?prec .
+}

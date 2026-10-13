@@ -1,0 +1,7 @@
+# KGS inventory number (P381) and Commons category (P373).
+SELECT ?i ?kgs ?cat WHERE {
+  VALUES ?h { wd:Q8274529 wd:Q12126757 wd:Q28971394 }
+  ?i wdt:P17 wd:Q39 ; wdt:P1435 ?h ; wdt:P18 ?img .
+  OPTIONAL { ?i wdt:P381 ?kgs }
+  OPTIONAL { ?i wdt:P373 ?cat }
+}

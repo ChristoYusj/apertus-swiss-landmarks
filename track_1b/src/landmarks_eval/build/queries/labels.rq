@@ -1,0 +1,6 @@
+# Labels of all candidate heritage objects (used for the generic-label filter and look-alike stems).
+SELECT ?i ?text WHERE {
+  VALUES ?h { wd:Q8274529 wd:Q12126757 wd:Q28971394 }
+  ?i wdt:P17 wd:Q39 ; wdt:P1435 ?h ; wdt:P18 ?img ; rdfs:label ?text .
+  FILTER(LANG(?text) IN ("en", "fr", "de", "it", "rm"))
+}

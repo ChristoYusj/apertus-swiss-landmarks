@@ -1,0 +1,5 @@
+# The 26 cantons with their ISO 3166-2 code and labels.
+SELECT ?c ?code ?text WHERE {
+  ?c wdt:P31 wd:Q23058 ; wdt:P300 ?code ; rdfs:label ?text .
+  FILTER(LANG(?text) IN ("en", "fr", "de", "it", "rm"))
+}

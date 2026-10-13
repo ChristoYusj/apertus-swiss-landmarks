@@ -1,0 +1,7 @@
+# Direct types (P31) and the allow-listed public-landmark root classes they are subclasses of.
+# A type that IS a root (zero-length path) is resolved in Python.
+SELECT DISTINCT ?i ?t ?root WHERE {
+  VALUES ?h { wd:Q8274529 wd:Q12126757 wd:Q28971394 }
+  ?i wdt:P17 wd:Q39 ; wdt:P1435 ?h ; wdt:P18 ?img ; wdt:P31 ?t .
+  OPTIONAL { VALUES ?root { {{ROOTS}} } ?t wdt:P279+ ?root . }
+}

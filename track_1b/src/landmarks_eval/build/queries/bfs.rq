@@ -1,0 +1,6 @@
+# Every BFS municipality number (P771) found on the item's administrative chain (P131+).
+SELECT DISTINCT ?i ?bfs WHERE {
+  VALUES ?h { wd:Q8274529 wd:Q12126757 wd:Q28971394 }
+  ?i wdt:P17 wd:Q39 ; wdt:P1435 ?h ; wdt:P18 ?img ; wdt:P131+ ?m .
+  ?m wdt:P771 ?bfs .
+}

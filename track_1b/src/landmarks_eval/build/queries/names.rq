@@ -1,0 +1,9 @@
+# Labels, aliases and Wikipedia article titles of the selected items.
+SELECT ?i ?kind ?text WHERE {
+  VALUES ?i { {{ITEMS}} }
+  { ?i rdfs:label ?text . BIND("label" AS ?kind) }
+  UNION { ?i skos:altLabel ?text . BIND("alias" AS ?kind) }
+  UNION { ?a schema:about ?i ; schema:name ?text ; schema:isPartOf ?site .
+          FILTER(CONTAINS(STR(?site), "wikipedia.org")) BIND("sitelink" AS ?kind) }
+  FILTER(LANG(?text) IN ("en", "fr", "de", "it", "rm", "gsw", "de-ch"))
+}

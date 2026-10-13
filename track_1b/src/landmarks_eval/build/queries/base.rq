@@ -1,0 +1,5 @@
+# Swiss heritage objects (KGS classes A, B and cantonal/local) that have a photo and coordinates.
+SELECT ?i ?h ?img ?coord ?sl WHERE {
+  VALUES ?h { wd:Q8274529 wd:Q12126757 wd:Q28971394 }
+  ?i wdt:P17 wd:Q39 ; wdt:P1435 ?h ; wdt:P18 ?img ; wdt:P625 ?coord ; wikibase:sitelinks ?sl .
+}

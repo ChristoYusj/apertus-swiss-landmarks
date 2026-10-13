@@ -1,0 +1,9 @@
+# Names of every municipality (current or former, i.e. with a BFS number) and of the
+# direct locality on the selected items' administrative chain.
+SELECT DISTINCT ?i ?m ?direct ?text WHERE {
+  VALUES ?i { {{ITEMS}} }
+  { ?i wdt:P131+ ?m . ?m wdt:P771 ?bfs . BIND(false AS ?direct) }
+  UNION { ?i wdt:P131 ?m . FILTER NOT EXISTS { ?m wdt:P31 wd:Q23058 } BIND(true AS ?direct) }
+  ?m rdfs:label ?text .
+  FILTER(LANG(?text) IN ("en", "fr", "de", "it", "rm"))
+}

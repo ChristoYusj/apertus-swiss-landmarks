@@ -25,3 +25,6 @@ build/
 .DS_Store
 .idea/
 .vscode/
+
+# Our dataset-builder package is source code, not a build artefact
+!**/landmarks_eval/build/

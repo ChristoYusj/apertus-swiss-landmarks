@@ -1,0 +1,9 @@
+# Number of Wikipedia articles (any language edition) per heritage object.
+# wikibase:sitelinks also counts Commons/Wikivoyage pages, so it overstates fame.
+SELECT ?i (COUNT(DISTINCT ?a) AS ?wp) WHERE {
+  VALUES ?h { wd:Q8274529 wd:Q12126757 wd:Q28971394 }
+  ?i wdt:P17 wd:Q39 ; wdt:P1435 ?h ; wdt:P18 ?img .
+  ?a schema:about ?i ; schema:isPartOf ?site .
+  FILTER(STRENDS(STR(?site), ".wikipedia.org/"))
+}
+GROUP BY ?i
