@@ -17,6 +17,7 @@ from collections import Counter
 from pathlib import Path
 
 from .client import Endpoint, build_messages, chat
+from .analysis import load_gazetteer
 from .grading.rules import grade
 from .metrics import cohen_kappa, rnd, wilson
 from .run import GEN_PARAMS, load_jsonl, stratified_sample, write_jsonl
@@ -47,9 +48,11 @@ def stability(dataset: Path, results: Path, ep: Endpoint, n: int = 100, probe: i
         rows = list(ex.map(ask, jobs))
     write_jsonl(results / "stability_responses.jsonl", rows)
 
+    gz = load_gazetteer(dataset)
+
     def label(item_id, text):
         c = cases[item_id]
-        return grade(c, lms[c["landmark_qid"]], text).label
+        return grade(c, lms[c["landmark_qid"]], text, gz).label
 
     ok = [r for r in rows if r["status"] == "ok"]
     first = [r for r in ok if r["repeat"] == 1]

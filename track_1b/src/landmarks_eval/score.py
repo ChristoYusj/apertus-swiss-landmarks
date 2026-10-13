@@ -33,9 +33,10 @@ def grade_all(dataset: Path, results: Path, judge_ep: Endpoint | None = None, lo
     cached = {j["item_id"]: j for j in load_jsonl(jpath)} if jpath.exists() else {}
     out = []
     n_judged = n_cached = 0
+    gz = load_gazetteer(dataset)
     for r in responses:
         case, lm = cases[r["item_id"]], lms[cases[r["item_id"]]["landmark_qid"]]
-        cg = grade(case, lm, r["response_text"]) if r["status"] == "ok" else None
+        cg = grade(case, lm, r["response_text"], gz) if r["status"] == "ok" else None
         row = {"item_id": r["item_id"], "response_sha256": sha(r["response_text"]),
                "code_label": cg.label if cg else None, "code_rule": cg.rule if cg else f"status:{r['status']}",
                "canton_correct": cg.canton_correct if cg else None,

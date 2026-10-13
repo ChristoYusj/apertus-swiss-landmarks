@@ -33,9 +33,9 @@ B = INCORRECT: the answer commits to something that contradicts the gold (anothe
 C = NOT_ATTEMPTED: the answer declines, says it cannot tell, or stays too vague to be checked (e.g. "a church in Switzerland", "the 16th century" for a year question), without contradicting the gold.
 
 Rules:
-- A single hedged answer ("probably X") is graded on X.
+- A single hedged answer ("probably X") is graded on X. A hedge that names nothing specific ("not sure, but it seems to be a church in the Alps") is NOT_ATTEMPTED.
 - Ignore spelling variants, missing accents, exonyms (Genève = Genf = Geneva) and extra correct details.
-- For "place", naming only the canton is NOT_ATTEMPTED unless the municipality is also given; naming a wrong municipality is INCORRECT.
+- For "place": a wrong municipality, a wrong canton or a country other than Switzerland is INCORRECT; only the right canton (no municipality) is NOT_ATTEMPTED.
 {extra}
 Reply with JSON only: {{"grade": "A|B|C", "predicted_place": "<municipality named in the answer or null>", "reason": "<max 20 words>"}}"""
 

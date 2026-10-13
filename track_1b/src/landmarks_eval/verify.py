@@ -15,6 +15,7 @@ import hashlib
 import json
 from pathlib import Path
 
+from .analysis import load_gazetteer
 from .grading.rules import grade
 from .run import load_jsonl
 from .schema import ImageRecord, Judgement, Landmark, Response, TestCase
@@ -83,6 +84,7 @@ def verify(dataset: Path, results: Path, expected: Path | None, log=print) -> bo
 
     resp = {r["item_id"]: r for r in responses}
     mism = []
+    gz = load_gazetteer(dataset)
     for j in judgements:
         r = resp.get(j["item_id"])
         if r is None:
@@ -92,7 +94,7 @@ def verify(dataset: Path, results: Path, expected: Path | None, log=print) -> bo
             mism.append(f"{j['item_id']}: response hash")
             continue
         c = cases[j["item_id"]]
-        g = grade(c, lms[c["landmark_qid"]], r["response_text"]) if r["status"] == "ok" else None
+        g = grade(c, lms[c["landmark_qid"]], r["response_text"], gz) if r["status"] == "ok" else None
         if (g.label if g else None) != j["code_label"]:
             mism.append(f"{j['item_id']}: code_label {j['code_label']} != recomputed {g.label if g else None}")
     check("V4 code grader reproduces stored labels", not mism, "; ".join(mism[:5]))

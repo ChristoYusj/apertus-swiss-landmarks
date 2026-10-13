@@ -221,3 +221,43 @@ def test_proper_names_that_look_generic_stay_distinctive():
     assert not distinctive("Bahnhof SBB", {"renens"})
     assert not distinctive("Rundkirche Mariä Himmelfahrt", {"saas", "balen"})
     assert not distinctive("Torre comunale 009a", {"locarno"})  # inventory codes are not names
+
+
+# --- Fix v5 (13 Oct): pre-registered "vague answers = not attempted", applied to hedged guesses ----------------
+# Every text below is a real answer from the official run (the 145 changed labels were all read by hand).
+from landmarks_eval.analysis import Gazetteer as _Gz
+
+_GZ = _Gz({"cantons": {"TG": {"names": ["thurgau"], "region": "DE"}, "GR": {"names": ["graubunden", "grischun"], "region": None},
+                       "VS": {"names": ["wallis"], "region": None}},
+           "municipalities": [{"bfs": 3901, "names": ["chur"], "canton": "GR", "region": "DE", "current": True}],
+           "countries": {"LI": ["liechtenstein", "vaduz"]}})
+
+
+@pytest.mark.parametrize("text,label", [
+    ("Unsicher. Es könnte eine Kirche sein, aber der genaue Name ist nicht erkennbar.", "not_attempted"),
+    ("Non sono sicuro al 100% senza ulteriori informazioni, ma l'edificio sembra essere una chiesa o un edificio "
+     "religioso storico, probabilmente situato in Europa.", "not_attempted"),
+    ("Non sono sicuro al 100% senza ulteriori informazioni, ma questo edificio sembra essere il Castello di Vaduz, "
+     "situato a Vaduz, Liechtenstein.", "incorrect"),
+    ("Non sono sicuro al 100%, ma sembra essere la Chiesa di San Martino a Malles Venosta, in Alto Adige, Italia.", "incorrect"),
+    ("Unsicher, vermutlich ist es das Schloss Thun.", "incorrect"),
+    ("Die Kirche heißt St. Martin.", "incorrect"),                     # unhedged: unchanged by v5
+])
+def test_v5_hedged_name_guesses(text, label):
+    assert grade_name(text, NAMES, gz=_GZ, gold_canton="VD").label == label
+
+
+@pytest.mark.parametrize("text,gold,label", [
+    ("Je ne peux pas identifier avec certitude le bâtiment ou le monument sur cette image sans plus d'informations. "
+     "Si vous avez des détails supplémentaires, je pourrai peut-être vous aider.", "VD", "not_attempted"),
+    ("Unsicher über genaue Lage; Bild zeigt eine kleine Kapelle, wahrscheinlich in der Schweiz (typische Architektur), "
+     "aber ohne weitere Hinweise kann Gemeinde und Kanton nicht bestimmt werden.", "VD", "not_attempted"),
+    ("Die genaue Gemeinde ist unklar, es ist aber wahrscheinlich im Kanton Graubünden.", "GR", "not_attempted"),  # right canton only
+    ("Die genaue Gemeinde ist unklar, es ist aber wahrscheinlich im Kanton Thurgau.", "GR", "incorrect"),        # wrong canton
+    ("Die Burg Schiedberg befindet sich in der Gemeinde Schiedhalden im Kanton Thurgau.", "TG", "incorrect"),   # unknown town
+    ("Sveti Stefan", "GR", "incorrect"),            # a bare place name the gazetteer does not know stays an attempt
+    ("Riviera", "TI", "incorrect"),
+    ("Vischnanca: Cuera   Chantun:Surselva", "GR", "incorrect"),
+])
+def test_v5_place(text, gold, label):
+    assert grade_place(text, PLACES, CANTONS, gz=_GZ, gold_canton=gold).label == label

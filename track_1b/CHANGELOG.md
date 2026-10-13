@@ -86,3 +86,14 @@
   `tests/test_location.py`.
 - **Stability check** (`landmarks-eval stability`): 100 items re-asked once, 20 of them twice more:
   72 % identical text, 100 % identical code label (kappa 1.0); 20/20 probe items kept their label over 4 answers.
+- **Code-grader fix v5 (after seeing answers, documented):** the pre-registered rule "vague answers = not
+  attempted" was not implemented for HEDGED answers: "Non sono sicuro, ma sembra essere una chiesa" was graded
+  incorrect because "sembra" looked like a guess. Found while drafting the judge dev set (about half of 40 random
+  code-"incorrect" name answers were vague hedges). Now a hedged answer is graded on its guess only if the guess
+  names something checkable: a Swiss town or foreign country (gazetteer), a wrong canton, a saint's name, a type
+  word with a name ("Castello di Vaduz"), a quoted name, or "Gemeinde X"; otherwise it is not attempted.
+  Place answers naming only the RIGHT canton are not attempted; a wrong canton or a foreign country is incorrect.
+  Unhedged bare answers are unchanged ("Sveti Stefan", "Riviera" stay incorrect). Effect: 145 labels
+  incorrect -> not_attempted (97 name DE/IT, 46 place DE, 4 place FR/IT abstentions containing "peut-être");
+  all 145 were read by hand. The judge prompt (not yet frozen) states the same two rules.
+  Pinned by regression tests ("Fix v5" in `test_grading_rules.py`).
