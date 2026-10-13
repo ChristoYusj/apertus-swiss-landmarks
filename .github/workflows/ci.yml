@@ -8,10 +8,17 @@ jobs:
   test-and-verify:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Line endings are LF
         run: "! git ls-files --eol | grep -E 'w/crlf' "
+      - name: Every Python source file is tracked by git
+        run: |
+          untracked=$(git ls-files --others --exclude-standard -- track_1b/src track_1b/tests)
+          ignored=$(git ls-files --others --ignored --exclude-standard -- track_1b/src track_1b/tests | grep -v __pycache__ || true)
+          test -z "$untracked$ignored" || { echo "not tracked: $untracked $ignored"; exit 1; }
       - name: Unit + end-to-end tests (Docker)
         run: make test
       - name: make run (offline verification; no secrets in CI)
+        # enabled once the reference results are published (expected scores file exists)
+        if: hashFiles('track_1b/src/landmarks_eval/expected/reference.scores.json') != ''
         run: make run
