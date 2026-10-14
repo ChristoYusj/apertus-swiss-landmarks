@@ -302,3 +302,19 @@ right_canton_only, similar_but_different_name, ...) and a seeded random 150 per 
 - Dry run on a copy (assuming every AI call is accepted): 2,766 -> 3,600 items (+796 photo_alt, +98
   trap_lowinfo, -60 items of the 6 dropped landmarks, whose answers move to `metadata/excluded_items.jsonl`);
   no kept item changes.
+
+## Photo screening as run: second AI review instead of the human check (15 Oct, protocol v3b-ai-review)
+- The human check page (step 3 above) was used for 3 rows only. Instead, a separate AI agent (Hermes) reviewed
+  the same 491 photos under the lead's policy "if unsure, exclude" (32 photos excluded under that policy), and the
+  lead decided 6 edge cases directly plus one in chat (San Bastian, Zernez: the main photo shows Schloss
+  Wildenberg -> wrong object). **No person looked at every published photo**; the report says so.
+- Merged with `combine-screening` (converter `tools/screening_online/hermes_to_check.py`; A1 decisions in
+  `work/review/a1_decisions.json`). `merge_review` now records reviewers per landmark (`ai:claude-opus-5-5`,
+  `ai:hermes`, plus `A1` where a person decided) and a drop reason per landmark.
+- Result: 13 landmarks dropped (privacy 4: visible faces; wrong object 4: a painting, two display cases, the
+  Wildenberg photo; "may not show the landmark (excluded when unsure)" 5), 161 second views, 17 too-generic
+  photos. Dataset: 251 landmarks, 3,412 items (+732 photo_alt, +34 trap_lowinfo; 120 items of the dropped
+  landmarks moved per model to `metadata/excluded_items.jsonl`), 429 photos shipped. verify V7 passes.
+- 24 of the 546 audit-sample items belong to dropped landmarks; agreement statistics use the items still in the
+  dataset, and the count is reported.
+- Judge calls now log their token usage per chunk (paid API; the HF dashboard has the exact cost).

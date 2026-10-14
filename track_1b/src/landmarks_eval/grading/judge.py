@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import threading
 
 from ..client import Endpoint, chat
 from .normalize import usable_alias
@@ -108,8 +109,17 @@ def parse(raw: str | None) -> tuple[str | None, str | None]:
     return (_GRADE[m.group(1)], None) if m else (None, None)
 
 
+# token usage of the judge calls in this process (logged per chunk so paid usage is visible while it runs)
+USAGE = {"calls": 0, "prompt_tokens": 0, "completion_tokens": 0}
+_USAGE_LOCK = threading.Lock()
+
+
 def judge(ep: Endpoint, case: dict, lm: dict, answer: str) -> tuple[str | None, str | None, str | None, str]:
     msgs = judge_request(case, lm, answer)
     res = chat(ep, msgs, JUDGE_PARAMS)
+    with _USAGE_LOCK:
+        USAGE["calls"] += 1
+        for k in ("prompt_tokens", "completion_tokens"):
+            USAGE[k] += int((res.usage or {}).get(k) or 0)
     label, place = parse(res.text)
     return label, place, res.text if res.status == "ok" else f"ERROR {res.error}", judge_hash(ep.model, msgs)

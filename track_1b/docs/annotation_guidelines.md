@@ -32,26 +32,29 @@ If unsure, choose the more cautious option: **Exclude** for privacy, don't pick 
 Progress is saved in the browser after every click; **Save progress** downloads `screening_team.json`
 at any time, and **Load saved file** resumes from it.
 
-### Task P as run: protocol v3-ai-assisted (14 Oct, before any team decision existed)
-The team did not have the hours for a joint screening of 917 photos, so the rules above were applied in three steps:
+### Task P as run: AI screening with a second AI review (protocol v3b-ai-review, 14–15 Oct)
+The team did not have the hours for a joint screening of 917 photos, so the rules above were applied by AI, with
+the lead (A1) setting the policy and deciding edge cases. No model answer was shown at any step.
 
 1. **AI screening.** Claude (Opus 5.5) applied rules 1–3 to every photo, viewing each one at the published size
    (8 parallel screeners, 33 landmarks each). Each photo got a structured record: people (none / distant and
    unrecognisable / recognisable), licence plate, private interior, personal text, whether it shows the landmark,
    the kind of view, and whether it is too generic.
-2. **Independent AI re-check.** Two further Claude instances, without the first screener's reasons, re-checked
-   every photo that step 1 would publish (main photo, 2nd view, too-generic photo) for the same privacy items and
+2. **Independent AI re-check.** Three further Claude instances, without the screeners' reasons, re-checked every
+   photo that step 1 would publish (491: main photo, 2nd view, too-generic photo) for the same privacy items and
    for the role ("same object as the main photo", "really too generic").
-3. **Human check by A1** (`tools/screening_online/check.html`). Every landmark is one row showing only the photos
-   that would be published. Rows are flagged first if the AI excluded the main photo, either AI pass saw any
-   person, plate, private interior or personal text, the re-check disagreed, the AI was not highly confident, or
-   the face detector fired. For each row A1 either clicks **Agree with AI ✓** or rejects a photo
-   (*Person / private*, *Wrong object*, *Not same / unclear*, *Not generic*).
+3. **Second AI review (Hermes agent).** A separate AI agent reviewed the same 491 photos under the lead's policy
+   "if unsure, exclude": 32 photos it could not settle were excluded under that policy. The lead decided 6 edge
+   cases directly (a partly visible licence plate, a borderline second view, ...), and one more in chat (the
+   "San Bastian" main photo shows Schloss Wildenberg: wrong object). A human check page
+   (`tools/screening_online/check.html`: one row per landmark with only the published photos) was prepared but
+   used for 3 rows only, so **no person looked at every published photo**.
 
-A1's verdict wins (`landmarks-eval combine-screening`): a photo is published only if A1 accepted it; a rejected
-2nd view or too-generic photo becomes "none" (never silently replaced); a main photo A1 rejects drops the
-landmark. A landmark A1 did not check stays pending, so the privacy gate (verify V7) fails until a person has
-seen every published photo. The image records name both reviewers (`ai:claude-opus-5-5`, `A1`).
+The second review's verdict wins (`landmarks-eval combine-screening`, converter
+`tools/screening_online/hermes_to_check.py`): a photo is published only if it was kept; a rejected 2nd view or
+too-generic photo becomes "none" (never silently replaced); a rejected main photo drops the landmark, with the reason
+in the exclusion log (privacy, wrong object, or "may not show the landmark (excluded when unsure)"). Image records
+name the reviewers (`ai:claude-opus-5-5`, `ai:hermes`, plus `A1` for the landmarks with a human decision).
 
 ## Task G: grading audit (after the official run)
 Task G is done **independently**: each annotator labels alone (sharing one computer is fine, one after the

@@ -77,7 +77,8 @@ def grade_all(dataset: Path, results: Path, judge_ep: Endpoint | None = None, lo
         finish(out)
         write_jsonl(jpath, out)
         log(f"  judge: {min(start + 200, len(todo))}/{len(todo)} "
-            f"(no label so far: {sum(1 for (i, *_) in todo[:start + 200] if not out[i]['judge_label'])})")
+            f"(no label so far: {sum(1 for (i, *_) in todo[:start + 200] if not out[i]['judge_label'])}; "
+            f"calls {J.USAGE['calls']}, tokens in {J.USAGE['prompt_tokens']:,} / out {J.USAGE['completion_tokens']:,})")
     finish(out)
     write_jsonl(jpath, out)
     log(f"graded {len(out)} responses (judge: {n_judged} new, {n_cached} cached; "
