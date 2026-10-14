@@ -277,3 +277,28 @@ right_canton_only, similar_but_different_name, ...) and a seeded random 150 per 
     where judge and code had agreed changed (12 centuries outside the window, 2 contradicting types), all
     checked against the gold. Judge-vs-code kappa 0.937 -> 0.950 (70B), 0.917 -> 0.933 (8B).
   - 17 regression tests ("Review 4"); 248 tests pass.
+
+## Photo screening protocol v3-ai-assisted (14 Oct, before any screening decision existed)
+- The joint team screening (v2-team) had 0 decisions on 14 Oct morning and the team could not spare the hours
+  for 917 photos, so Task P is run as **AI screening + human check** (`docs/annotation_guidelines.md`, Task P as
+  run). The rules (privacy, wrong object, 2nd view, too generic) are unchanged; no model answer is shown at
+  any step.
+- Step 1, AI screening: Claude Opus 5.5, 8 parallel screeners, every one of the 917 photos opened at the
+  published 500-px size; a structured record per photo. Proposed: 6 landmarks dropped (3 privacy: two with
+  visible faces, one with a partly readable plate; 3 wrong object: a painting, a display case of pots, and a
+  photo of Schloss Wildenberg filed as the San Bastian church in Zernez), 177 second views, 50 too-generic photos.
+- Step 2, independent AI re-check: 3 further instances, without the screeners' reasons, re-checked all 491
+  photos the screening would publish. Disagreement on the binary privacy flag (recognisable person, plate,
+  private interior or personal text): 2 of 491 photos (one main photo the screener kept, one it excluded).
+  Role doubts: 14 of 177 second views ("not the same object" 1, "unsure" 13), 7 main photos (exhibit-only or
+  hidden building); all 50 too-generic photos confirmed.
+- Step 3, human check (A1): `tools/screening_online/check.html` shows each landmark with only the photos that
+  would be published, flagged rows first (139 of 264). A1's verdict wins (`landmarks-eval combine-screening`);
+  a photo ships only if A1 accepted it; unchecked landmarks stay pending, so verify V7 fails until a person has
+  seen every published photo. Image records name both reviewers (`ai:claude-opus-5-5`, `A1`).
+- Clarification for the check (consistent with rule 1): a main photo showing only exhibits (a display case, a
+  painting) is "wrong object"; a room inside the museum still shows the museum. The screeners had applied
+  this inconsistently (one display case marked wrong, two kept), so those rows are flagged for A1.
+- Dry run on a copy (assuming every AI call is accepted): 2,766 -> 3,600 items (+796 photo_alt, +98
+  trap_lowinfo, -60 items of the 6 dropped landmarks, whose answers move to `metadata/excluded_items.jsonl`);
+  no kept item changes.

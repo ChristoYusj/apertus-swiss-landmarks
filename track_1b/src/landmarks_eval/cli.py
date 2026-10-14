@@ -54,6 +54,10 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--out", type=Path, default=None, help="output folder (default: <work>/review/photo_screening)")
     m = sub.add_parser("merge-review", help="(team only) merge the team's screening_team.json decision file")
     m.add_argument("files", nargs=1, type=Path)
+    cs = sub.add_parser("combine-screening", help="(team only) AI screening + A1's check -> screening_team.json")
+    cs.add_argument("--ai", type=Path, required=True, help="screening_ai.json (format ai-screening)")
+    cs.add_argument("--check", type=Path, required=True, help="screening_check.json (format screening-check)")
+    cs.add_argument("--out", type=Path, required=True)
     sub.add_parser("assemble", help="(team only) assemble the publishable dataset folder")
     ap_ = sub.add_parser("audit-page", help="(team only) draw the human-audit sample and write the blind labelling page")
     ap_.add_argument("--dataset")
@@ -121,6 +125,12 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "merge-review":
         from .build.review_merge import merge_review
         print(json.dumps(merge_review(args.work, args.files), indent=1, ensure_ascii=False))
+        return 0
+    if args.cmd == "combine-screening":
+        from .build.review_merge import combine_ai_check
+        res = combine_ai_check(json.loads(args.ai.read_text(encoding="utf-8")), json.loads(args.check.read_text(encoding="utf-8")))
+        args.out.write_text(json.dumps(res, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+        print(json.dumps(res["check_stats"], indent=1))
         return 0
     if args.cmd == "assemble":
         from .build.assemble import assemble

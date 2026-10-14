@@ -135,3 +135,49 @@ def test_prune_is_idempotent_verbatim_and_reversible(tmp_path):
     rows = [json.loads(l) for l in open(rdir / "responses.jsonl")]
     assert [r["item_id"] for r in rows] == ["a", "b", "c"] and rows[2] == resp[2]
     assert [e["item_id"] for e in (json.loads(l) for l in open(ds / "metadata" / "excluded_items.jsonl"))] == ["d"]
+
+
+def _ai(decisions):
+    return {"format": "ai-screening", "model": "claude-opus-5-5", "decisions": {
+        q: {"main_id": f"{q}-main", "alt": "none", "low": "none", **d} for q, d in decisions.items()}}
+
+
+def test_ai_screening_needs_a1_check_and_a1_wins(tmp_path):
+    """Protocol v3-ai-assisted: a photo ships only if A1 accepted it; unchecked landmarks stay pending."""
+    ai = _ai({"Q1": {"main": "ok", "alt": "Q1-alt2", "low": "Q1-alt1"},
+              "Q2": {"main": "ok", "alt": "Q2-alt1"},            # A1: recognisable person on the main photo
+              "Q3": {"main": "exclude"},                         # A1 overrules: OK, no other photos
+              "Q4": {"main": "ok", "alt": "Q4-alt1"},            # A1: 2nd view is another building -> none
+              "Q5": {"main": "ok", "alt": "Q5-alt1"}})           # not checked -> pending
+    check = {"format": "screening-check", "annotator": "A1", "checks": {
+        "Q1": {"main": "ok", "alt": "ok", "low": "ok", "agree": True},
+        "Q2": {"main": "exclude"},
+        "Q3": {"main": "ok"},
+        "Q4": {"main": "ok", "alt": "reject"}}}
+    from landmarks_eval.build.review_merge import combine_ai_check
+    team = combine_ai_check(ai, check)
+    assert team["format"] == "team-consensus" and team["reviewers"] == ["ai:claude-opus-5-5", "A1"]
+    assert team["decisions"] == {"Q1": {"main": "ok", "main_id": "Q1-main", "alt": "Q1-alt2", "low": "Q1-alt1"},
+                                 "Q2": {"main": "exclude", "main_id": "Q2-main"},
+                                 "Q3": {"main": "ok", "main_id": "Q3-main", "alt": "none"},
+                                 "Q4": {"main": "ok", "main_id": "Q4-main", "alt": "none"}}
+    assert team["check_stats"]["unchecked"] == 1 and team["check_stats"]["main_ok_to_exclude"] == 1
+    assert team["check_stats"]["main_exclude_to_ok"] == 1
+    _write_images(tmp_path, IMGS)
+    p = tmp_path / "screening_team.json"
+    p.write_text(json.dumps(team))
+    rep = merge_review(tmp_path, [p])
+    out = {json.loads(l)["image_id"]: json.loads(l) for l in open(tmp_path / "images.jsonl")}
+    assert out["Q1-alt2"]["pii_reviewer_ids"] == ["ai:claude-opus-5-5", "A1"]
+    assert out["Q2-main"]["pii_decision"] == "exclude" and "checked by A1" in out["Q2-main"]["pii_reason"]
+    assert out["Q4-alt1"]["pii_decision"] == "pending"            # rejected 2nd view is never shipped
+    assert rep["stats"]["landmarks_pending"] == 1 and rep["complete"] is False   # Q5: the privacy gate stays shut
+
+
+def test_ai_screening_alt_left_unchecked_keeps_the_merge_incomplete():
+    from landmarks_eval.build.review_merge import combine_ai_check
+    team = combine_ai_check(_ai({"Q1": {"main": "ok", "alt": "Q1-alt1"}}),
+                            {"format": "screening-check", "checks": {"Q1": {"main": "ok"}}})
+    assert team["decisions"]["Q1"] == {"main": "ok", "main_id": "Q1-main"} and team["check_stats"]["alt_unchecked"] == 1
+    with pytest.raises(SystemExit):
+        combine_ai_check({"format": "x", "decisions": {}}, {"format": "screening-check", "checks": {}})

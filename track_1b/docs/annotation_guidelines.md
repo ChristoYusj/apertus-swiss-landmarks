@@ -1,6 +1,8 @@
 # Annotation guidelines (v2)
 
-Three team members (pseudonymous IDs **A1, A2, A3**) annotate. There are two tasks: photo screening (Task P) and the grading audit (Task G).
+The guideline was written for three annotators (pseudonymous IDs **A1, A2, A3**); as run, the team has **one** annotator, A1
+(see the protocol notes under each task and `CHANGELOG.md`). There are two tasks: photo screening (Task P) and the
+grading audit (Task G).
 
 ## Task P: photo screening (guideline v2-team, joint decisions)
 The team screens **together on one computer** and records **one joint decision per landmark** (no split, no
@@ -30,9 +32,30 @@ If unsure, choose the more cautious option: **Exclude** for privacy, don't pick 
 Progress is saved in the browser after every click; **Save progress** downloads `screening_team.json`
 at any time, and **Load saved file** resumes from it.
 
+### Task P as run: protocol v3-ai-assisted (14 Oct, before any team decision existed)
+The team did not have the hours for a joint screening of 917 photos, so the rules above were applied in three steps:
+
+1. **AI screening.** Claude (Opus 5.5) applied rules 1–3 to every photo, viewing each one at the published size
+   (8 parallel screeners, 33 landmarks each). Each photo got a structured record: people (none / distant and
+   unrecognisable / recognisable), licence plate, private interior, personal text, whether it shows the landmark,
+   the kind of view, and whether it is too generic.
+2. **Independent AI re-check.** Two further Claude instances, without the first screener's reasons, re-checked
+   every photo that step 1 would publish (main photo, 2nd view, too-generic photo) for the same privacy items and
+   for the role ("same object as the main photo", "really too generic").
+3. **Human check by A1** (`tools/screening_online/check.html`). Every landmark is one row showing only the photos
+   that would be published. Rows are flagged first if the AI excluded the main photo, either AI pass saw any
+   person, plate, private interior or personal text, the re-check disagreed, the AI was not highly confident, or
+   the face detector fired. For each row A1 either clicks **Agree with AI ✓** or rejects a photo
+   (*Person / private*, *Wrong object*, *Not same / unclear*, *Not generic*).
+
+A1's verdict wins (`landmarks-eval combine-screening`): a photo is published only if A1 accepted it; a rejected
+2nd view or too-generic photo becomes "none" (never silently replaced); a main photo A1 rejects drops the
+landmark. A landmark A1 did not check stays pending, so the privacy gate (verify V7) fails until a person has
+seen every published photo. The image records name both reviewers (`ai:claude-opus-5-5`, `A1`).
+
 ## Task G: grading audit (after the official run)
 Task G is done **independently**: each annotator labels alone (sharing one computer is fine, one after the
-other, each under their own ID), and no item is discussed until all three have submitted their labels.
+other, each under their own ID), and no item is discussed until all annotators have submitted their labels.
 Agreement between annotators is only meaningful if the labels are independent.
 Two equivalent tools show the same items in the same order: the offline page (`landmarks-eval audit-page`) and an
 online page for annotators on other devices (`tools/audit_online`, labels stored per annotator; the page only
@@ -70,4 +93,4 @@ Worked examples:
 | En quelle année… ? | 1585 (window 1580–1590) | "Au XVIe siècle." | Not attempted |
 | Ce monument se trouve à Berne… ? | Lausanne | "Ce n'est pas Berne : c'est la Fontaine de la Justice à Lausanne." | Correct |
 
-Agreement on the 100 items all three annotators label is reported in the paper (Fleiss' κ). After labelling, disagreements on those items are resolved by discussion. The adjudicated label is stored separately, and the original labels are kept.
+As planned for three annotators: agreement on a 100-item overlap (Fleiss' κ), disagreements resolved by discussion, adjudicated labels stored separately. **As run (protocol v3, one annotator):** 40 sampled items are shown a second time, unannounced and at least 150 items later, and the annotator's self-consistency (raw agreement, Cohen's κ) is reported instead; judge-vs-human and code-vs-human agreement are reported as planned.

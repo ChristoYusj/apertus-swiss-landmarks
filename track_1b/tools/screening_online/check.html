@@ -1,0 +1,298 @@
+<title>Screening Check</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Human check of the AI photo screening: one row per landmark with only the photos that would be published. */
+:root {
+  --paper: #f3f5f4; --card: #ffffff; --ink: #18212b; --mute: #5d6a72; --line: #d9dfdd;
+  --signal: #c8261b; --ok: #1d7a4c; --warn: #9a5b00; --pick: #2453b8; --warn-soft: #fbf0dc; --bad-soft: #fbe3e0;
+  --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --paper: #121619; --card: #1b2125; --ink: #e8ecea; --mute: #9aa6ab; --line: #2e373c;
+  --signal: #ff6b5e; --ok: #4cc38a; --warn: #f0a94a; --pick: #8bb0ff; --warn-soft: #3a2c14; --bad-soft: #3d1c19; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --paper: #121619; --card: #1b2125; --ink: #e8ecea; --mute: #9aa6ab; --line: #2e373c;
+  --signal: #ff6b5e; --ok: #4cc38a; --warn: #f0a94a; --pick: #8bb0ff; --warn-soft: #3a2c14; --bad-soft: #3d1c19; color-scheme: dark }
+* { box-sizing: border-box }
+[hidden] { display: none !important }
+body { background: var(--paper); color: var(--ink); font: 15px/1.5 var(--body); padding-inline: 16px; padding-block: 0 48px; margin: 0 }
+h1 { font: 700 19px/1.2 var(--display); margin: 0 }
+h2 { font: 700 15px/1.3 var(--display); margin: 22px 0 4px; color: var(--mute); text-transform: uppercase; letter-spacing: .04em }
+.wrap { max-width: 1100px; margin-inline: auto }
+header { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--paper); border-bottom: 1px solid var(--line);
+  margin-inline: -16px; padding: 10px 16px; display: flex; flex-direction: column; gap: 8px }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center }
+.grow { flex: 1 1 140px; min-width: 0 }
+.bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden }
+.bar > i { display: block; height: 100%; width: 0; background: var(--ok); transition: width .3s }
+.count { font: 500 13px var(--mono); color: var(--mute); font-variant-numeric: tabular-nums }
+.chip { font-size: 12.5px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--mute) }
+.chip.shared { border-color: var(--ok); color: var(--ok) }
+.chip.local { border-color: var(--warn); color: var(--warn); background: var(--warn-soft) }
+button { font: inherit; font-size: 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--ink);
+  padding: 6px 11px; cursor: pointer; min-height: 34px }
+button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--pick); outline-offset: 2px }
+button.primary { background: var(--signal); border-color: var(--signal); color: #fff }
+button.agree { border-color: var(--ok); color: var(--ok); font-weight: 700 }
+button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper) }
+button.agree[aria-pressed="true"] { background: var(--ok); border-color: var(--ok); color: #fff }
+button[disabled] { opacity: .45; cursor: default }
+label.inline { display: inline-flex; gap: 6px; align-items: center; font-size: 14px; cursor: pointer }
+.note { font-size: 13px; color: var(--mute) }
+.notice { border: 1px solid var(--line); background: var(--card); border-radius: 10px; padding: 10px 12px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center }
+.notice[data-kind=warn] { border-color: var(--warn); background: var(--warn-soft) }
+details.help { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 4px 14px; margin-block: 14px }
+details.help summary { cursor: pointer; font-weight: 700; padding-block: 8px }
+details.help ul { padding-left: 20px; margin-block: 4px 10px } details.help li { margin-block: 4px }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-block: 12px; display: flex; flex-direction: column; gap: 8px; scroll-margin-top: 120px }
+.card.done { border-color: var(--ok) }
+.card.flag { border-left: 4px solid var(--warn) }
+body.hide-done .card.done { display: none }
+.head { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap }
+.num { font: 500 12px var(--mono); color: var(--mute) }
+.name { font: 600 16px/1.3 var(--display); min-width: 0 }
+.badge { font-size: 12px; color: var(--ok); font-weight: 700 }
+.where { font-size: 13px; color: var(--mute) } .where a { color: var(--pick) }
+.reasons { display: flex; flex-wrap: wrap; gap: 6px }
+.tag { font-size: 12px; color: var(--warn); border: 1px solid var(--warn); border-radius: 999px; padding: 1px 8px }
+.ai { font-size: 13px; color: var(--mute) } .ai b { color: var(--ink) }
+.photos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px }
+.slot { border: 2px solid transparent; border-radius: 10px; padding: 6px; display: flex; flex-direction: column; gap: 6px; min-width: 0 }
+.slot.bad { border-color: var(--signal); background: var(--bad-soft) }
+.slot .lbl { font-weight: 700; font-size: 13px }
+.ph { position: relative; background: var(--line); border-radius: 8px; overflow: hidden; display: grid; place-items: center; height: 220px }
+.ph img { display: block; width: 100%; height: 100%; object-fit: contain; cursor: zoom-in }
+.ph .wait { font-size: 12px; color: var(--mute) }
+.opts { display: flex; flex-wrap: wrap; gap: 6px }
+.opts button { font-size: 13px; padding: 4px 9px; min-height: 30px }
+.lightbox { position: fixed; inset: 0; z-index: 20; background: rgba(0,0,0,.88); display: grid; place-items: center; padding: 16px; cursor: zoom-out }
+.lightbox img { max-width: 100%; max-height: 100%; border-radius: 6px }
+.empty { padding: 40px 0; color: var(--mute) }
+textarea.dump { width: 100%; height: 160px; font: 12px var(--mono); background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 8px }
+@media (max-width: 760px) { .photos { grid-template-columns: 1fr 1fr } .ph { height: 170px } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important } }
+</style>
+
+<header>
+  <div class="row">
+    <h1>Screening Check</h1>
+    <span id="mode" class="chip">Connecting…</span>
+    <div class="grow bar" aria-hidden="true"><i id="prog"></i></div>
+    <span id="count" class="count">0 / 0</span>
+  </div>
+  <div class="row">
+    <button id="next" type="button">Next unchecked ↓</button>
+    <label class="inline" for="hide"><input id="hide" type="checkbox"> Hide checked</label>
+    <span class="grow"></span>
+    <button id="save" type="button" class="primary">Download checks</button>
+  </div>
+  <div id="notice" class="notice" hidden></div>
+</header>
+
+<main class="wrap">
+  <details class="help" open>
+    <summary>What to do (read once)</summary>
+    <ul>
+      <li>An AI (Claude) screened every photo. Each row shows only the photos that would be <b>published</b>: the main photo, the chosen <b>2nd view</b>, and the <b>too generic</b> photo if one was picked.</li>
+      <li>If everything is right, click <b>Agree with AI ✓</b>. One click per row.</li>
+      <li>If something is wrong, use the buttons under that photo instead: <i>Person / private</i> (a recognisable face, a readable plate, a private interior, personal text), <i>Wrong object</i> (the main photo doesn't show this landmark), <i>Not same / unclear</i> (the 2nd view isn't the same building, or you couldn't recognise it), <i>Not generic</i> (you could tell which landmark it is).</li>
+      <li><i>Wrong object</i> also covers a main photo that shows only exhibits (a display case, a painting); a room inside the museum still counts as the museum.</li>
+      <li>Rows the AI or the face detector were unsure about come first. Tiny, distant people are fine. When unsure, reject the photo.</li>
+    </ul>
+    <p class="note">Tap a photo to see it larger. Every click is saved at once.</p>
+  </details>
+  <div id="list"><p class="empty">Loading…</p></div>
+</main>
+<div id="lightbox" class="lightbox" hidden><img id="lbimg" alt=""></div>
+
+<script>
+const KEY = "screening-check-v1";
+const $ = s => document.querySelector(s);
+let ROWS = [], ST = {}, MODE = "connecting", db = null, dl = null;
+const packs = {}, writing = {}, dirty = new Set(), byQid = {};
+const SLOTS = [["main", "Main photo"], ["alt", "2nd view"], ["low", "Too generic"]];
+const BAD = {main: [["exclude", "Person / private"], ["wrong", "Wrong object"]],
+             alt: [["exclude", "Person / private"], ["reject", "Not same / unclear"]],
+             low: [["exclude", "Person / private"], ["reject", "Not generic"]]};
+
+function loadPack(k) {
+  if (!packs[k]) packs[k] = fetch("img/k" + String(k).padStart(2, "0") + ".json").then(r => {
+    if (!r.ok) throw new Error("photos " + r.status); return r.json(); });
+  return packs[k];
+}
+function complete(c) { const s = ST[c.qid] || {}; if (!s.main) return false;
+  if (s.main !== "ok") return true; return (!c.alt || !!s.alt) && (!c.low || !!s.low); }
+function progress() { const n = ROWS.filter(complete).length;
+  $("#prog").style.width = (ROWS.length ? 100 * n / ROWS.length : 0) + "%"; $("#count").textContent = n + " / " + ROWS.length; }
+function setMode(m, text) { MODE = m; const el = $("#mode"); el.className = "chip " + m; el.textContent = text;
+  document.querySelectorAll(".card button").forEach(b => b.disabled = (m === "connecting")); }
+function notice(html, kind) { const n = $("#notice"); if (!html) { n.hidden = true; return; } n.hidden = false; n.dataset.kind = kind || ""; n.innerHTML = html; }
+function persistLocal() { try { localStorage.setItem(KEY, JSON.stringify(ST)); } catch (e) {} }
+function clean(s) { const o = {}; for (const k of ["main", "alt", "low", "agree", "t"]) if (s && s[k] !== undefined && s[k] !== null) o[k] = s[k]; return o; }
+
+function decide(qid, patch) {
+  if (MODE === "connecting") return;
+  const s = Object.assign({}, ST[qid] || {}, patch);
+  for (const k of Object.keys(patch)) if (patch[k] === undefined) delete s[k];
+  s.t = new Date().toISOString();
+  ST[qid] = s; paint(qid); progress();
+  if (MODE === "shared") queueWrite(qid); else persistLocal();
+}
+function agreeAll(c) {
+  const p = {main: c.ai.main, agree: true};
+  if (c.ai.main === "ok") { p.alt = c.alt ? "ok" : undefined; p.low = c.low ? "ok" : undefined; }
+  decide(c.qid, p);
+}
+function queueWrite(qid) { dirty.add(qid); if (!writing[qid]) flush(qid); }
+async function flush(qid) {
+  writing[qid] = true;
+  while (dirty.has(qid)) {
+    dirty.delete(qid);
+    try { await db.doc("check/" + qid).set(clean(ST[qid])); }
+    catch (e) {
+      if (e && e.code === "unavailable") { await new Promise(r => setTimeout(r, 800 + Math.random() * 800)); dirty.add(qid); continue; }
+      writing[qid] = false; return writeFailed();
+    }
+  }
+  writing[qid] = false;
+}
+function writeFailed() {
+  persistLocal(); setMode("local", "Saved on this device only");
+  notice("Your clicks are saved on <b>this device only</b>. When you finish, press <b>Download checks</b> and send the file.", "warn");
+}
+
+function btn(label, pressed, onClick, cls) { const b = document.createElement("button"); b.type = "button"; b.textContent = label;
+  if (cls) b.className = cls; b.setAttribute("aria-pressed", pressed ? "true" : "false"); b.disabled = MODE === "connecting"; b.onclick = onClick; return b; }
+function srcLink(url) { const a = document.createElement("a"); a.href = url; a.target = "_blank"; a.rel = "noopener"; a.textContent = "source"; return a; }
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+
+function build(c) {
+  const card = el("article", "card" + (c.risk.length ? " flag" : "")); card.id = "c-" + c.qid; card.dataset.qid = c.qid;
+  const head = el("div", "head");
+  head.append(el("span", "num", "#" + c.n), el("span", "name", c.name), el("span", "badge"));
+  const where = el("div", "where"); where.append(c.town + " (" + c.canton + ")");
+  card.append(head, where);
+  if (c.risk.length) { const r = el("div", "reasons"); c.risk.forEach(t => r.append(el("span", "tag", t))); card.append(r); }
+  const ai = el("div", "ai");
+  const verdict = {ok: "main photo OK", exclude: "EXCLUDE the main photo (privacy)", wrong: "main photo shows the WRONG object"}[c.ai.main];
+  ai.append("AI: ", el("b", "", verdict));
+  if (c.ai.note) ai.append(" · " + c.ai.note);
+  card.append(ai);
+  const ph = el("div", "photos");
+  for (const [slot, label] of SLOTS) {
+    const p = c[slot]; if (!p) continue;
+    const box = el("div", "slot"); box.dataset.slot = slot;
+    const lbl = el("div", "lbl", label); const im = el("div", "ph"); im.dataset.img = p.id; im.append(el("span", "wait", "loading photo…"));
+    const o = el("div", "opts"); o.dataset.opts = slot;
+    const s = el("div", "where"); s.append(srcLink(p.page));
+    box.append(lbl, im, o, s); ph.append(box);
+  }
+  card.append(ph);
+  const act = el("div", "opts"); act.dataset.opts = "row"; card.append(act);
+  return card;
+}
+function paint(qid) {
+  const c = byQid[qid], card = document.getElementById("c-" + qid); if (!c || !card) return;
+  const s = ST[qid] || {};
+  const row = card.querySelector('[data-opts="row"]'); row.textContent = "";
+  row.append(btn("Agree with AI ✓", !!s.agree, () => agreeAll(c), "agree"));
+  for (const [slot] of SLOTS) {
+    const o = card.querySelector('[data-opts="' + slot + '"]'); if (!o) continue; o.textContent = "";
+    const cur = s[slot];
+    o.append(btn("OK", cur === "ok", () => decide(qid, {[slot]: "ok", agree: undefined})));
+    for (const [v, label] of BAD[slot]) o.append(btn(label, cur === v, () => decide(qid, {[slot]: cur === v ? undefined : v, agree: undefined})));
+    o.parentElement.classList.toggle("bad", !!cur && cur !== "ok");
+  }
+  const done = complete(c); card.classList.toggle("done", done);
+  card.querySelector(".badge").textContent = done ? "✓ checked" : "";
+}
+function fillPhotos(card) {
+  const c = byQid[card.dataset.qid];
+  loadPack(c.pack).then(pack => {
+    card.querySelectorAll(".ph[data-img]").forEach(box => {
+      if (box.querySelector("img")) return;
+      const src = pack[box.dataset.img]; if (!src) { box.firstChild.textContent = "photo missing"; return; }
+      const img = document.createElement("img"); img.alt = c.name + " (" + box.dataset.img + ")";
+      img.src = "data:image/jpeg;base64," + src; img.onclick = () => openLightbox(img.src, img.alt);
+      box.textContent = ""; box.append(img);
+    });
+  }).catch(() => card.querySelectorAll(".ph .wait").forEach(w => w.textContent = "photo could not load: reload the page"));
+}
+const filled = new Set();
+function fillNear() {
+  const h = window.innerHeight || 800;
+  document.querySelectorAll(".card").forEach((e, k) => {
+    if (filled.has(e.dataset.qid) || e.offsetParent === null) return;
+    const r = e.getBoundingClientRect();
+    if ((r.bottom > -2 * h && r.top < 3 * h) || k < 4) { filled.add(e.dataset.qid); fillPhotos(e); }
+  });
+}
+
+function openLightbox(src, alt) { const lb = $("#lightbox"), im = $("#lbimg"); im.src = src; im.alt = alt; lb.hidden = false; }
+$("#lightbox").onclick = () => { $("#lightbox").hidden = true; };
+document.addEventListener("keydown", e => { if (e.key === "Escape") $("#lightbox").hidden = true; });
+
+$("#save").onclick = async () => {
+  const checks = {}; for (const [q, s] of Object.entries(ST)) { const c = clean(s); if (Object.keys(c).length) checks[q] = c; }
+  const text = JSON.stringify({format: "screening-check", annotator: "A1", exported_at: new Date().toISOString(),
+    complete: ROWS.filter(complete).length, total: ROWS.length, checks}, null, 1);
+  if (dl) {
+    try { await dl.save({filename: "screening_check.json", data: text}); notice("Saved <b>screening_check.json</b>.", ""); return; }
+    catch (e) { if (e && e.code === "declined") { notice("Download cancelled.", ""); return; } }
+  }
+  try { await navigator.clipboard.writeText(text); notice("Copied the checks. Paste them into a message.", ""); }
+  catch (e) { notice('Copy this text and send it:<br><textarea class="dump" readonly></textarea>', "warn");
+    const t = $("#notice textarea"); t.value = text; t.focus(); t.select(); }
+};
+$("#hide").onchange = e => { document.body.classList.toggle("hide-done", e.target.checked); fillNear(); };
+$("#next").onclick = () => { const c = ROWS.find(x => !complete(x)); if (!c) { notice("All rows are checked. Thank you!", ""); return; }
+  document.getElementById("c-" + c.qid).scrollIntoView({block: "start"}); };
+
+async function start() {
+  try { ROWS = await fetch("data/rows.json").then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }); }
+  catch (e) { $("#list").innerHTML = '<p class="empty">The list could not load. Reload the page.</p>'; return; }
+  ROWS.forEach(c => byQid[c.qid] = c);
+  const list = $("#list"); list.textContent = "";
+  const nRisk = ROWS.filter(c => c.risk.length).length;
+  list.append(el("h2", "", "Flagged first (" + nRisk + ")"));
+  ROWS.forEach((c, k) => {
+    if (k === nRisk) list.append(el("h2", "", "Quick scan: the rest (" + (ROWS.length - nRisk) + ")"));
+    list.append(build(c)); paint(c.qid);
+  });
+  progress(); fillNear();
+  let ticking = false;
+  const onMove = () => { if (!ticking) { ticking = true; requestAnimationFrame(() => { ticking = false; fillNear(); }); } };
+  window.addEventListener("scroll", onMove, {passive: true}); window.addEventListener("resize", onMove);
+  connect();
+}
+async function connect() {
+  const cl = window.claude;
+  const [d, u, w] = cl && cl.use ? await Promise.all([cl.use("db"), cl.use("user"), cl.use("downloads")].map(p => p.catch(() => null))) : [null, null, null];
+  dl = w;
+  let canWrite = null;
+  if (u && u.can) { try { canWrite = await u.can("data.write"); } catch (e) { canWrite = null; } }
+  if (!d || canWrite === false) {
+    try { ST = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { ST = {}; }
+    ROWS.forEach(c => paint(c.qid)); progress();
+    setMode("local", "Saved on this device only");
+    notice("Your clicks are saved on <b>this device only</b>. When you finish, press <b>Download checks</b> and send the file.", "warn");
+    return;
+  }
+  db = d;
+  setMode("shared", "Saved online");
+  notice("");
+  db.collection("check").onSnapshot(snap => {
+    for (const ch of snap.docChanges()) {
+      const q = ch.doc.id; if (!byQid[q] || writing[q] || dirty.has(q)) continue;
+      if (ch.type === "removed") delete ST[q]; else ST[q] = Object.assign({}, ch.doc.data());
+      paint(q);
+    }
+    progress();
+  }, err => notice("Live updates stopped (" + (err && err.code || "error") + "). Reload the page; your saved clicks are kept.", "warn"));
+}
+start();
+</script>
