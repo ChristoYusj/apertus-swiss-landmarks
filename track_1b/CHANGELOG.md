@@ -336,4 +336,6 @@ right_canton_only, similar_but_different_name, ...) and a seeded random 150 per 
   (70B 2 vs 2 correct names, different landmarks); on low-information photos 70B declined 34/34 and 8B 33/34.
 - The second AI's grades of the audit sample are stored as `ai_crosscheck_audit.jsonl` and scored as
   `ai_crosscheck_audit` (marked `not_a_human_audit`); audit items of removed landmarks are skipped and counted.
-- Reference scores for `verify` V6 (`src/landmarks_eval/expected/reference.scores.json`) = the 70B scores.
+- Reference scores for `verify` V6 (= the 70B scores) are added to `src/landmarks_eval/expected/` at release,
+  together with the pinned dataset revision (CI runs `make run` once that file exists). A Docker run with the
+  dataset mounted read-only passed V1-V7, which also showed `verify` must not write into the dataset (fixed).
