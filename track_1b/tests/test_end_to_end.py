@@ -182,3 +182,26 @@ def test_ai_crosscheck_is_separate_and_dropped_audit_items_are_skipped(tmp_path,
     assert x["not_a_human_audit"] is True and x["reviewer"] == ["ai:other"]
     assert (x["sampled"], x["left_unscored_as_uncertain"], x["sampled_items_dropped_with_landmark"], x["items"]) == (4, 1, 1, 2)
     assert x["code_vs_ai"]["n"] == 2 and x["code_vs_ai"]["raw_agreement"] == 0.5   # code: Q102 incorrect vs AI NA
+
+
+def test_verify_works_on_a_read_only_dataset(tmp_path, monkeypatch, fake_model):
+    """Judges' `make run` may read the dataset from a read-only location: verify must not need to write there."""
+    _patch_photo_answers(monkeypatch, fake_model)
+    results = tmp_path / "results"
+    run_mod.run(FIXTURE, results, Endpoint(model="fake/model", base_url="http://fake", api_key="x"),
+                concurrency=1, log=lambda *_: None)
+    grade_all(FIXTURE, results, judge_ep=None, log=lambda *_: None)
+    expected = tmp_path / "expected.json"
+    write_scores(compute_scores(FIXTURE, results), expected)
+    real_write = Path.write_text
+
+    def read_only(self, *a, **k):
+        if self.parent == results:
+            raise OSError(30, "Read-only file system")
+        return real_write(self, *a, **k)
+
+    monkeypatch.setattr(Path, "write_text", read_only)
+    log = []
+    assert verify(FIXTURE, results, expected, log=log.append), "\n".join(log)
+    assert any("read-only" in line for line in log)
+    assert not (results / "scores.recomputed.json").exists()
