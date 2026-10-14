@@ -196,7 +196,7 @@ are included with their grades. It was built for Hack Apertus 2026, Track 1B
 
 - `data/test_cases.jsonl`: the evaluation set, one row per question. Fields:
   - identity and question: `item_id`, `landmark_qid`, `arm`, `question_type`, `lang`, `template_id`, `prompt_version`, `question_text`, `image_id`
-  - expected behaviour and traps: `expected_behavior`, `trap_type`, `false_premise_claim`, `false_premise_aliases`, `paired_control_item_id`, `confusable_with`, `split`
+  - expected behaviour and traps: `expected_behavior`, `trap_type`, `false_premise_claim`, `false_premise_aliases`, `paired_control_item_id`, `confusable_with`
 - `data/landmarks.jsonl`: answer keys, one row per landmark. Fields:
   - names: labels in 5 languages and `name_aliases` (each flagged `distinctive`; saint/type-only names count only together with the town)
   - place: `place_aliases` (names of the current municipality in all languages; districts, regions and former municipalities removed, see `metadata/removed_place_aliases.jsonl`), `ambiguous_place_aliases` (need the canton), `canton_aliases`

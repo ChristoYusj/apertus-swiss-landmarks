@@ -6,7 +6,7 @@ Checks (any failure -> exit code 1):
   V3 every main test case has exactly one response (coverage)
   V4 re-running the deterministic code grader reproduces every stored code_label exactly
   V5 final labels follow the documented rule (judge label if present, else code label)
-  V7 privacy: every shipped photo was cleared in the human screening (no unscreened photo is publishable)
+  V7 privacy: every shipped photo has a screening decision (no unscreened photo is publishable)
   V6 recomputed scores equal the expected scores file (all numbers, after rounding)
 """
 
@@ -75,7 +75,8 @@ def verify(dataset: Path, results: Path, expected: Path | None, log=print) -> bo
         if not p.exists() or hashlib.sha256(p.read_bytes()).hexdigest() != rec["shipped_sha256"]:
             bad.append(rec["image_id"])
     check("V2 image hashes", not bad, f"{len(bad)} mismatched: {bad[:5]}")
-    # V7 privacy: every shipped photo was cleared in the human screening (Task P); an unscreened dataset is
+    # V7 privacy: every shipped photo was cleared in the photo screening (Task P; as run: AI review + the lead's edge
+    # decisions, reviewers per photo in pii_reviewer_ids); an unscreened dataset is
     # not publishable, whatever the other checks say
     on_disk = {p.stem for p in (dataset / "images").glob("*.jpg")}
     uncleared += sorted(on_disk - {r["image_id"] for r in image_recs})

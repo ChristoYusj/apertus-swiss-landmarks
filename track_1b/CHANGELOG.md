@@ -361,3 +361,8 @@ and one skeptic re-check. Fixed:
   is that recent); the year-window sensitivity (±0/±10/century) was not run (2 of 268 photo year answers).
 - Scores and merge files are written with LF line endings on every platform; the dataset card refuses an unknown
   screening protocol instead of describing a team screening.
+- **Privacy gate standard, stated plainly:** V7 checks that every shipped photo has a screening decision. Under
+  protocol v3 that decision needed a person; as run (v3b) V7 passes on AI clearance for 426 of 429 shipped photos
+  (`pii_reviewer_ids` = Claude + Hermes; 3 also carry A1). The gate was not tightened back, so the report says that
+  no person reviewed every shipped photo. The guideline's Task G "as run" text now says the human labels are not
+  yet collected; the card no longer lists a `split` field (no test case has one).

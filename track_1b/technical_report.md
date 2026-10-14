@@ -115,7 +115,7 @@ EXIF is stripped. Annotators sign the consent form in `docs/consent_form_templat
 
 - **Quality metrics:** answer-key audit (above), selection funnel, per-cell counts, item-validity rules,
   stability of answers at temperature 0 (below), judge–code agreement and an independent re-read of every
-  disagreement, an AI cross-check of the audit sample, the human audit ⟨pending⟩.
+  disagreement (AI-assisted), an AI cross-check of the audit sample, the human audit ⟨pending⟩.
 - **Diversity / edge cases:** four languages incl. Romansh; fame tiers; same-photo language contrast; text vs
   photo; false-premise traps with real look-alikes; low-information photos; ambiguous town names;
   non-distinctive names.
@@ -231,7 +231,7 @@ dataset): κ = 0.96 with the judge (98.2 % identical) and 0.99 with the code gra
   (exploratory). The language effect could partly reflect template wording; a no-abstention-cue variant is
   future work.
 - Gold comes from Wikidata; errors there propagate (mitigated by the rule-based checks, the 25-landmark live
-  re-check and the re-reading of every grader disagreement against the gold). The photo screening also found one
+  re-check and the AI-assisted re-reading of every grader disagreement against the gold). The photo screening also found one
   Wikidata main photo of the wrong building (removed).
 - Fame is proxied by Wikipedia article counts. Low accuracy everywhere limits the power of fame contrasts (floor).
 - Neither automatic grader is perfect. The frozen judge is too strict on vague answers that fit the landmark
@@ -239,8 +239,8 @@ dataset): κ = 0.96 with the judge (98.2 % identical) and 0.99 with the code gra
   phrases, a denomination the gold does not state, name-shaped phrases built from common nouns ("Tour de
   l'Horloge" for another tower), and descriptive museum names.
 - Post-run corrections to the code grader and item validity were made after seeing answers; each is
-  documented with its effect in `CHANGELOG.md` and pinned by regression tests. Two independent reviews read every
-  answer the code grader marked incorrect; the second one moved 109 (70B) and 356 (8B) labels, mostly refusals
+  documented with its effect in `CHANGELOG.md` and pinned by regression tests. One independent review read every
+  answer the code grader marked incorrect and moved 109 (70B) and 356 (8B) labels, mostly refusals
   phrased in ways the patterns did not know; a third read 831 labels and its fixes moved 14 (70B) and 29 (8B)
   more (every changed label was read individually; these reviews were AI-assisted, not a human audit).
 - The photo screening was done by AI (two systems) with the team lead deciding edge cases; no person reviewed every
