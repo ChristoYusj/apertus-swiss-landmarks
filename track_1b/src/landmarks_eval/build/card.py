@@ -81,7 +81,8 @@ def build_card(ds: Path, extra: dict | None = None) -> str:
     grading_block = (
         "  - Every model answer was graded by a deterministic code grader and by an independent open-weights LLM judge "
         "(`openai/gpt-oss-120b`, temperature 0); the final label is the judge's.\n"
-        "  - The judge prompt was tuned on a 40-item dev set and frozen before the human audit sample was drawn."
+        "  - The judge prompt was tuned on a 40-item dev set (labels proposed by Claude; the team lead ruled on the 4 "
+        "hard cases and accepted the other 36 without item-by-item review) and frozen before the audit sample was drawn."
         if judge_done else
         "  - Every model answer was graded by a deterministic code grader (rules in the repository, each post-run change "
         "documented in the CHANGELOG). LLM-judge labels are not part of this version; final label = code-grader label.")
