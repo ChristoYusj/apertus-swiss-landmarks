@@ -318,3 +318,22 @@ right_canton_only, similar_but_different_name, ...) and a seeded random 150 per 
 - 24 of the 546 audit-sample items belong to dropped landmarks; agreement statistics use the items still in the
   dataset, and the count is reported.
 - Judge calls now log their token usage per chunk (paid API; the HF dashboard has the exact cost).
+
+## New photo items run and judged; review 5 (15 Oct, night)
+- `photo_alt` (732) and `trap_lowinfo` (34) items run on Apertus 1.5 70B and 8B with the shipped `run` (cached
+  answers reused, only new requests sent): 3,412/3,412 `ok` for both; 8B: 2 answers hit max_tokens.
+- Judged with the frozen `judge-v1` (766 new answers per model, 0 failures; tokens in/out 574k/160k for 70B,
+  572k/140k for 8B; now logged per chunk).
+- **Review 5:** the 44 judge-vs-code disagreements not covered by review 4 (new items, and labels the review-4
+  contradiction rules changed) re-read with the same two-read protocol. Settled by label: judge right 11, code
+  right 31, neither 1, unsettled 1. Every current disagreement (70B 72, 8B 108) now has a re-read. Sensitivity
+  (`sensitivity_adjudicated`): 70B RM name wrong 68 % -> 59 %, RM year +6 pp, other cells <= 1.2 pp.
+- **Result changes caused by the screening (13 landmarks removed):** the language pattern is unchanged (70B name
+  wrong FR 11 / IT 24 / DE 41 / RM 68 %). H3 (French) is now significant after Holm (text 8 vs photo 0,
+  p_Holm = 0.04); before the screening it was 8 vs 1 (p_Holm = 0.13): the one photo-correct French answer was on a
+  landmark removed for privacy. Reported as fragile in the report.
+- Descriptive (analysis plan, secondary): second view vs main photo shows no advantage for the main photos
+  (70B 2 vs 2 correct names, different landmarks); on low-information photos 70B declined 34/34 and 8B 33/34.
+- The second AI's grades of the audit sample are stored as `ai_crosscheck_audit.jsonl` and scored as
+  `ai_crosscheck_audit` (marked `not_a_human_audit`); audit items of removed landmarks are skipped and counted.
+- Reference scores for `verify` V6 (`src/landmarks_eval/expected/reference.scores.json`) = the 70B scores.
