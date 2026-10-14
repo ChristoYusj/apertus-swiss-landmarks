@@ -177,36 +177,40 @@ def test_ai_screening_needs_a1_check_and_a1_wins(tmp_path):
 def test_ai_screening_alt_left_unchecked_keeps_the_merge_incomplete():
     from landmarks_eval.build.review_merge import combine_ai_check
     team = combine_ai_check(_ai({"Q1": {"main": "ok", "alt": "Q1-alt1"}}),
-                            {"format": "screening-check", "checks": {"Q1": {"main": "ok"}}})
+                            {"format": "screening-check", "annotator": "A1", "checks": {"Q1": {"main": "ok"}}})
     assert team["decisions"]["Q1"] == {"main": "ok", "main_id": "Q1-main"} and team["check_stats"]["alt_unchecked"] == 1
     with pytest.raises(SystemExit):
         combine_ai_check({"format": "x", "decisions": {}}, {"format": "screening-check", "checks": {}})
+    with pytest.raises(SystemExit):   # an unnamed checker is never taken for A1
+        combine_ai_check(_ai({"Q1": {"main": "ok"}}), {"format": "screening-check", "checks": {"Q1": {"main": "ok"}}})
 
 
-def test_second_ai_reviewer_is_named_and_human_edge_cases_add_a1(tmp_path):
-    """Protocol v3b-ai-review: a second AI checks; only landmarks with a human edge decision name A1."""
+def test_second_ai_reviewer_is_named_and_a1_only_on_the_photos_a_person_decided(tmp_path):
+    """Protocol v3b-ai-review: a second AI checks; A1 is credited only on the photos a person decided."""
     from landmarks_eval.build.review_merge import combine_ai_check
     ai = _ai({"Q1": {"main": "ok", "alt": "Q1-alt2"}, "Q2": {"main": "ok", "alt": "Q2-alt1"},
               "Q3": {"main": "ok"}, "Q4": {"main": "ok"}, "Q5": {"main": "ok", "alt": "Q5-alt1"}})
     check = {"format": "screening-check", "annotator": "ai:hermes", "checks": {
-        "Q1": {"main": "ok", "alt": "ok"},
+        "Q1": {"main": "ok", "alt": "ok", "human_roles": ["alt"]},          # a person decided the 2nd view only
         "Q2": {"main": "wrong", "reason": "main photo may not show the landmark (excluded when unsure)"},
-        "Q3": {"main": "ok"}, "Q4": {"main": "wrong", "human": True, "reason": "photo shows another building"},
-        "Q5": {"main": "ok", "alt": "reject", "human": True}}}
+        "Q3": {"main": "ok"}, "Q4": {"main": "wrong", "human_roles": ["main"], "reason": "photo shows another building"},
+        "Q5": {"main": "ok", "alt": "reject", "human_roles": ["main"]}}}
     team = combine_ai_check(ai, check)
     assert team["guideline_version"] == "v3b-ai-review" and team["reviewers"] == ["ai:claude-opus-5-5", "ai:hermes"]
-    assert team["decisions"]["Q5"]["reviewers"] == ["ai:claude-opus-5-5", "ai:hermes", "A1"]
-    assert "reviewers" not in team["decisions"]["Q1"] and "reason" not in team["decisions"]["Q1"]
+    assert team["decisions"]["Q1"]["human_slots"] == ["alt"] and "human_slots" not in team["decisions"]["Q3"]
+    assert "reason" not in team["decisions"]["Q1"]
     _write_images(tmp_path, IMGS)
     p = tmp_path / "screening_team.json"
     p.write_text(json.dumps(team))
     rep = merge_review(tmp_path, [p])
     out = {json.loads(l)["image_id"]: json.loads(l) for l in open(tmp_path / "images.jsonl")}
-    assert out["Q1-alt2"]["pii_reviewer_ids"] == ["ai:claude-opus-5-5", "ai:hermes"]
+    assert out["Q1-alt2"]["pii_reviewer_ids"] == ["ai:claude-opus-5-5", "ai:hermes", "A1"]
+    assert out["Q1-main"]["pii_reviewer_ids"] == ["ai:claude-opus-5-5", "ai:hermes"]      # not decided by a person
     assert out["Q5-main"]["pii_reviewer_ids"] == ["ai:claude-opus-5-5", "ai:hermes", "A1"]
     assert out["Q5-alt1"]["pii_decision"] == "pending"
     assert rep["dropped_landmarks"] == {"Q2": "main photo may not show the landmark (excluded when unsure)",
                                         "Q4": "photo shows another building"}
+    assert rep["stats"]["landmarks_with_human_decision"] == 3 and rep["reviewers"] == ["ai:claude-opus-5-5", "ai:hermes"]
     assert rep["complete"] is True
     with pytest.raises(SystemExit):
         combine_ai_check(ai, {**check, "annotator": "someone"})

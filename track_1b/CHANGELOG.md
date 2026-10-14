@@ -339,3 +339,25 @@ right_canton_only, similar_but_different_name, ...) and a seeded random 150 per 
 - Reference scores for `verify` V6 (= the 70B scores) are added to `src/landmarks_eval/expected/` at release,
   together with the pinned dataset revision (CI runs `make run` once that file exists). A Docker run with the
   dataset mounted read-only passed V1-V7, which also showed `verify` must not write into the dataset (fixed).
+
+## Final audit before submission (15 Oct, night): corrections
+Three independent auditors (Claude agents: report numbers vs data, provenance claims across documents, code review)
+and one skeptic re-check. Fixed:
+- **Wording that overstated human work.** "read by hand" / "classified by hand" in the entries of 13 Oct means read
+  item by item by Claude (AI-assisted), not by a person. "Labels confirmed by the lead" for the judge dev set means
+  4 lead rulings + 36 labels proposed by Claude and accepted without item-by-item review. The report, the dataset
+  card and `docs/ai_use_statement.md` now say this; the card no longer says the questions were "written by the
+  team" (templates drafted with Claude Code).
+- **Per-photo credit.** A1 is now credited only on the photos a person decided (3 shipped photos), not on every
+  photo of a landmark with one human decision; a screening-check file must name its checker (an unnamed one was
+  taken for A1); the dropped-main-photo classes come from a reviewed table instead of a keyword match.
+- **Numbers.** Second view: 70B names 1 landmark correctly (in FR and DE), not 2 different ones (entry above).
+  Re-reads: 236 over two rounds, 224 still in the dataset (judge 86, code 131, neither 1, unsettled 6). The
+  sensitivity analysis also lowers the premise-trap rate (88 % -> 83 %). 8B Graubünden pull stated with the same
+  statistics as 70B. The audit sample is 20 % of the 2,726 answers before the screening (522 still in the dataset;
+  the later items are not covered). AI cross-check counts: 24 sampled items dropped with their landmark, 18
+  in-dataset items unscored, 504 compared; its confusion matrix is keyed `confusion_ai_rows`.
+- **Plan deviations not yet acknowledged:** the post-14-Jul-2026 photo contrast was not possible (no shipped photo
+  is that recent); the year-window sensitivity (±0/±10/century) was not run (2 of 268 photo year answers).
+- Scores and merge files are written with LF line endings on every platform; the dataset card refuses an unknown
+  screening protocol instead of describing a team screening.

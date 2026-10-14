@@ -129,7 +129,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "combine-screening":
         from .build.review_merge import combine_ai_check
         res = combine_ai_check(json.loads(args.ai.read_text(encoding="utf-8")), json.loads(args.check.read_text(encoding="utf-8")))
-        args.out.write_text(json.dumps(res, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+        args.out.write_text(json.dumps(res, indent=1, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n")
         print(json.dumps(res["check_stats"], indent=1))
         return 0
     if args.cmd == "assemble":

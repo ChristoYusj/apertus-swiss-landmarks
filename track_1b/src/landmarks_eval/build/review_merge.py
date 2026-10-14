@@ -65,15 +65,19 @@ def merge_review(work: Path, files: list[Path]) -> dict:
         if d.get("main_id") and d["main_id"] != main["image_id"]:
             raise SystemExit(f"{qid}: the decision was made on photo {d['main_id']}, but the main photo is {main['image_id']}")
         stats[f"main_{d['main']}"] += 1
-        rev = list(d.get("reviewers") or reviewers)          # per landmark: who decided it
-        if "A1" in rev or "team" in rev:
+        rev = list(d.get("reviewers") or reviewers)
+        human_slots = set(d.get("human_slots") or [])      # photos of this landmark a person decided (v3b)
+
+        def who(slot: str) -> list[str]:                     # per photo: who decided it
+            return rev + ["A1"] if slot in human_slots and "A1" not in rev else rev
+        if "A1" in rev or "team" in rev or human_slots:
             stats["landmarks_with_human_decision"] += 1
         if d["main"] == "exclude":
             main.update(pii_decision="exclude", pii_reason=f"recognisable person or private detail ({how})",
-                        pii_reviewer_ids=rev)
+                        pii_reviewer_ids=who("main"))
             dropped[qid] = d.get("reason") or "main photo excluded for privacy"
             continue
-        main.update(pii_decision="keep", pii_reviewer_ids=rev)
+        main.update(pii_decision="keep", pii_reviewer_ids=who("main"))
         if d["main"] == "wrong":
             dropped[qid] = d.get("reason") or "main photo does not show the landmark"
             continue
@@ -85,7 +89,7 @@ def merge_review(work: Path, files: list[Path]) -> dict:
                 continue
             if iid not in g["alts"]:
                 raise SystemExit(f"{qid}: {field}={iid} is not one of this landmark's other photos")
-            g["alts"][iid].update(pii_decision="keep", pii_reviewer_ids=rev)
+            g["alts"][iid].update(pii_decision="keep", pii_reviewer_ids=who(field))
             target[qid] = iid
         if alt_accepted.get(qid) and alt_accepted.get(qid) == lowinfo.get(qid):
             raise SystemExit(f"{qid}: the same photo is both the 2nd view and 'too generic'")
@@ -93,12 +97,13 @@ def merge_review(work: Path, files: list[Path]) -> dict:
         for im in images:
             f.write(json.dumps(im, ensure_ascii=False) + "\n")
     report = {"source_file": Path(files[0]).name, "guideline_version": sub.get("guideline_version"),
-              "exported_at": sub.get("exported_at"), "landmarks": len(by_lm), "stats": dict(stats),
-              "alt_accepted": len(alt_accepted), "lowinfo_traps": len(lowinfo),
+              "annotator": sub.get("annotator"), "reviewers": reviewers, "ai_model": sub.get("ai_model"),
+              "exported_at": sub.get("exported_at") or sub.get("check_exported_at"), "landmarks": len(by_lm),
+              "stats": dict(stats), "alt_accepted": len(alt_accepted), "lowinfo_traps": len(lowinfo),
               "dropped_landmarks": dropped, "complete": stats["landmarks_pending"] == 0 and stats["alt_choice_pending"] == 0}
     (work / "review").mkdir(exist_ok=True)
     (work / "review" / "merged.json").write_text(json.dumps({"report": report, "alt_accepted": alt_accepted,
-                                                             "lowinfo": lowinfo}, indent=1), encoding="utf-8")
+                                                             "lowinfo": lowinfo}, indent=1), encoding="utf-8", newline="\n")
     return report
 
 
@@ -113,14 +118,16 @@ def combine_ai_check(ai: dict, check: dict) -> dict:
     pending, so the privacy gate (verify V7) keeps failing until every published photo was seen by a person.
 
     The check can also come from a second AI reviewer (check["annotator"] = "ai:<name>", protocol v3b-ai-review): then
-    the file names the two AI reviewers, and only landmarks with a check marked "human": true also name A1. A check
-    may carry a "reason" for a dropped landmark (e.g. excluded when unsure), recorded in the exclusion log.
+    the file names the two AI reviewers, and A1 is added only to the photos a person decided (a check's
+    "human_roles": main / alt / low). A check may carry a "reason" for a dropped landmark (e.g. excluded when unsure),
+    recorded in the exclusion log. The checker must be named: a file without "annotator" is refused, so an AI check
+    can never be taken for A1's.
     """
     if ai.get("format") != "ai-screening" or check.get("format") != "screening-check":
         raise SystemExit("combine-screening needs an ai-screening file and a screening-check file")
-    checker = check.get("annotator") or "A1"
-    if checker != "A1" and not checker.startswith("ai:"):
-        raise SystemExit(f"unknown checker {checker!r}: A1 or ai:<name>")
+    checker = check.get("annotator")
+    if checker != "A1" and not (isinstance(checker, str) and checker.startswith("ai:")):
+        raise SystemExit(f"the check file must name its checker ('annotator': 'A1' or 'ai:<name>'), got {checker!r}")
     decisions, stats = {}, Counter()
     for qid, d in sorted(ai["decisions"].items()):
         c = check["checks"].get(qid) or {}
@@ -130,8 +137,9 @@ def combine_ai_check(ai: dict, check: dict) -> dict:
         out = {"main": c["main"], "main_id": d["main_id"]}
         if c.get("reason") and c["main"] != "ok":
             out["reason"] = c["reason"]
-        if checker != "A1" and c.get("human"):
-            out["reviewers"] = [AI_REVIEWER, checker, "A1"]
+        roles = sorted(set(c.get("human_roles") or []) & {"main", "alt", "low"})
+        if checker != "A1" and roles:
+            out["human_slots"] = roles
             stats["with_human_decision"] += 1
         stats["main_" + ("agree" if c["main"] == d["main"] else f"{d['main']}_to_{c['main']}")] += 1
         if c["main"] == "ok":
@@ -153,5 +161,6 @@ def combine_ai_check(ai: dict, check: dict) -> dict:
     human = checker == "A1"
     return {"format": "team-consensus", "annotator": "ai+A1" if human else f"ai+{checker}",
             "guideline_version": "v3-ai-assisted" if human else "v3b-ai-review",
-            "reviewers": [AI_REVIEWER, checker], "ai_model": ai.get("model"), "check_exported_at": check.get("exported_at"),
+            "reviewers": [AI_REVIEWER, checker], "ai_model": ai.get("model"), "exported_at": check.get("exported_at"),
+            "check_exported_at": check.get("exported_at"),
             "check_stats": dict(sorted(stats.items())), "decisions": decisions}

@@ -162,13 +162,16 @@ def compute_scores(dataset: Path, results: Path, bootstrap: int = 2000) -> dict:
     if (results / "ai_crosscheck_audit.jsonl").exists():
         # the audit sample graded by a second AI system (NOT the human audit): its agreement with the judge and code
         rows = load_jsonl(results / "ai_crosscheck_audit.jsonl")
-        scored, gone = in_dataset([r for r in rows if r.get("label")])
-        a = agreement(scored, judg, cases)
+        kept, gone = in_dataset(rows)
+        a = agreement([r for r in kept if r.get("label")], judg, cases)
+
+        def ai(c):  # the generic matrix is keyed "human_rows"; here the rows are the AI's labels
+            return c and {("confusion_ai_rows" if k == "confusion_human_rows" else k): v for k, v in c.items()}
         s["ai_crosscheck_audit"] = {
             "reviewer": sorted({r["annotator_id"] for r in rows}), "not_a_human_audit": True, "sampled": len(rows),
-            "left_unscored_as_uncertain": sum(1 for r in rows if not r.get("label")),
-            "sampled_items_dropped_with_landmark": gone, "items": a["items"],
-            "judge_vs_ai": a["judge_vs_human"], "code_vs_ai": a["code_vs_human"],
+            "sampled_items_dropped_with_landmark": gone,
+            "left_unscored_as_uncertain": sum(1 for r in kept if not r.get("label")), "items": a["items"],
+            "judge_vs_ai": ai(a["judge_vs_human"]), "code_vs_ai": ai(a["code_vs_human"]),
             "by_lang": {k: {"n": v["n"], "judge_vs_ai": v["judge_vs_human"], "code_vs_ai": v["code_vs_human"]}
                         for k, v in a["by_lang"].items()}}
     adj_path = results / "disagreement_adjudication.jsonl"
@@ -225,4 +228,4 @@ def _count(it):
 
 def write_scores(scores: dict, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(scores, indent=1, sort_keys=True, ensure_ascii=False) + "\n", encoding="utf-8")
+    path.write_text(json.dumps(scores, indent=1, sort_keys=True, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n")

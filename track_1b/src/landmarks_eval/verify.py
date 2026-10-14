@@ -116,11 +116,11 @@ def verify(dataset: Path, results: Path, expected: Path | None, log=print) -> bo
     scores = compute_scores(dataset, results)
     text = json.dumps(scores, indent=1, sort_keys=True, ensure_ascii=False) + "\n"
     try:
-        (results / "scores.recomputed.json").write_text(text, encoding="utf-8")
+        (results / "scores.recomputed.json").write_text(text, encoding="utf-8", newline="\n")
     except OSError:  # a read-only dataset (mounted or cached): keep the recomputed scores elsewhere, verification goes on
         import tempfile
         out = Path(tempfile.gettempdir()) / "scores.recomputed.json"
-        out.write_text(text, encoding="utf-8")
+        out.write_text(text, encoding="utf-8", newline="\n")
         log(f"  note: results directory is read-only; recomputed scores written to {out}")
     if expected is not None:
         exp = json.loads(expected.read_text(encoding="utf-8"))

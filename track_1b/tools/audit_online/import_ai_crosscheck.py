@@ -18,6 +18,7 @@ rows = []
 for g in h["resolved_grading"]:
     assert g["item_id"] in sample, g["item_id"]
     assert g["reviewer"].startswith("ai:"), g["reviewer"]
+    assert g["label"] in (None, "correct", "incorrect", "not_attempted"), (g["item_id"], g["label"])
     rows.append({"item_id": g["item_id"], "annotator_id": g["reviewer"], "label": g["label"],
                  "confidence": g.get("confidence"), "disposition": g.get("disposition"),
                  "used_translation": bool(g.get("used_translation")), "rationale": g.get("rationale")})

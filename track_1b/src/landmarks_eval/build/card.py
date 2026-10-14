@@ -97,27 +97,38 @@ def build_card(ds: Path, extra: dict | None = None) -> str:
                        "one annotator (A1) following `docs/annotation_guidelines.md`"
                        + (f"; {len(repeats)} items were shown a second time, unannounced, to measure self-consistency"
                           if repeats else "")
-                       + ".\n- **Agreement:** judge-human and code-human agreement (Cohen's kappa) and the annotator's "
-                       "self-consistency are in `scores.json` and the technical report." + ai_line)
+                       + ".\n- **Agreement:** judge-human and code-human agreement (Cohen's kappa)"
+                       + (" and the annotator's self-consistency" if repeats else "")
+                       + " are in `scores.json` and the technical report." + ai_line)
         annot_details = ("One student member of Team Red Pandas (pseudonym A1), French and English speaker."
                          + (" Non-French answers were shown with a labelled English machine gloss." if gloss else ""))
     else:
         audit_block = "- **Human audit:** not part of this version." + ai_line
         annot_details = "No human grading labels are published in this version; *Privacy screening* says who screened the photos."
     proto = review.get("guideline_version")
-    if proto == "v3b-ai-review":
+    revs = review.get("reviewers") or []
+    if proto == "v3b-ai-review" and revs == ["ai:claude-opus-5-5", "ai:hermes"]:
         screening_lines = (
             "  - Every candidate photo was screened by an AI (Claude Opus 5.5); three further Claude instances re-checked "
             "every photo to be shipped, and a second AI agent (Hermes) reviewed them again under the team lead's "
             "\"if unsure, exclude\" policy.\n"
             f"  - The team lead decided the edge cases of {review.get('stats', {}).get('landmarks_with_human_decision', 0)} "
             "landmarks directly. No person reviewed every shipped photo.")
-    elif proto == "v3-ai-assisted":
+    elif proto == "v3-ai-assisted" and "A1" in revs:
         screening_lines = ("  - Every candidate photo was screened by an AI (Claude Opus 5.5) and re-checked by further "
                            "Claude instances; annotator A1 then checked every shipped photo.")
-    else:
+    elif proto == "v2-team":
         screening_lines = ("  - Every shipped photo was then reviewed by the team, jointly, one decision per landmark "
                            "(guideline v2-team).")
+    elif extra.get("allow_unscreened_draft"):
+        screening_lines = "  - Screening provenance: see `metadata/review.json` (draft card)."
+    else:  # never guess who screened the photos
+        raise SystemExit(f"unknown screening protocol {proto!r} / reviewers {revs}: cannot describe the screening")
+    n_post = sum(1 for i in imgs if i.get("post_cutoff"))
+    contam_line = ("The `photo_alt` arm (a second view of the same object) is the only, indirect image-side check"
+                   + (f"; {n_post} shipped photos post-date 14 Jul 2026" if n_post else
+                      "; no shipped photo was uploaded or taken after 14 Jul 2026, so a post-cutoff contrast was not possible")
+                   + ". URL-level checks against web-scale image corpora were infeasible.")
     stab_line = (f" Re-asking 100 items gave {stab['identical_text_rate']:.0%} identical text and "
                  f"{stab['same_code_label_rate']:.0%} identical labels." if stab else "")
     yaml_head = """---
@@ -233,7 +244,7 @@ for Apertus 1.5.
 #### Source Data Producers and Data Subjects
 - **Photographs:** Wikimedia Commons contributors, credited per image.
 - **Facts:** Wikidata editors and the Swiss Federal Statistical Office.
-- **Questions:** written by the team.
+- **Questions:** fixed templates drafted with an AI coding assistant (Claude Code); French reviewed by French-speaking team members, German and Italian back-translation checked, Romansh not reviewed by a native speaker.
 - **Model responses:** Apertus 1.5 (CSCS endpoint).
 
 No person is a data subject: photos showing recognisable people were excluded.
@@ -278,7 +289,7 @@ No person is a data subject: photos showing recognisable people were excluded.
 - **Wikidata coverage:** coverage is uneven. The Romansh region has only 12 listed landmarks with 3+ Wikipedia articles (all included), and Italian and Romansh cells draw on smaller pools.
 - **Romansh templates:** not native-reviewed (exploratory).
 - **Inception dates:** these can refer to an earlier building on the same site. Answer-key errors are {'estimated on a sample, not eliminated' if gold_qc else 'reduced by rule-based checks, not eliminated'}.
-- **Contamination:** famous objects and their Wikipedia text are likely in pre-training data. The `photo_alt` arm and post-July-2026 photos give only an indirect check, and URL-level checks against web-scale image corpora were infeasible.
+- **Contamination:** famous objects and their Wikipedia text are likely in pre-training data. {contam_line}
 - **Determinism:** model outputs at temperature 0 are not perfectly reproducible on shared GPU servers. Scores are verified by replaying the stored responses.{stab_line}
 
 ### Personally Identifiable Information
