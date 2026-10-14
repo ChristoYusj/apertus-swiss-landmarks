@@ -53,7 +53,12 @@ def build_card(ds: Path, extra: dict | None = None) -> str:
                  "judgements.jsonl": "code-grader label and rule" + (", LLM-judge label" if judge_done else "") + ", final label",
                  "scores.json": "all scores recomputed by `landmarks-eval score`",
                  "stability.json": "temperature-0 stability check", "stability_responses.jsonl": "the re-asked answers",
-                 "human_audit.jsonl": "blind human labels (A1-A3)", "judge_dev_set.jsonl": "judge tuning items and labels",
+                 "human_audit.jsonl": "blind human labels (annotator A1)",
+                 "human_audit_repeat.jsonl": "the annotator's second labels of the hidden repeat items (self-consistency)",
+                 "audit_sample.json": "the seeded, stratified audit sample (item ids, strata, hidden repeats)",
+                 "ai_crosscheck_audit.jsonl": "the audit sample graded by a second AI system: a cross-check, not a human audit",
+                 "disagreement_adjudication.jsonl": "AI-assisted re-reading of every judge-vs-code disagreement (sensitivity analysis)",
+                 "judge_dev_set.jsonl": "judge tuning items and labels", "judge_dev_eval.json": "the frozen judge on its dev set",
                  "glosses.jsonl": "English machine glosses of answers (annotation aid)"}
     responses_block = "\n".join(
         f"- `responses/{name}/`:\n" + "\n".join(f"  - `{f}`: {file_desc.get(f, '')}".rstrip(": ") for f in fs
@@ -63,11 +68,11 @@ def build_card(ds: Path, extra: dict | None = None) -> str:
                  "excluded_landmarks.jsonl": "answer keys of landmarks removed in the photo screening",
                  "removed_place_aliases.jsonl": "place labels removed from the answer keys (district, region or former municipality)",
                  "gazetteer.json": "Swiss cantons, current and former municipalities and countries (location analysis)",
-                 "review.json": "photo-screening decisions (team, joint)"}
+                 "review.json": "photo-screening summary (protocol, counts, dropped landmarks and reasons)"}
     meta_block = "\n".join(f"- `metadata/{f}`: {d}" for f, d in meta_desc.items() if (ds / "metadata" / f).exists())
     arm_desc = {"photo_main": "Wikidata main photo.",
                 "text_only": "the object's name is given; the question asks where it is or when it was built.",
-                "photo_alt": "a second, human-accepted view.",
+                "photo_alt": "a second view of the same object, accepted in the photo screening.",
                 "trap_premise": "the question falsely states the town of a real look-alike.",
                 "trap_lowinfo": "a photo too generic to identify; abstaining is correct."}
     present_arms = {c["arm"] for c in cases}
@@ -80,18 +85,39 @@ def build_card(ds: Path, extra: dict | None = None) -> str:
         if judge_done else
         "  - Every model answer was graded by a deterministic code grader (rules in the repository, each post-run change "
         "documented in the CHANGELOG). LLM-judge labels are not part of this version; final label = code-grader label.")
+    ai_check = _load(ref / "ai_crosscheck_audit.jsonl") if (ref / "ai_crosscheck_audit.jsonl").exists() else []
+    repeats = _load(ref / "human_audit_repeat.jsonl") if (ref / "human_audit_repeat.jsonl").exists() else []
+    ai_line = (f"\n- **AI cross-check (not a human audit):** a second AI system "
+               f"({', '.join(sorted({a['annotator_id'] for a in ai_check}))}) graded the same sample "
+               f"({sum(1 for a in ai_check if a.get('label'))} of {len(ai_check)} items; the rest were left unscored as "
+               "uncertain); its agreement with the judge and the code grader is in `scores.json`." if ai_check else "")
     if audit:
         n_items = len({a["item_id"] for a in audit})
-        audit_block = (f"- **Human audit:** {n_items} answers (a seeded, stratified random sample) were labelled blind by "
-                       f"3 team members following `docs/annotation_guidelines.md`; "
-                       f"{sum(1 for i in {a['item_id'] for a in audit if a['in_overlap']})} items were labelled by all three.\n"
-                       "- **Agreement:** judge-human, code-human and inter-annotator agreement (Cohen's and Fleiss' kappa) "
-                       "are in `scores.json` and the technical report.")
-        annot_details = ("Three student members of Team Red Pandas (pseudonyms A1-A3), French and English speakers."
+        audit_block = (f"- **Human audit:** {n_items} answers of a seeded, stratified random sample were labelled blind by "
+                       "one annotator (A1) following `docs/annotation_guidelines.md`"
+                       + (f"; {len(repeats)} items were shown a second time, unannounced, to measure self-consistency"
+                          if repeats else "")
+                       + ".\n- **Agreement:** judge-human and code-human agreement (Cohen's kappa) and the annotator's "
+                       "self-consistency are in `scores.json` and the technical report." + ai_line)
+        annot_details = ("One student member of Team Red Pandas (pseudonym A1), French and English speaker."
                          + (" Non-French answers were shown with a labelled English machine gloss." if gloss else ""))
     else:
-        audit_block = "- **Human audit:** not part of this version."
-        annot_details = "The photo screening was done jointly by the team (Team Red Pandas); no individual labels are published."
+        audit_block = "- **Human audit:** not part of this version." + ai_line
+        annot_details = "No human grading labels are published in this version; *Privacy screening* says who screened the photos."
+    proto = review.get("guideline_version")
+    if proto == "v3b-ai-review":
+        screening_lines = (
+            "  - Every candidate photo was screened by an AI (Claude Opus 5.5); three further Claude instances re-checked "
+            "every photo to be shipped, and a second AI agent (Hermes) reviewed them again under the team lead's "
+            "\"if unsure, exclude\" policy.\n"
+            f"  - The team lead decided the edge cases of {review.get('stats', {}).get('landmarks_with_human_decision', 0)} "
+            "landmarks directly. No person reviewed every shipped photo.")
+    elif proto == "v3-ai-assisted":
+        screening_lines = ("  - Every candidate photo was screened by an AI (Claude Opus 5.5) and re-checked by further "
+                           "Claude instances; annotator A1 then checked every shipped photo.")
+    else:
+        screening_lines = ("  - Every shipped photo was then reviewed by the team, jointly, one decision per landmark "
+                           "(guideline v2-team).")
     stab_line = (f" Re-asking 100 items gave {stab['identical_text_rate']:.0%} identical text and "
                  f"{stab['same_code_label_rate']:.0%} identical labels." if stab else "")
     yaml_head = """---
@@ -228,9 +254,9 @@ No person is a data subject: photos showing recognisable people were excluded.
   - It also scanned all answer keys for hazards; the fixes are documented in the repository CHANGELOG.
 - **Privacy screening:**
   - An OpenCV face detector pre-flagged {sum(i['faces_detected'] > 0 for i in imgs)} shipped photos.
-  - Every shipped photo was then reviewed by the team, jointly, one decision per landmark (guideline v2-team).
+{screening_lines}
     Excluded photos and unpicked candidate views are not shipped.
-  - Landmarks dropped in the screening: {len(review.get('dropped_landmarks', {}))} (main photo excluded or not showing the landmark); their answers are kept in `metadata/excluded_items.jsonl`.
+  - Landmarks dropped in the screening: {len(review.get('dropped_landmarks', {}))} (main photo excluded for privacy, not showing the landmark, or excluded because that was unclear; reasons in `metadata/review.json`); their answers are kept in `metadata/excluded_items.jsonl`.
 {goldqc_line}
 
 #### Data Instance Licenses

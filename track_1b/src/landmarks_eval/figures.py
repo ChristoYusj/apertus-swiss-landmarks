@@ -45,7 +45,8 @@ def make_figures(scores_path: Path, out: Path) -> list[Path]:
         ax.set_xlim(0, 100)
         ax.invert_yaxis()
     axes[0].legend(loc="lower center", bbox_to_anchor=(1.0, -0.42), ncol=3, frameon=False)
-    fig.suptitle(f"Same 264 photos, four question languages (Apertus 1.5 70B) — {_grader(s)}", fontsize=10)
+    n_photos = s["photo_main_by_lang_qtype"]["fr|name"]["n"]
+    fig.suptitle(f"Same {n_photos} photos, four question languages (Apertus 1.5 70B) — {_grader(s)}", fontsize=10)
     fig.tight_layout()
     p = out / "fig1_languages.png"
     fig.savefig(p, dpi=200, bbox_inches="tight")

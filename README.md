@@ -1,7 +1,7 @@
 # Swiss Heritage Factuality — Hack Apertus 2026, Track 1B (Red Pandas)
 
 Does Apertus 1.5 recognise Switzerland's heritage landmarks? A four-language (FR/DE/IT/RM) benchmark of
-photo, text-only and trap questions about 264 landmarks of the Swiss inventory of cultural property, with a
+photo, text-only and trap questions about 251 landmarks of the Swiss inventory of cultural property, with a
 fully automated harness that grades, scores and **verifies its own outputs**.
 
 | | |

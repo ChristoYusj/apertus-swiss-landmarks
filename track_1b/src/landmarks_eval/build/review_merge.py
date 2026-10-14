@@ -66,6 +66,8 @@ def merge_review(work: Path, files: list[Path]) -> dict:
             raise SystemExit(f"{qid}: the decision was made on photo {d['main_id']}, but the main photo is {main['image_id']}")
         stats[f"main_{d['main']}"] += 1
         rev = list(d.get("reviewers") or reviewers)          # per landmark: who decided it
+        if "A1" in rev or "team" in rev:
+            stats["landmarks_with_human_decision"] += 1
         if d["main"] == "exclude":
             main.update(pii_decision="exclude", pii_reason=f"recognisable person or private detail ({how})",
                         pii_reviewer_ids=rev)

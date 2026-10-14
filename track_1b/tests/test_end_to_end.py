@@ -157,3 +157,28 @@ def test_parallel_judge_cache_and_dev_set(tmp_path, monkeypatch, fake_model):
     rep = judge_dev(FIXTURE, results, judge_ep, log=lambda *_: None)
     assert rep["n"] == 2 and rep["agreement_with_confirmed"] == 0.5
     assert [d["item_id"] for d in rep["disagreements"]] == ["Q102-photo_main-name-fr"]
+
+
+def test_ai_crosscheck_is_separate_and_dropped_audit_items_are_skipped(tmp_path, monkeypatch, fake_model):
+    """A second AI's grades of the audit sample are scored apart from the human audit (never merged into it), and
+    sampled items whose landmark was dropped later are left out and counted instead of crashing the scorer."""
+    _patch_photo_answers(monkeypatch, fake_model)
+    results = tmp_path / "results"
+    run_mod.run(FIXTURE, results, Endpoint(model="fake/model", base_url="http://fake", api_key="x"),
+                concurrency=1, log=lambda *_: None)
+    grade_all(FIXTURE, results, judge_ep=None, log=lambda *_: None)
+    gone = "Q999-photo_main-name-fr"   # landmark dropped by the photo screening after the sample was drawn
+    human = [{"item_id": "Q101-photo_main-name-fr", "annotator_id": "A1", "label": "correct"},
+             {"item_id": gone, "annotator_id": "A1", "label": "incorrect"}]
+    (results / "human_audit.jsonl").write_text("".join(json.dumps(r) + "\n" for r in human), encoding="utf-8")
+    ai = [{"item_id": "Q101-photo_main-name-fr", "annotator_id": "ai:other", "label": "correct"},
+          {"item_id": "Q102-photo_main-name-fr", "annotator_id": "ai:other", "label": "not_attempted"},
+          {"item_id": "Q103-photo_main-name-fr", "annotator_id": "ai:other", "label": None},
+          {"item_id": gone, "annotator_id": "ai:other", "label": "incorrect"}]
+    (results / "ai_crosscheck_audit.jsonl").write_text("".join(json.dumps(r) + "\n" for r in ai), encoding="utf-8")
+    s = compute_scores(FIXTURE, results, bootstrap=0)
+    assert s["human_audit"]["items"] == 1 and s["human_audit"]["sampled_items_dropped_with_landmark"] == 1
+    x = s["ai_crosscheck_audit"]
+    assert x["not_a_human_audit"] is True and x["reviewer"] == ["ai:other"]
+    assert (x["sampled"], x["left_unscored_as_uncertain"], x["sampled_items_dropped_with_landmark"], x["items"]) == (4, 1, 1, 2)
+    assert x["code_vs_ai"]["n"] == 2 and x["code_vs_ai"]["raw_agreement"] == 0.5   # code: Q102 incorrect vs AI NA

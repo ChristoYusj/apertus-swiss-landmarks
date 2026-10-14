@@ -147,12 +147,30 @@ def compute_scores(dataset: Path, results: Path, bootstrap: int = 2000) -> dict:
     both = [r for r in graded if r["code"] and r["judge"]]
     s["agreement_judge_vs_code"] = {"n": len(both), "cohen_kappa": cohen_kappa([r["code"] for r in both], [r["judge"] for r in both]),
                                     "raw_agreement": (sum(r["code"] == r["judge"] for r in both) / len(both)) if both else None}
+    from .agreement import agreement, self_consistency
+
+    def in_dataset(rows):  # sampled items whose landmark the photo screening dropped later are left out (counted)
+        kept = [r for r in rows if r["item_id"] in judg and r["item_id"] in cases]
+        return kept, len({r["item_id"] for r in rows} - {r["item_id"] for r in kept})
+
     if (results / "human_audit.jsonl").exists():
-        from .agreement import agreement, self_consistency
-        human = load_jsonl(results / "human_audit.jsonl")
+        human, gone = in_dataset(load_jsonl(results / "human_audit.jsonl"))
         s["human_audit"] = agreement(human, judg, cases)
+        s["human_audit"]["sampled_items_dropped_with_landmark"] = gone
         if (results / "human_audit_repeat.jsonl").exists():
             s["human_audit"]["self_consistency"] = self_consistency(human, load_jsonl(results / "human_audit_repeat.jsonl"))
+    if (results / "ai_crosscheck_audit.jsonl").exists():
+        # the audit sample graded by a second AI system (NOT the human audit): its agreement with the judge and code
+        rows = load_jsonl(results / "ai_crosscheck_audit.jsonl")
+        scored, gone = in_dataset([r for r in rows if r.get("label")])
+        a = agreement(scored, judg, cases)
+        s["ai_crosscheck_audit"] = {
+            "reviewer": sorted({r["annotator_id"] for r in rows}), "not_a_human_audit": True, "sampled": len(rows),
+            "left_unscored_as_uncertain": sum(1 for r in rows if not r.get("label")),
+            "sampled_items_dropped_with_landmark": gone, "items": a["items"],
+            "judge_vs_ai": a["judge_vs_human"], "code_vs_ai": a["code_vs_human"],
+            "by_lang": {k: {"n": v["n"], "judge_vs_ai": v["judge_vs_human"], "code_vs_ai": v["code_vs_human"]}
+                        for k, v in a["by_lang"].items()}}
     adj_path = results / "disagreement_adjudication.jsonl"
     if adj_path.exists():
         # sensitivity analysis (not the registered result): the judge's label replaced by the adjudicated label where
@@ -164,12 +182,38 @@ def compute_scores(dataset: Path, results: Path, bootstrap: int = 2000) -> dict:
             "replaced": sum(1 for r in graded if r["item_id"] in adj and adj[r["item_id"]] != r["label"]),
             "overall_by_arm_qtype": table(alt, lambda r: (r["arm"], r["qtype"])),
             "photo_main_by_lang_qtype": table(alt_main, lambda r: (r["lang"], r["qtype"]))}
+    # descriptive (analysis_plan.md, secondary): the same landmark, language and question on two photos
+    s["photo_alt_vs_main"] = _paired(graded, "photo_main", "photo_alt", ("name", "place", "year"))
+    s["lowinfo_vs_main_name"] = _paired(graded, "photo_main", "trap_lowinfo", ("name",))
     gz = load_gazetteer(dataset)
     if gz is not None:  # hypotheses H1b-H4 + location analysis need the gazetteer shipped with the dataset
         s["hypotheses"] = hypotheses(graded, gz, lms, cases, bootstrap=bootstrap)
         s["location_photo_main_place"] = location_analysis(
             [r for r in main if r["qtype"] == "place"], gz, lms)
     return rnd(s)
+
+
+def _paired(rows, arm_a: str, arm_b: str, qtypes: tuple) -> dict:
+    """Items of two arms paired on (landmark, language, question type): label rates on each arm and exact McNemar
+    tests on 'correct' and on 'incorrect' (descriptive; not among the registered hypotheses)."""
+    from .metrics import mcnemar
+    key = lambda r: (r["landmark_qid"], r["lang"], r["qtype"])
+    a = {key(r): r["label"] for r in rows if r["arm"] == arm_a}
+    b = {key(r): r["label"] for r in rows if r["arm"] == arm_b}
+    out = {}
+    for q in qtypes:
+        ks = sorted(k for k in set(a) & set(b) if k[2] == q)
+        if not ks:
+            continue
+        la, lb = [a[k] for k in ks], [b[k] for k in ks]
+        res = {"n_pairs": len(ks), "landmarks": len({k[0] for k in ks}), arm_a: rates(la), arm_b: rates(lb)}
+        for lab in ("correct", "incorrect"):
+            only_a = sum(x == lab and y != lab for x, y in zip(la, lb))
+            only_b = sum(y == lab and x != lab for x, y in zip(la, lb))
+            res[f"{lab}_only_{arm_a}"], res[f"{lab}_only_{arm_b}"] = only_a, only_b
+            res[f"{lab}_mcnemar_p"] = mcnemar(only_a, only_b)
+        out[q] = res
+    return out
 
 
 def _count(it):
