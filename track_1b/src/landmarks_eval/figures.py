@@ -3,6 +3,8 @@
   fig1_languages.png   same photos, four question languages: correct / incorrect / not attempted (name, place)
   fig2_graubunden.png  share of place answers that say Graubünden, by question language, vs the true share
   fig3_know_vs_see.png text-only vs photo place accuracy by fame tier; premise trap vs paired control
+  fig4_models.png      (with --compare) per model and question language: confidently wrong names on the free question,
+                       and accuracy on the multiple-choice question against chance
 The subtitle states which grader produced the labels (judge or code grader), so drafts cannot pass as final.
 """
 
@@ -20,7 +22,7 @@ def _grader(s: dict) -> str:
     return "labels: LLM judge" if src.get("judge") else "labels: code grader (preliminary; judge pending)"
 
 
-def make_figures(scores_path: Path, out: Path) -> list[Path]:
+def make_figures(scores_path: Path, out: Path, compare: dict[str, Path] | None = None) -> list[Path]:
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -101,4 +103,31 @@ def make_figures(scores_path: Path, out: Path) -> list[Path]:
     fig.savefig(p, dpi=200, bbox_inches="tight")
     paths.append(p)
     plt.close(fig)
+    # 4. models x languages: free answer (wrong names) vs multiple choice (accuracy)
+    if compare:
+        models = {label: json.loads(Path(p).read_text(encoding="utf-8")) for label, p in compare.items()}
+        shades = ["#1d4ed8", "#93a8e8", "#d97706", "#7c3aed"]
+        fig, axes = plt.subplots(1, 2, figsize=(9, 3.0))
+        w = 0.8 / len(models)
+        for k, (label, ms) in enumerate(models.items()):
+            xs = [i - 0.4 + w * (k + 0.5) for i in range(len(LANGS))]
+            wrong = [100 * ms["photo_main_by_lang_qtype"][f"{l}|name"]["pct_incorrect"] for l, _ in LANGS]
+            axes[0].bar(xs, wrong, width=w, color=shades[k], label=label)
+            if "photo_mc_by_lang" in ms:
+                acc = [100 * ms["photo_mc_by_lang"][l]["pct_correct"] for l, _ in LANGS]
+                axes[1].bar(xs, acc, width=w, color=shades[k], label=label)
+        axes[0].set_title("Free answer: name confidently wrong (%)", fontsize=10)
+        axes[1].set_title("Multiple choice: right option (%)", fontsize=10)
+        axes[1].axhline(25, ls="--", color="#555", lw=1, label="chance (25 %)")
+        axes[1].legend(frameon=False, fontsize=8, loc="upper left")
+        for ax in axes:
+            ax.set_xticks(range(len(LANGS)), [n for _, n in LANGS])
+            ax.set_ylim(0, 100)
+        axes[0].legend(frameon=False, fontsize=8, loc="upper left")
+        fig.suptitle("Same photos, four question languages (free answer: LLM judge; multiple choice: code)", fontsize=10)
+        fig.tight_layout()
+        p = out / "fig4_models.png"
+        fig.savefig(p, dpi=200, bbox_inches="tight")
+        paths.append(p)
+        plt.close(fig)
     return paths

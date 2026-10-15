@@ -72,6 +72,7 @@ def main(argv: list[str] | None = None) -> int:
     fg = sub.add_parser("figures", help="report figures from a scores.json (needs the [figures] extra)")
     fg.add_argument("--scores", type=Path, required=True)
     fg.add_argument("--out", type=Path, default=Path("docs/figures"))
+    fg.add_argument("--compare", nargs="*", default=[], help="label=scores.json pairs for the model comparison figure")
     gl = sub.add_parser("glosses", help="(team only) English machine glosses of non-French answers in the audit sample")
     gl.add_argument("--dataset")
     gl.add_argument("--results", type=Path, required=True)
@@ -145,7 +146,8 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.cmd == "figures":
         from .figures import make_figures
-        for p in make_figures(args.scores, args.out):
+        compare = dict(x.split("=", 1) for x in args.compare) or None
+        for p in make_figures(args.scores, args.out, compare):
             print(p)
         return 0
     if args.cmd == "merge-audit":
