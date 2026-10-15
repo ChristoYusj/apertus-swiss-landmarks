@@ -377,3 +377,12 @@ and one skeptic re-check. Fixed:
   `26d86b35d1a6c157b55cf331cdc4daf249257a49`, pinned in `config.json`. Reference scores for `verify` V6 added
   (`src/landmarks_eval/expected/reference.scores.json` = the 70B scores of that revision). Report PDF:
   `track_1b/RedPandas_Report.pdf`.
+
+## Grading audit protocol v4: three annotators (15 Oct, ~12:45, before any human label exists)
+- Back to the registered design with three annotators (A1-A3), blind: the 522 items of the pre-registered 20 %
+  sample that are still in the dataset are split (seed 20261018) into a 30-item overlap labelled by all three
+  (Fleiss' kappa) and three disjoint parts; each annotator labels 194 items in their own seeded order, on a fillable
+  PDF that shows no grade of any kind (`tools/audit_online/build_audit_v4.py`, `build_check_pdf.py --blind`).
+  Replaces the single-annotator protocol v3 (no labels were collected under v3).
+- Human label = the annotator's label; on the overlap, the majority of the three. Judge-human and code-human
+  agreement (Cohen's kappa) and Fleiss' kappa are reported as planned.

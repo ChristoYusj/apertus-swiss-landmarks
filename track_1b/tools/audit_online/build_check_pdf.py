@@ -32,14 +32,17 @@ def options(it: dict) -> list[str]:
     return [CHOOSE, *ai, "Correct", "Incorrect", "Not attempted"]
 
 
-def main(items_path: Path, out: Path) -> None:
-    items = json.loads(items_path.read_text(encoding="utf-8"))["items"]
+def main(items_path: Path, out: Path, blind: bool = False) -> None:
+    data = json.loads(items_path.read_text(encoding="utf-8"))
+    items, who = data["items"], data.get("annotator", "A1")
+    if blind:   # protocol audit-v4: no grade of any kind may reach a blind page
+        assert not any(k in it for it in items for k in ("ai_label", "ai_reason", "judge_label", "code_label")), items_path
     fonts = Path("C:/Windows/Fonts")
     pdfmetrics.registerFont(TTFont("Body", str(fonts / "arial.ttf")))
     pdfmetrics.registerFont(TTFont("Bold", str(fonts / "arialbd.ttf")))
     ink, mute, blue = colors.HexColor("#18212b"), colors.HexColor("#5d6a72"), colors.HexColor("#2453b8")
     c = canvas.Canvas(str(out), pagesize=(W, H), pageCompression=1)
-    c.setTitle("Grading Check (A1)")
+    c.setTitle(f"Grading {'Audit' if blind else 'Check'} ({who})")
     c.setAuthor("Red Pandas - Hack Apertus 2026")
 
     def para(text, y, size=13.0, bold=False, color=ink, bg=None, draw=True):
@@ -59,9 +62,13 @@ def main(items_path: Path, out: Path) -> None:
 
     # page 1: instructions
     y = H - M
-    y = para(f"Grading Check: {len(items)} answers of Apertus 1.5 70B", y, 24, True)
-    y = para("Annotator A1. One answer per page. A second AI already proposed a grade: judge each answer yourself, "
-             "then pick a value in the \"Your grade\" box at the bottom of the page.", y - 6, 15)
+    y = para(f"Grading {'Audit' if blind else 'Check'} ({who}): {len(items)} answers of Apertus 1.5 70B", y, 24, True)
+    y = para(f"Annotator {who}. One answer per page. " + (
+        "No grade is shown: read the model answer against the gold answer and pick a value in the \"Your grade\" box "
+        "at the bottom of the page. Work alone, without looking anything up and without discussing items with the "
+        "others until all three have finished." if blind else
+        "A second AI already proposed a grade: judge each answer yourself, then pick a value in the \"Your grade\" "
+        "box at the bottom of the page."), y - 6, 15)
     for line in (
         "Correct: it names the gold landmark / the right municipality / a year in the window, and nothing contradicts "
         "the gold.",
@@ -77,7 +84,8 @@ def main(items_path: Path, out: Path) -> None:
         "skipped.",
     ):
         y = para("•  " + line, y, 14)
-    para("This check is not blind: the AI's proposed grade is shown, and the report says so.", y - 10, 13, color=mute)
+    if not blind:
+        para("This check is not blind: the AI's proposed grade is shown, and the report says so.", y - 10, 13, color=mute)
     c.showPage()
 
     def item_text(it, size, draw):
@@ -94,6 +102,8 @@ def main(items_path: Path, out: Path) -> None:
         y = para(it["answer"] or "(empty)", y, size, draw=draw)
         if it.get("a_gloss"):
             y = para("English (machine translation): " + it["a_gloss"], y, size - 1, color=mute, draw=draw)
+        if blind:
+            return y
         ai = (f"AI's proposed grade: {NAME[it['ai_label']]}" + (f" - {it['ai_reason']}" if it.get("ai_reason") else "")
               if it.get("ai_label") else "The AI left this one ungraded (unsure): choose the grade yourself.")
         return para(ai, y, size - 1, bg=colors.HexColor("#e7eefc"), draw=draw)
@@ -126,4 +136,4 @@ def main(items_path: Path, out: Path) -> None:
 
 
 if __name__ == "__main__":
-    main(Path(sys.argv[1]), Path(sys.argv[2]))
+    main(Path(sys.argv[1]), Path(sys.argv[2]), blind="--blind" in sys.argv[3:])
