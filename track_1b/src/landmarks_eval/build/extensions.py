@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import random
+import re
 from pathlib import Path
 
 import yaml
@@ -32,6 +33,7 @@ def display_name(lm: dict, lang: str) -> str:
     labels = lm["labels"]
     name = labels.get(lang) or labels.get(REGION_LANG[lm["language_region"]]) or labels.get("en") \
         or lm["name_aliases"][0]["text"]
+    name = re.sub(r"\s*\([^()]*\)\s*$", "", name) or name     # "San Gian (Celerina)": the town is added once below
     return f"{name} ({town_for(lm, lang)})"
 
 
