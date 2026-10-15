@@ -395,6 +395,6 @@ and one skeptic re-check. Fixed:
   inside "Reformierte Kirche Saint-Étienne"); the grader matched both and marked clear single answers as "several
   options". Options are now matched by their full text, and by the bare name only when no other option contains
   it. A refusal that lists the options ("I cannot tell which of (A) ..., (B) ...") is not attempted, as the plan's
-  refusal rule intends. Effect (70B): 12 answers moved from "several options" (incorrect) to a single option or a
-  refusal; regression tests pin the real cases.
+  refusal rule intends. Effect (70B): all 14 "several options" answers moved (12 to a single option, 2 to a
+  refusal); regression tests pin the real cases.
 - Observed and reported: a strong position bias (70B starts with "A" in 59 % of answers; 8B 40 %).
