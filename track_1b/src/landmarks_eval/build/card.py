@@ -96,14 +96,20 @@ def build_card(ds: Path, extra: dict | None = None) -> str:
                "uncertain); its agreement with the judge and the code grader is in `scores.json`." if ai_check else "")
     if audit:
         n_items = len({a["item_id"] for a in audit})
+        who = sorted({a["annotator_id"] for a in audit})
+        n_overlap = len({a["item_id"] for a in audit if a.get("in_overlap")})
         audit_block = (f"- **Human audit:** {n_items} answers of a seeded, stratified random sample were labelled blind by "
-                       "one annotator (A1) following `docs/annotation_guidelines.md`"
+                       + (f"{len(who)} annotators ({', '.join(who)}), each alone" if len(who) > 1 else f"one annotator ({who[0]})")
+                       + " following `docs/annotation_guidelines.md`"
+                       + (f"; {n_overlap} items were labelled by all of them" if len(who) > 1 and n_overlap else "")
                        + (f"; {len(repeats)} items were shown a second time, unannounced, to measure self-consistency"
                           if repeats else "")
                        + ".\n- **Agreement:** judge-human and code-human agreement (Cohen's kappa)"
+                       + (" and agreement between the annotators (Fleiss' kappa)" if len(who) > 1 and n_overlap else "")
                        + (" and the annotator's self-consistency" if repeats else "")
                        + " are in `scores.json` and the technical report." + ai_line)
-        annot_details = ("One student member of Team Red Pandas (pseudonym A1), French and English speaker."
+        annot_details = ((f"{len(who)} student members of Team Red Pandas (pseudonyms {', '.join(who)}), French and English speakers."
+                          if len(who) > 1 else f"One student member of Team Red Pandas (pseudonym {who[0]}), French and English speaker.")
                          + (" Non-French answers were shown with a labelled English machine gloss." if gloss else ""))
     else:
         audit_block = "- **Human audit:** not part of this version." + ai_line
