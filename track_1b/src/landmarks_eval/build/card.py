@@ -19,6 +19,14 @@ def _table(rows: list[list], head: list[str]) -> str:
     return "\n".join(out)
 
 
+def _human_check_line(hc: dict | None, n_photos: int) -> str:
+    """Claim a person checked every shipped photo only when the recorded check covers all of them, none flagged."""
+    if not hc or hc.get("photos") != n_photos or hc.get("flagged"):
+        return "No person reviewed every shipped photo."
+    how = "on a fillable PDF" if hc.get("method") == "fillable PDF" else "on the online check page"
+    return f"The team lead ({hc['checked_by']}) then checked all {n_photos} shipped photos {how} and flagged none."
+
+
 def build_card(ds: Path, extra: dict | None = None) -> str:
     extra = extra or {}
     cases = _load(ds / "data" / "test_cases.jsonl")
@@ -144,7 +152,7 @@ def build_card(ds: Path, extra: dict | None = None) -> str:
             "photo to be shipped, and a second AI agent (Hermes) reviewed them again under the team lead's "
             "\"if unsure, exclude\" policy.\n"
             f"  - The team lead decided the edge cases of {review.get('stats', {}).get('landmarks_with_human_decision', 0)} "
-            "landmarks. No person reviewed every shipped photo.")
+            "landmarks. " + _human_check_line(review.get("human_photo_check"), len(imgs)))
     elif proto == "v3-ai-assisted" and "A1" in revs:
         screening_lines = ("  - Every candidate photo was screened by an AI (Claude Opus 5.5) and re-checked by further "
                            "Claude instances; annotator A1 then checked every shipped photo.")

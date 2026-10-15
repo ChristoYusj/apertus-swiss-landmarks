@@ -23,6 +23,8 @@ that photo.
   published photos (byte for byte), face-detector hits first; collection `pcheck`, or download `photo_check_A1.json`.
 - `build_photo_check_pdf.py <dataset> <out.pdf>`: fillable PDF, 6 photos per page, one "problem" tick box per photo;
   `read_photo_check_pdf.py <filled.pdf> <out.json>` lists the flagged photos.
+- `apply_photo_check.py <check.json> <work dir>`: records a complete check with no photo flagged (screening report +
+  reviewer on every shipped photo); refuses undecided photos and stops on flagged ones (those need a rebuild).
 
 ## Earlier protocols
 - **v3-ai-assisted (human check of the AI screening), used for 3 rows only:** `build_check.py <track_1b dir>
