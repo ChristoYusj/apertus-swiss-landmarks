@@ -1,0 +1,231 @@
+<title>Grading Audit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Blind grading audit (protocol audit-v4): pick your ID, grade your answers; no grade of any kind is shown. */
+:root {
+  --paper: #f3f5f4; --card: #ffffff; --ink: #18212b; --mute: #5d6a72; --line: #d9dfdd; --soft: #eef1f0;
+  --signal: #c8261b; --ok: #1d7a4c; --warn: #9a5b00; --pick: #2453b8; --warn-soft: #fbf0dc; --ai-soft: #e7eefc;
+  --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --paper: #121619; --card: #1b2125; --ink: #e8ecea; --mute: #9aa6ab; --line: #2e373c; --soft: #222a2f;
+  --signal: #ff6b5e; --ok: #4cc38a; --warn: #f0a94a; --pick: #8bb0ff; --warn-soft: #3a2c14; --ai-soft: #1d2a45; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --paper: #121619; --card: #1b2125; --ink: #e8ecea; --mute: #9aa6ab; --line: #2e373c; --soft: #222a2f;
+  --signal: #ff6b5e; --ok: #4cc38a; --warn: #f0a94a; --pick: #8bb0ff; --warn-soft: #3a2c14; --ai-soft: #1d2a45; color-scheme: dark }
+* { box-sizing: border-box }
+[hidden] { display: none !important }
+body { background: var(--paper); color: var(--ink); font: 15px/1.5 var(--body); padding-inline: 16px; padding-block: 0 48px; margin: 0 }
+h1 { font: 700 19px/1.2 var(--display); margin: 0 }
+.wrap { max-width: 900px; margin-inline: auto }
+header { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--paper); border-bottom: 1px solid var(--line);
+  margin-inline: -16px; padding: 10px 16px; display: flex; flex-direction: column; gap: 8px }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center }
+.grow { flex: 1 1 140px; min-width: 0 }
+.bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden }
+.bar > i { display: block; height: 100%; width: 0; background: var(--ok); transition: width .3s }
+.count { font: 500 13px var(--mono); color: var(--mute); font-variant-numeric: tabular-nums }
+.chip { font-size: 12.5px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--mute) }
+.chip.shared { border-color: var(--ok); color: var(--ok) }
+.chip.local { border-color: var(--warn); color: var(--warn); background: var(--warn-soft) }
+button { font: inherit; font-size: 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--ink);
+  padding: 6px 11px; cursor: pointer; min-height: 36px }
+button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--pick); outline-offset: 2px }
+button.primary { background: var(--signal); border-color: var(--signal); color: #fff }
+button.agree { border-color: var(--ok); color: var(--ok); font-weight: 700 }
+button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper) }
+button.agree[aria-pressed="true"] { background: var(--ok); border-color: var(--ok); color: #fff }
+button[disabled] { opacity: .45; cursor: default }
+label.inline { display: inline-flex; gap: 6px; align-items: center; font-size: 14px; cursor: pointer }
+.note { font-size: 13px; color: var(--mute) }
+.notice { border: 1px solid var(--line); background: var(--card); border-radius: 10px; padding: 10px 12px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center }
+.notice[data-kind=warn] { border-color: var(--warn); background: var(--warn-soft) }
+details.help { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 4px 14px; margin-block: 14px }
+details.help summary { cursor: pointer; font-weight: 700; padding-block: 8px }
+details.help ul { padding-left: 20px; margin-block: 4px 10px } details.help li { margin-block: 4px }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin-block: 14px; display: flex; flex-direction: column; gap: 10px; scroll-margin-top: 120px }
+.card.done { border-color: var(--ok) }
+body.hide-done .card.done { display: none }
+.head { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap }
+.num { font: 500 12px var(--mono); color: var(--mute) }
+.tag { font-size: 12px; color: var(--mute); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px }
+.badge { font-size: 12px; color: var(--ok); font-weight: 700 }
+.k { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--mute); margin-bottom: 2px }
+.txt { white-space: pre-wrap; overflow-wrap: anywhere }
+.gloss { font-size: 13px; color: var(--mute); white-space: pre-wrap; overflow-wrap: anywhere; margin-top: 4px }
+.gold { background: var(--soft); border-radius: 8px; padding: 8px 10px; font-size: 13.5px }
+.answer { border-left: 3px solid var(--pick); padding-left: 10px }
+.who { display: flex; gap: 8px; flex-wrap: wrap; align-items: center }
+.ai { background: var(--ai-soft); border-radius: 8px; padding: 8px 10px; font-size: 14px }
+.ai b { font-family: var(--display) }
+.opts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center }
+textarea.dump { width: 100%; height: 160px; font: 12px var(--mono); background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 8px }
+.empty { padding: 40px 0; color: var(--mute) }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important } }
+</style>
+
+<header>
+  <div class="row">
+    <h1>Grading Audit</h1>
+    <span id="mode" class="chip">Connecting…</span>
+    <span id="whochip" class="chip">no ID chosen</span>
+    <div class="grow bar" aria-hidden="true"><i id="prog"></i></div>
+    <span id="count" class="count">0 / 0</span>
+  </div>
+  <div class="row">
+    <button id="next" type="button">Next ungraded ↓</button>
+    <label class="inline" for="hide"><input id="hide" type="checkbox"> Hide graded</label>
+    <span class="grow"></span>
+    <button id="save" type="button" class="primary">Download my labels</button>
+  </div>
+  <div id="notice" class="notice" hidden></div>
+</header>
+
+<main class="wrap">
+  <details class="help" open>
+    <summary>What to do (read once)</summary>
+    <div class="who"><b>Your ID:</b> <button type="button" data-who="A1">A1 Christopher</button> <button type="button" data-who="A2">A2 Giovanni</button> <button type="button" data-who="A3">A3 Alfredo</button></div>
+    <p>Each card is one answer of Apertus 70B. <b>No grade is shown.</b> Read the model answer against the gold answer and click the grade. Work <b>alone</b>, without looking anything up, and don't discuss items until all three of you have finished. Every click is saved at once; you can stop and come back.</p>
+    <ul>
+      <li><b>Correct</b>: it names the gold landmark / the right municipality / a year in the window, and nothing contradicts the gold.</li>
+      <li><b>Incorrect</b>: it commits to something wrong: another landmark, another municipality, a village instead of the municipality, a wrong canton or country, several competing candidates, or (trick question) it accepts the false town.</li>
+      <li><b>Not attempted</b>: it declines, or stays too vague to check ("a church in the Alps", only the right canton), without contradicting the gold.</li>
+    </ul>
+    <p class="note">Names marked <i>[only with the town]</i> count only together with the right town. A hedged guess ("probably X") is graded on X. Tick <i>used translation</i> if you relied on the English gloss, <i>unsure</i> for hard calls.</p>
+  </details>
+  <div id="list"><p class="empty">Choose your ID above.</p></div>
+</main>
+
+<script>
+const D = __DATA__, KEY = "audit-v4-";
+const LABELS = [["correct", "Correct"], ["incorrect", "Incorrect"], ["not_attempted", "Not attempted"]];
+const $ = s => document.querySelector(s);
+let WHO = null, ITEMS = [], byId = {}, ST = {}, MODE = "connecting", db = null, dl = null, unsub = null;
+const writing = {}, dirty = new Set();
+try { WHO = localStorage.getItem(KEY + "who"); } catch (e) {}
+
+function docId(id) { return WHO + "__" + id; }
+function done(it) { return !!(ST[it.id] || {}).label; }
+function progress() { const n = ITEMS.filter(done).length;
+  $("#prog").style.width = (ITEMS.length ? 100 * n / ITEMS.length : 0) + "%"; $("#count").textContent = n + " / " + ITEMS.length; }
+function setMode(m, text) { MODE = m; const el = $("#mode"); el.className = "chip " + m; el.textContent = text;
+  document.querySelectorAll(".card button, .card input").forEach(b => b.disabled = (m === "connecting")); }
+function notice(html, kind) { const n = $("#notice"); if (!html) { n.hidden = true; return; } n.hidden = false; n.dataset.kind = kind || ""; n.innerHTML = html; }
+function persistLocal() { try { localStorage.setItem(KEY + WHO, JSON.stringify(ST)); } catch (e) {} }
+function clean(s) { const o = {}; for (const k of ["label", "used_translation", "unsure", "t"]) if (s && s[k] !== undefined && s[k] !== null) o[k] = s[k]; return o; }
+
+function decide(id, patch) {
+  if (MODE === "connecting" || !WHO) return;
+  const s = Object.assign({}, ST[id] || {}, patch);
+  for (const k of Object.keys(patch)) if (patch[k] === undefined) delete s[k];
+  s.t = new Date().toISOString();
+  ST[id] = s; paint(id); progress();
+  if (MODE === "shared") queueWrite(id); else persistLocal();
+}
+function queueWrite(id) { dirty.add(id); if (!writing[id]) flush(id); }
+async function flush(id) {
+  writing[id] = true;
+  while (dirty.has(id)) {
+    dirty.delete(id);
+    try { await db.doc("audit4/" + docId(id)).set(Object.assign({a: WHO, item: id}, clean(ST[id]))); }
+    catch (e) {
+      if (e && e.code === "unavailable") { await new Promise(r => setTimeout(r, 800 + Math.random() * 800)); dirty.add(id); continue; }
+      writing[id] = false; persistLocal(); setMode("local", "Saved on this device only");
+      notice("Your clicks are saved on <b>this device only</b>. When you finish, press <b>Download my labels</b> and send the file.", "warn"); return;
+    }
+  }
+  writing[id] = false;
+}
+
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+function btn(label, pressed, onClick, cls) { const b = el("button", cls || "", label); b.type = "button";
+  b.setAttribute("aria-pressed", pressed ? "true" : "false"); b.disabled = MODE === "connecting"; b.onclick = onClick; return b; }
+function box(k, text, cls, gloss, glossLabel) {
+  const d = el("div", cls || ""); d.append(el("div", "k", k), el("div", "txt", text));
+  if (gloss) d.append(el("div", "gloss", (glossLabel || "English") + ": " + gloss));
+  return d;
+}
+function build(it) {
+  const c = el("article", "card"); c.id = "c-" + it.id;
+  const head = el("div", "head");
+  head.append(el("span", "num", "#" + it.n), el("span", "tag", it.lang.toUpperCase()),
+              el("span", "tag", it.qtype), el("span", "tag", it.arm.replace("_", " ")), el("span", "badge"));
+  c.append(head,
+    box("Question", it.question, "", it.q_gloss),
+    box("Gold answer", it.gold, "gold"),
+    box("Model answer", it.answer || "(empty)", "answer", it.a_gloss, "English (machine translation)"));
+  const o = el("div", "opts"); o.dataset.opts = "1"; c.append(o);
+  return c;
+}
+function paint(id) {
+  const c = document.getElementById("c-" + id); if (!c) return;
+  const s = ST[id] || {}, o = c.querySelector("[data-opts]"); o.textContent = "";
+  for (const [v, name] of LABELS) o.append(btn(name, s.label === v, () => decide(id, {label: s.label === v ? undefined : v})));
+  for (const [k, name] of [["used_translation", "used translation"], ["unsure", "unsure"]]) {
+    const l = el("label", "inline"); const x = document.createElement("input"); x.type = "checkbox"; x.checked = !!s[k];
+    x.disabled = MODE === "connecting"; x.onchange = () => decide(id, {[k]: x.checked || undefined}); l.append(x, name); o.append(l);
+  }
+  const d = done(byId[id]); c.classList.toggle("done", d); c.querySelector(".badge").textContent = d ? "✓ graded" : "";
+}
+
+function choose(who) {
+  WHO = who; try { localStorage.setItem(KEY + "who", who); } catch (e) {}
+  document.querySelectorAll("[data-who]").forEach(b => b.setAttribute("aria-pressed", b.dataset.who === who ? "true" : "false"));
+  $("#whochip").textContent = "Grading as " + who;
+  ITEMS = D[who]; byId = Object.fromEntries(ITEMS.map(x => [x.id, x])); ST = {};
+  if (MODE !== "shared") { try { ST = JSON.parse(localStorage.getItem(KEY + who) || "{}") || {}; } catch (e) { ST = {}; } }
+  const list = $("#list"); list.textContent = "";
+  ITEMS.forEach(it => { list.append(build(it)); paint(it.id); });
+  progress();
+  if (MODE === "shared") subscribe();
+}
+document.querySelectorAll("[data-who]").forEach(b => b.onclick = () => choose(b.dataset.who));
+
+function subscribe() {
+  if (unsub) { try { unsub(); } catch (e) {} }
+  unsub = db.collection("audit4").where("a", "==", WHO).onSnapshot(snap => {
+    for (const ch of snap.docChanges()) {
+      const data = ch.doc.data() || {}, q = data.item;
+      if (data.a !== WHO || !byId[q] || writing[q] || dirty.has(q)) continue;
+      if (ch.type === "removed") delete ST[q]; else ST[q] = clean(data);
+      paint(q);
+    }
+    progress();
+  }, err => notice("Live updates stopped (" + (err && err.code || "error") + "). Reload the page; your saved clicks are kept.", "warn"));
+}
+
+$("#save").onclick = async () => {
+  if (!WHO) { notice("Choose your ID first.", "warn"); return; }
+  const labels = {}; for (const [q, s] of Object.entries(ST)) { const c = clean(s); if (c.label) labels[q] = c; }
+  const text = JSON.stringify({format: "audit-v4-labels", annotator: WHO, exported_at: new Date().toISOString(),
+    complete: ITEMS.filter(done).length, total: ITEMS.length, labels}, null, 1);
+  if (dl) {
+    try { await dl.save({filename: "audit_labels_" + WHO + ".json", data: text}); notice("Saved <b>audit_labels_" + WHO + ".json</b>.", ""); return; }
+    catch (e) { if (e && e.code === "declined") { notice("Download cancelled.", ""); return; } }
+  }
+  try { await navigator.clipboard.writeText(text); notice("Copied your labels. Paste them into a message.", ""); }
+  catch (e) { notice('Copy this text and send it:<br><textarea class="dump" readonly></textarea>', "warn");
+    const t = $("#notice textarea"); t.value = text; t.focus(); t.select(); }
+};
+$("#hide").onchange = e => document.body.classList.toggle("hide-done", e.target.checked);
+$("#next").onclick = () => { const it = ITEMS.find(x => !done(x)); if (!it) { notice(ITEMS.length ? "All your answers are graded. Thank you!" : "Choose your ID first.", ""); return; }
+  document.getElementById("c-" + it.id).scrollIntoView({block: "start"}); };
+
+async function connect() {
+  const cl = window.claude;
+  const [d, u, w] = cl && cl.use ? await Promise.all([cl.use("db"), cl.use("user"), cl.use("downloads")].map(p => p.catch(() => null))) : [null, null, null];
+  dl = w;
+  let canWrite = null;
+  if (u && u.can) { try { canWrite = await u.can("data.write"); } catch (e) { canWrite = null; } }
+  if (!d || canWrite === false) {
+    setMode("local", "Saved on this device only");
+    notice("Your clicks are saved on <b>this device only</b>. When you finish, press <b>Download my labels</b> and send the file.", "warn");
+  } else { db = d; setMode("shared", "Saved online"); notice(""); }
+  if (WHO && D[WHO]) choose(WHO);
+}
+connect();
+</script>
