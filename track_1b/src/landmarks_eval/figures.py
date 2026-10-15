@@ -62,8 +62,11 @@ def make_figures(scores_path: Path, out: Path) -> list[Path]:
         x = range(len(LANGS))
         ax.bar([i - 0.2 for i in x], vals, width=0.4, color="#1d4ed8", label="all landmarks")
         ax.bar([i + 0.2 for i in x], nongr, width=0.4, color="#93a8e8", label="landmarks NOT in Graubünden")
+        for i in x:   # value labels, so a 0 % bar reads as zero rather than missing
+            for dx, v in ((-0.2, vals[i]), (0.2, nongr[i])):
+                ax.text(i + dx, v + 1, f"{v:.0f}%", ha="center", va="bottom", fontsize=7, color="#333")
         ax.axhline(100 * loc["gold_pct_GR"], ls="--", color="#555", lw=1)
-        ax.text(3.45, 100 * loc["gold_pct_GR"] + 2, "true share", ha="right", fontsize=8, color="#555")
+        ax.text(-0.4, 100 * loc["gold_pct_GR"] + 2, "true share", ha="left", fontsize=8, color="#555")   # clear of the bars
         ax.set_xticks(list(x), [n for _, n in LANGS])
         ax.set_ylabel("% of place answers\nsaying Graubünden")
         ax.legend(frameon=False, fontsize=8, loc="upper left")
