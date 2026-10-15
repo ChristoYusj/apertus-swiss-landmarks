@@ -366,3 +366,8 @@ and one skeptic re-check. Fixed:
   (`pii_reviewer_ids` = Claude + Hermes; 3 also carry A1). The gate was not tightened back, so the report says that
   no person reviewed every shipped photo. The guideline's Task G "as run" text now says the human labels are not
   yet collected; the card no longer lists a `split` field (no test case has one).
+
+## Human audit: not done (15 Oct)
+- No human labels were collected for the grading audit. The 20 % sample was graded by a second AI system only
+  (`ai_crosscheck_audit`); the report states that the track's 20 % human check is not met. A non-blind check form
+  (`tools/audit_online/build_check*.py`, `human_check.html`) was prepared but is not used for any result.

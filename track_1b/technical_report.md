@@ -1,7 +1,7 @@
 # Technical report — Swiss Heritage Factuality: does Apertus recognise Switzerland's landmarks?
 
-> **Status 15 Oct.** Final labels are the frozen LLM judge's (`judge-v1`). Photos were screened by AI (see
-> Annotation); the blind human audit of the 546-answer sample is ⟨pending⟩.
+> Final labels are the frozen LLM judge's (`judge-v1`). Photos were screened by AI and the 20 % audit sample was
+> graded by a second AI system; no human audit of the grades was done (see Annotation and Limitations).
 
 > We built a four-language (FR/DE/IT/RM) benchmark of 3,412 questions about 251 Swiss heritage landmarks from the
 > federal inventory (KGS), stratified by language region and fame, with photo, second-view, text-only and trap
@@ -105,8 +105,8 @@ responses are kept in `metadata/excluded_items.jsonl` with the reason.
 - *Grading audit:* a seeded, stratified 20 % sample (546) of the 2,726 70B answers that existed before the
   screening (522 still in the dataset; the later `photo_alt`/`trap_lowinfo` items are not covered), with a blind
   labelling page (no grades shown; English machine gloss for non-French answers; 40 hidden repeats for
-  self-consistency). ⟨Human labels pending.⟩ As a cross-check, the second AI agent graded the same sample (526
-  scored, 20 left unscored as uncertain); this is reported as AI-vs-judge agreement, **not** as a human audit.
+  self-consistency). No human labels were collected: the sample was graded by the second AI agent (526 scored, 20
+  left unscored as uncertain), reported as AI-vs-judge agreement, **not** as a human audit.
 
 **Consent and personal data.** No person is a data subject: photos with recognisable people are excluded,
 EXIF is stripped. Annotators sign the consent form in `docs/consent_form_template.md` (pseudonymous IDs).
@@ -115,7 +115,7 @@ EXIF is stripped. Annotators sign the consent form in `docs/consent_form_templat
 
 - **Quality metrics:** answer-key audit (above), selection funnel, per-cell counts, item-validity rules,
   stability of answers at temperature 0 (below), judge–code agreement and an independent re-read of every
-  disagreement (AI-assisted), an AI cross-check of the audit sample, the human audit ⟨pending⟩.
+  disagreement (AI-assisted), and an AI grading of the 20 % audit sample (no human audit).
 - **Diversity / edge cases:** four languages incl. Romansh; fame tiers; same-photo language contrast; text vs
   photo; false-premise traps with real look-alikes; low-information photos; ambiguous town names;
   non-distinctive names.
@@ -224,7 +224,7 @@ judge's label wherever the re-read settled it lowers the Romansh name-wrong rate
 the language pattern is not a grading artefact. The registered results keep the frozen judge's labels.
 *AI cross-check of the audit sample:* a second AI agent graded the 546 sampled answers (504 scored and still in the
 dataset): κ = 0.96 with the judge (98.2 % identical) and 0.99 with the code grader; lowest in Romansh (κ = 0.84).
-*Human audit:* ⟨pending⟩.
+*Human audit:* not done, so the track's 20 % human check is not met (see Limitations).
 
 ## Dataset Limitations
 - Results are for one prompt template per language; Romansh templates were not reviewed by a native speaker
@@ -243,6 +243,8 @@ dataset): κ = 0.96 with the judge (98.2 % identical) and 0.99 with the code gra
   answer the code grader marked incorrect and moved 109 (70B) and 356 (8B) labels, mostly refusals
   phrased in ways the patterns did not know; a third read 831 labels and its fixes moved 14 (70B) and 29 (8B)
   more (every changed label was read individually; these reviews were AI-assisted, not a human audit).
+- No human audit of the grades: the 20 % audit sample was graded by a second AI system only, so judge accuracy is
+  supported by the dev set, judge–code agreement, the AI re-reads and the AI cross-check, not by human labels.
 - The photo screening was done by AI (two systems) with the team lead deciding edge cases; no person reviewed every
   shipped photo. It removed 13 landmarks; 3 of the 4 removed for privacy were busy town-centre scenes, which are
   also among the easiest to recognise, so the removal took away 3 of the 70B's 9 correct place answers from photos

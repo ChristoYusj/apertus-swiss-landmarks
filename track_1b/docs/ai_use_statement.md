@@ -3,7 +3,7 @@
 | What | Tool / model | Role | Human oversight |
 |---|---|---|---|
 | Models under evaluation | `swiss-ai/Apertus-v1.5-70B` and `-8B` (CSCS hackathon endpoint) | Answer every test question | — |
-| Answer grading | `openai/gpt-oss-120b`, open weights, via Hugging Face Inference Providers (frozen prompt `judge-v1`) | Independent LLM judge on 100 % of answers; final labels. Never Apertus grading itself | Code grader on 100 % as a second rater. Blind human audit of the 546-answer sample: **pending** |
+| Answer grading | `openai/gpt-oss-120b`, open weights, via Hugging Face Inference Providers (frozen prompt `judge-v1`) | Independent LLM judge on 100 % of answers; final labels. Never Apertus grading itself | Code grader on 100 % as a second rater. No human audit: the 546-answer sample was graded by a second AI system only (see below) |
 | Judge dev set | Labels proposed by Claude (AI coding assistant) | 40 items used to tune the judge prompt before it was frozen | The team lead ruled on the 4 hard cases and accepted the other 36 without item-by-item review |
 | Judge-vs-code disagreements | Independent Claude agents | Re-read every disagreement against the written rules (two reads where the judge looked wrong); used only for a sensitivity analysis | AI-assisted, not a human audit; results in `disagreement_adjudication.jsonl` |
 | Code-grader reviews | Claude agents | Read the code grader's labels and proposed rule fixes (reviews 2–5) | Each change is logged in `CHANGELOG.md` with its effect and pinned by regression tests; AI-assisted, not a human audit |
