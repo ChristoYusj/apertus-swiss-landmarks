@@ -1,0 +1,19 @@
+# Extension templates (docs/extensions_plan.md), registered before any of these items were run. Do not edit.
+# Drafted with an AI coding assistant (Claude Code); the Romansh is not reviewed by a native speaker (exploratory).
+# {options} is replaced by four lines "A) ...", "B) ...", "C) ...", "D) ...".
+mc:
+  prompt_version: q-v2-mc
+  templates:
+    fr: "Quel est ce bâtiment ou monument ? Choisissez parmi :\n{options}\nRépondez par la lettre ; si vous n'êtes pas sûr, dites-le."
+    de: "Was ist das für ein Gebäude oder Denkmal? Wählen Sie aus:\n{options}\nAntworten Sie mit dem Buchstaben; wenn Sie unsicher sind, sagen Sie es."
+    it: "Che edificio o monumento è questo? Scelga tra:\n{options}\nRisponda con la lettera; se non è sicuro, lo dica."
+    rm: "Tge edifizi u monument è quai? Tschernai ord:\n{options}\nRespundai cun la letra; sche Vus n'essas betg segir, ditgai quai."
+w2:
+  prompt_version: q-v2-w2
+  templates:
+    fr:
+      name: "Pouvez-vous identifier ce monument ou ce bâtiment ? Quel est son nom exact ? Soyez bref et dites-le si vous ne savez pas."
+      place: "Dans quelle commune et dans quel canton suisses se trouve ce monument ou ce bâtiment ? Soyez bref et dites-le si vous ne savez pas."
+    rm:
+      name: "Pudais Vus identifitgar quest monument u quest edifizi? Tge è ses num exact? Respundai curt e ditgai, sche Vus na savais betg."
+      place: "En tge vischnanca ed en tge chantun svizzer sa chatta quest monument u quest edifizi? Respundai curt e ditgai, sche Vus na savais betg."
