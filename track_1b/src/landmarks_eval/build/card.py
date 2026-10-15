@@ -74,7 +74,9 @@ def build_card(ds: Path, extra: dict | None = None) -> str:
                 "text_only": "the object's name is given; the question asks where it is or when it was built.",
                 "photo_alt": "a second view of the same object, accepted in the photo screening.",
                 "trap_premise": "the question falsely states the town of a real look-alike.",
-                "trap_lowinfo": "a photo too generic to identify; abstaining is correct."}
+                "trap_lowinfo": "a photo too generic to identify; abstaining is correct.",
+                "photo_mc": "the main photo with four named options (the landmark and three similar ones); graded by code.",
+                "photo_main_w2": "the main photo, name and place asked with a second wording (French, Romansh)."}
     present_arms = {c["arm"] for c in cases}
     arms_block = "\n".join(f"- `{a}`: {d}" for a, d in arm_desc.items() if a in present_arms)
     goldqc_line = f"- **Answer-key spot check:** {gold_qc}." if gold_qc else ""

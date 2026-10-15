@@ -53,7 +53,7 @@ def grade_all(dataset: Path, results: Path, judge_ep: Endpoint | None = None, lo
             for k in ("judge_label", "judge_raw", "judge_model", "judge_prompt_version", "predicted_place"):
                 row[k] = prev[k]
             n_cached += 1
-        elif judge_ep and r["status"] == "ok":
+        elif judge_ep and r["status"] == "ok" and case["arm"] != "photo_mc":   # multiple choice: code grading only
             todo.append((len(out), case, lm, r["response_text"]))
         out.append(row)
 
@@ -201,6 +201,15 @@ def compute_scores(dataset: Path, results: Path, bootstrap: int = 2000) -> dict:
     # descriptive (analysis_plan.md, secondary): the same landmark, language and question on two photos
     s["photo_alt_vs_main"] = _paired(graded, "photo_main", "photo_alt", ("name", "place", "year"))
     s["lowinfo_vs_main_name"] = _paired(graded, "photo_main", "trap_lowinfo", ("name",))
+    # extensions (docs/extensions_plan.md, descriptive): multiple choice vs chance; second wording vs the first
+    mc = [r for r in graded if r["arm"] == "photo_mc"]
+    if mc:
+        s["photo_mc_by_lang"] = {**table(mc, lambda r: r["lang"]), "all": rates(lab(mc)), "chance": 0.25,
+                                 "code_rules": dict(sorted(_count(r["code_rule"] for r in mc).items()))}
+    if any(r["arm"] == "photo_main_w2" for r in graded):
+        s["wording_w2_vs_main"] = {lang: _paired([r for r in graded if r["lang"] == lang], "photo_main", "photo_main_w2",
+                                                 ("name", "place"))
+                                   for lang in sorted({r["lang"] for r in graded if r["arm"] == "photo_main_w2"})}
     gz = load_gazetteer(dataset)
     if gz is not None:  # hypotheses H1b-H4 + location analysis need the gazetteer shipped with the dataset
         s["hypotheses"] = hypotheses(graded, gz, lms, cases, bootstrap=bootstrap)

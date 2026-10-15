@@ -685,10 +685,34 @@ def grade_premise(text: str, false_towns: list[str], place_aliases: list[str], n
     return CodeGrade("not_attempted", "premise_not_addressed")
 
 
+_MC_FIRST = re.compile(r"^\W{0,3}([ABCD])(?![\w'’])")                 # the answer starts with a letter: "B) ...", "C."
+_MC_ANY = re.compile(r"(?<![\w'’])([ABCD])(?=\s*[).:,]|\s*$)")       # "B)", "C.", "réponse : D", "option B, ..."
+
+
+def grade_mc(case: dict, text: str) -> CodeGrade:
+    """Multiple choice (extension E2, docs/extensions_plan.md): exactly one option identified, by its letter or its
+    text, is correct or incorrect; two or more options are incorrect; a refusal or no option is not attempted."""
+    opts = case["options"]
+    m = _MC_FIRST.match(text)
+    chosen = ({m.group(1)} if m else set()) | set(_MC_ANY.findall(text))
+    t = normalize(text)
+    for letter, opt in zip("ABCD", opts):
+        name = normalize(opt.rsplit(" (", 1)[0])
+        if name and f" {name} " in f" {t} ":
+            chosen.add(letter)
+    if not chosen:
+        return CodeGrade("not_attempted", "mc_refusal" if abstains(text) or hedged(text) else "mc_no_option")
+    if len(chosen) > 1:
+        return CodeGrade("incorrect", "mc_several_options")
+    return CodeGrade("correct" if chosen == {case["answer_option"]} else "incorrect", "mc_option")
+
+
 def grade(case: dict, landmark: dict, response_text: str | None, gz=None) -> CodeGrade:
     """gz: the dataset gazetteer (analysis.Gazetteer); without it the location-based rules of fix v5 are skipped."""
     if response_text is None or not response_text.strip():
         return CodeGrade("not_attempted", "empty_response")
+    if case["arm"] == "photo_mc":
+        return grade_mc(case, response_text)
     names = [a["text"] for a in landmark["name_aliases"]]
     strong = [a["text"] for a in landmark["name_aliases"] if a.get("distinctive", True)]
     weak = [a["text"] for a in landmark["name_aliases"] if not a.get("distinctive", True)]

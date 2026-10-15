@@ -50,6 +50,7 @@ def main(argv: list[str] | None = None) -> int:
     b.add_argument("--refresh", action="store_true", help="ignore the SPARQL cache and re-pull")
     sub.add_parser("build-images", help="(team only, network) fetch, licence-filter and re-encode photos")
     sub.add_parser("build-questions", help="(team only) generate test cases from the frozen templates")
+    sub.add_parser("build-extensions", help="(team only) add the registered extension items (docs/extensions_plan.md)")
     r = sub.add_parser("review-page", help="(team only) write the offline photo-screening page + photos")
     r.add_argument("--out", type=Path, default=None, help="output folder (default: <work>/review/photo_screening)")
     m = sub.add_parser("merge-review", help="(team only) merge the team's screening_team.json decision file")
@@ -117,6 +118,12 @@ def main(argv: list[str] | None = None) -> int:
             mj = json.loads(merged.read_text(encoding="utf-8"))
             alt, low, dropped = mj["alt_accepted"], mj["lowinfo"], mj["report"]["dropped_landmarks"]
         print(json.dumps(build_questions(args.work, alt, low, dropped), indent=1, ensure_ascii=False))
+        from .build.extensions import build_extensions
+        print(json.dumps(build_extensions(args.work / "dataset"), indent=1))
+        return 0
+    if args.cmd == "build-extensions":
+        from .build.extensions import build_extensions
+        print(json.dumps(build_extensions(args.work / "dataset"), indent=1))
         return 0
     if args.cmd == "review-page":
         from .build.review_page import build_review_page

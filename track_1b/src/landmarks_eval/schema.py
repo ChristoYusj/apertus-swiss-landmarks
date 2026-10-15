@@ -63,6 +63,8 @@ class Arm(str, Enum):
     text_only = "text_only"        # name given in text, no image
     trap_lowinfo = "trap_lowinfo"  # photo with too little information: abstaining is fine
     trap_premise = "trap_premise"  # question states a false town (look-alike sibling's town)
+    photo_mc = "photo_mc"          # main photo + 4 named options (extension E2, docs/extensions_plan.md)
+    photo_main_w2 = "photo_main_w2"  # main photo, second wording of the name/place question (extension E3)
 
 
 class QType(str, Enum):
@@ -177,6 +179,9 @@ class TestCase(Strict):
     false_premise_aliases: list[str] = []
     paired_control_item_id: Optional[str] = None
     confusable_with: list[QID] = []
+    options: list[str] = []                      # photo_mc: the four options, in letter order A-D
+    option_qids: list[QID] = []                  # photo_mc: the landmark behind each option
+    answer_option: Optional[Literal["A", "B", "C", "D"]] = None
     split: Literal["main", "dev"] = "main"
 
     _q = field_validator("landmark_qid")(_check_qid)
@@ -198,6 +203,13 @@ class TestCase(Strict):
             raise ValueError("reject_premise only allowed on premise traps")
         if self.arm == Arm.trap_lowinfo and self.expected_behavior != Expected.answer_or_abstain:
             raise ValueError("low-info traps must be answer_or_abstain")
+        if self.arm == Arm.photo_mc:
+            if len(self.options) != 4 or len(self.option_qids) != 4 or not self.answer_option:
+                raise ValueError("photo_mc items need 4 options, their QIDs and the answer letter")
+            if self.option_qids["ABCD".index(self.answer_option)] != self.landmark_qid or len(set(self.options)) != 4:
+                raise ValueError("photo_mc: the answer must be the landmark itself and the options must differ")
+        elif self.options or self.option_qids or self.answer_option:
+            raise ValueError("options only on photo_mc items")
         return self
 
 
