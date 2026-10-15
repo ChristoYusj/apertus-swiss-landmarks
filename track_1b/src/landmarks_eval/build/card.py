@@ -43,21 +43,31 @@ def build_card(ds: Path, extra: dict | None = None) -> str:
     models = [_load(p / "responses.jsonl")[0]["model"] for p in rdirs]
     ref = ds / "responses" / "apertus-v1.5-70b"
     judg = _load(ref / "judgements.jsonl") if (ref / "judgements.jsonl").exists() else []
-    judge_done = bool(judg) and all(j.get("judge_label") for j in judg)
+    mc = {c["item_id"] for c in cases if c["arm"] == "photo_mc"}  # multiple choice is graded by code only, by design
+    judge_done = bool(judg) and all(j.get("judge_label") for j in judg if j["item_id"] not in mc)
+    # free answers whose judge verdict stayed empty keep the code label (counted over every model, never assumed)
+    no_verdict = sum(1 for p in rdirs for j in _load(p / "judgements.jsonl")
+                     if j["item_id"] not in mc and not j.get("judge_label"))
+    prompt_versions = sorted({c["prompt_version"] for c in cases})
+    others = [m for m in models if "apertus" not in m.lower()]
     audit = _load(ref / "human_audit.jsonl") if (ref / "human_audit.jsonl").exists() else []
     gloss = (ref / "glosses.jsonl").exists()
     stab = json.loads((ref / "stability.json").read_text(encoding="utf-8")) if (ref / "stability.json").exists() else None
     gold_qc = extra.get("gold_qc")
     files_of = {p.name: sorted(f.name for f in p.iterdir() if f.is_file()) for p in rdirs}
     file_desc = {"responses.jsonl": "raw outputs with parameters, usage, latency and request hashes",
-                 "judgements.jsonl": "code-grader label and rule" + (", LLM-judge label" if judge_done else "") + ", final label",
+                 "judgements.jsonl": "code-grader label and rule" + (", LLM-judge label (none for multiple choice)"
+                                                                     if judge_done else "") + ", final label",
                  "scores.json": "all scores recomputed by `landmarks-eval score`",
                  "stability.json": "temperature-0 stability check", "stability_responses.jsonl": "the re-asked answers",
                  "human_audit.jsonl": "blind human labels (annotator A1)",
-                 "human_audit_repeat.jsonl": "the annotator's second labels of the hidden repeat items (self-consistency)",
-                 "audit_sample.json": "the seeded, stratified audit sample (item ids, strata, hidden repeats)",
+                 "human_audit_repeat.jsonl": "the same annotator's labels of the shared items in the other two parts "
+                                             "(repeat labels; the overlap was known, so not a blind test-retest)",
+                 "audit_sample.json": "the seeded, stratified audit sample (item ids, strata; its `repeats` list belongs "
+                                      "to an earlier protocol that was not run)",
                  "ai_crosscheck_audit.jsonl": "the audit sample graded by a second AI system: a cross-check, not a human audit",
-                 "disagreement_adjudication.jsonl": "AI-assisted re-reading of every judge-vs-code disagreement (sensitivity analysis)",
+                 "disagreement_adjudication.jsonl": "AI-assisted re-reading of every judge-vs-code disagreement on the "
+                                                    "core items (sensitivity analysis; second-wording items not re-read)",
                  "judge_dev_set.jsonl": "judge tuning items and labels", "judge_dev_eval.json": "the frozen judge on its dev set",
                  "glosses.jsonl": "English machine glosses of answers (annotation aid)"}
     responses_block = "\n".join(
@@ -81,8 +91,11 @@ def build_card(ds: Path, extra: dict | None = None) -> str:
     arms_block = "\n".join(f"- `{a}`: {d}" for a, d in arm_desc.items() if a in present_arms)
     goldqc_line = f"- **Answer-key spot check:** {gold_qc}." if gold_qc else ""
     grading_block = (
-        "  - Every model answer was graded by a deterministic code grader and by an independent open-weights LLM judge "
-        "(`openai/gpt-oss-120b`, temperature 0); the final label is the judge's.\n"
+        "  - Every model answer was graded by a deterministic code grader; every free answer also by an independent "
+        "open-weights LLM judge (`openai/gpt-oss-120b`, temperature 0), whose label is final"
+        + (f" ({no_verdict} answers with an empty judge verdict keep the code label)" if no_verdict else "")
+        + (". Multiple-choice answers are graded by code only (one option named by letter or text)" if mc else "")
+        + ".\n"
         "  - The judge prompt was tuned on a 40-item dev set (labels proposed by Claude; the team lead ruled on the 4 "
         "hard cases and accepted the other 36 without item-by-item review) and frozen before the audit sample was drawn."
         if judge_done else
@@ -98,15 +111,16 @@ def build_card(ds: Path, extra: dict | None = None) -> str:
         n_items = len({a["item_id"] for a in audit})
         who = sorted({a["annotator_id"] for a in audit})
         n_overlap = len({a["item_id"] for a in audit if a.get("in_overlap")})
-        audit_block = (f"- **Human audit:** {n_items} answers of a seeded, stratified random sample were labelled blind by "
+        audit_block = (f"- **Human audit:** {n_items} `{ref.name}` answers of a seeded, stratified random sample were labelled blind by "
                        + (f"{len(who)} annotators ({', '.join(who)}), each alone" if len(who) > 1 else f"one annotator ({who[0]})")
                        + " following `docs/annotation_guidelines.md`"
                        + (f"; {n_overlap} items were labelled by all of them" if len(who) > 1 and n_overlap else "")
-                       + (f"; {len(repeats)} repeat labels of items shown more than once are kept as a consistency check"
-                          if repeats else "")
+                       + (f"; the sample was split into three parts sharing {len({r['item_id'] for r in repeats})} items, "
+                          f"and the second and third labels of the shared items are kept separately ({len(repeats)} "
+                          "repeat labels)" if repeats else "")
                        + ".\n- **Agreement:** judge-human and code-human agreement (Cohen's kappa)"
                        + (" and agreement between the annotators (Fleiss' kappa)" if len(who) > 1 and n_overlap else "")
-                       + (" and the annotator's self-consistency" if repeats else "")
+                       + (" and how often the repeat labels match" if repeats else "")
                        + " are in `scores.json` and the technical report." + ai_line)
         annot_details = ((f"{len(who)} student members of Team Red Pandas (pseudonyms {', '.join(who)}), French and English speakers."
                           if len(who) > 1 else f"One student member of Team Red Pandas (pseudonym {who[0]}), French and English speaker.")
@@ -173,7 +187,7 @@ are included with their grades. It was built for Hack Apertus 2026, Track 1B
 ## Dataset Details
 
 - **Curated by:** Team Red Pandas (Hack Apertus 2026 online hackathon)
-- **Funded by:** none; inference was provided by CSCS through the hackathon endpoint
+- **Funded by:** none; Apertus inference was provided by CSCS through the hackathon endpoint{'; the LLM judge' + (' and the comparison model' if others else '') + ' ran on paid Hugging Face inference providers (paid by the team)' if judge_done else ''}
 - **Shared by:** Team Red Pandas
 - **Language(s) (NLP):** French, German (Swiss orthography), Italian, Romansh (Rumantsch Grischun)
 - **License:** CDLA-Permissive-2.0 for the compilation, questions, answer keys, labels and model responses. Each photograph keeps its own free licence (see *Data Instance Licenses*).
@@ -198,7 +212,7 @@ are included with their grades. It was built for Hack Apertus 2026, Track 1B
 {_table(cells, ["Region", "high (3+ articles)", "mid (1–2)", "low (0)"])}
 
 - **Questions per landmark:** Q1 name; Q2 municipality + canton; Q3 year built (only when Wikidata has a single consistent year- or decade-precision inception; never for museums, whose inception is usually the founding of the institution).
-- **Prompts:** every question explicitly allows the model to say it is unsure (prompt version `q-v1`).
+- **Prompts:** every question explicitly allows the model to say it is unsure (prompt versions {', '.join(f'`{v}`' for v in prompt_versions)}).
 
 ## Dataset Structure
 
@@ -253,14 +267,14 @@ for Apertus 1.5.
 #### Source Data Producers and Data Subjects
 - **Photographs:** Wikimedia Commons contributors, credited per image.
 - **Facts:** Wikidata editors and the Swiss Federal Statistical Office.
-- **Questions:** fixed templates drafted with an AI coding assistant (Claude Code); French reviewed by French-speaking team members, German and Italian back-translation checked, Romansh not reviewed by a native speaker.
-- **Model responses:** Apertus 1.5 (CSCS endpoint).
+- **Questions:** fixed templates drafted with an AI coding assistant (Claude Code); for `q-v1`, French reviewed by French-speaking team members, German and Italian back-translation checked, Romansh not reviewed by a native speaker{'; the extension templates (' + ', '.join(f'`{v}`' for v in prompt_versions if v != 'q-v1') + ') were locked before the run without a recorded review' if len(prompt_versions) > 1 else ''}.
+- **Model responses:** Apertus 1.5 (CSCS endpoint){''.join(f'; `{m}` (Hugging Face inference provider)' for m in others)}.
 
 No person is a data subject: photos showing recognisable people were excluded.
 
 #### Ownership and Consent Management
 - **Photos:** remain owned by their authors and are redistributed under their licences.
-- **Team members:** signed the annotator consent form (`docs/consent_form_template.md`), which covers publication under CDLA-Permissive-2.0, use for AI, pseudonymity and withdrawal.
+- **Annotators:** the annotator consent form (`docs/consent_form_template.md`) covers publication under CDLA-Permissive-2.0, use for AI, pseudonymity and withdrawal.
 - **Takedown and corrections:** open a discussion on this dataset page. Requests are handled within 14 days in a new version.
 
 #### Data Processing and Quality Control

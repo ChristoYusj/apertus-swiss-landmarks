@@ -52,3 +52,29 @@ def test_self_consistency_only_claimed_with_repeat_labels(tmp_path):
     human = [{"item_id": "a", "annotator_id": "A1", "label": "correct", "in_overlap": False}]
     card = build_card(_ds(tmp_path, V3B, human_rows=human))
     assert "labelled blind by one annotator (A1)" in card and "self-consistency" not in card
+
+
+def test_code_only_multiple_choice_does_not_hide_the_judge(tmp_path):
+    # multiple choice has no judge label by design: the card must still say the judge's labels are final
+    ds = _ds(tmp_path, V3B)
+    with open(ds / "data" / "test_cases.jsonl", "a", encoding="utf-8") as f:
+        f.write(json.dumps({"item_id": "Q101-photo_mc-name-fr", "landmark_qid": "Q101", "arm": "photo_mc",
+                            "question_type": "name", "lang": "fr", "prompt_version": "q-v2-mc"}) + "\n")
+    rows = [{"item_id": "Q101-photo_main-name-fr", "judge_label": "correct"},
+            {"item_id": "Q101-photo_mc-name-fr", "judge_label": None}]
+    (ds / "responses" / "apertus-v1.5-70b" / "judgements.jsonl").write_text(
+        "".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+    card = build_card(ds)
+    assert "whose label is final" in card and "graded by code only" in card
+    assert "not part of this version; final label = code-grader label" not in card
+    assert "`q-v2-mc`" in card and "without a recorded review" in card
+
+
+def test_repeat_labels_are_not_called_blind_test_retest(tmp_path):
+    human = [{"item_id": "a", "annotator_id": "A1", "label": "correct", "in_overlap": True}]
+    ds = _ds(tmp_path, V3B, human_rows=human)
+    (ds / "responses" / "apertus-v1.5-70b" / "human_audit_repeat.jsonl").write_text(
+        json.dumps({**human[0], "part": "A2"}) + "\n", encoding="utf-8")
+    card = build_card(ds)
+    assert "hidden repeat" not in card and "self-consistency" not in card
+    assert "sharing 1 items" in card and "not a blind test-retest" in card

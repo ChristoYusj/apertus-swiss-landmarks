@@ -44,8 +44,8 @@ the lead (A1) setting the policy and deciding edge cases. No model answer was sh
    photo that step 1 would publish (491: main photo, 2nd view, too-generic photo) for the same privacy items and
    for the role ("same object as the main photo", "really too generic").
 3. **Second AI review (Hermes agent).** A separate AI agent reviewed the same 491 photos under the lead's policy
-   "if unsure, exclude": 32 photos it could not settle were excluded under that policy. The lead decided 6 edge
-   cases directly (a partly visible licence plate, a borderline second view, ...), and one more in chat (the
+   "if unsure, exclude": 32 photos it could not settle were excluded under that policy. The lead decided 6 photos
+   on 4 landmarks (a partly visible licence plate, a borderline second view, ...), one landmark of them in chat (the
    "San Bastian" main photo shows Schloss Wildenberg: wrong object). A human check page
    (`tools/screening_online/check.html`: one row per landmark with only the published photos) was prepared but
    used for 3 rows only, so **no person looked at every published photo**.
@@ -54,7 +54,7 @@ The second review's verdict wins (`landmarks-eval combine-screening`, converter
 `tools/screening_online/hermes_to_check.py`): a photo is published only if it was kept; a rejected 2nd view or
 too-generic photo becomes "none" (never silently replaced); a rejected main photo drops the landmark, with the reason
 in the exclusion log (privacy, wrong object, or "may not show the landmark (excluded when unsure)"). Image records
-name the reviewers (`ai:claude-opus-5-5`, `ai:hermes`, plus `A1` for the landmarks with a human decision).
+name the reviewers (`ai:claude-opus-5-5`, `ai:hermes`, plus `A1` on the shipped photos a person decided).
 
 ## Task G: grading audit (after the official run)
 Task G is done **independently**: each annotator labels alone (sharing one computer is fine, one after the
@@ -96,4 +96,4 @@ Worked examples:
 | En quelle année… ? | 1585 (window 1580–1590) | "Au XVIe siècle." | Not attempted |
 | Ce monument se trouve à Berne… ? | Lausanne | "Ce n'est pas Berne : c'est la Fontaine de la Justice à Lausanne." | Correct |
 
-**As run (protocol audit-v4, 15 Oct):** three annotators (A1, A2, A3) each label 194 answers blind, on a fillable PDF that shows no grade of any kind (`tools/audit_online/build_audit_v4.py`, `build_check_pdf.py --blind`): 164 of their own and a 30-item overlap that all three label (Fleiss' κ). The 522 items are the pre-registered 20 % sample minus the landmarks the photo screening removed. Work alone, without looking anything up, and do not discuss items until all three have finished. Human label = the annotator's label; on the overlap, the majority of the three. A second AI's grades of the same sample are reported separately as an AI cross-check, never as Task G. **What happened:** the team lead (A1) graded all three parts (stated 15 Oct), so the labels are one annotator's: 522 answers, judge–human agreement reported, no agreement between people; the second and third labels of the 30 shared items are kept as repeats.
+**As registered (protocol audit-v4, 15 Oct ~12:47):** three annotators (A1, A2, A3) each label 194 answers blind, on a fillable PDF that shows no grade of any kind (`tools/audit_online/build_audit_v4.py`, `build_check_pdf.py --blind`): 164 of their own and a 30-item overlap that all three label (Fleiss' κ). The 522 items are the pre-registered 20 % sample minus the landmarks the photo screening removed. Work alone, without looking anything up, and do not discuss items until all three have finished. Human label = the annotator's label; on the overlap, the majority of the three. A second AI's grades of the same sample are reported separately as an AI cross-check, never as Task G. **As run:** the team lead (A1) graded all three parts (stated 15 Oct), so the labels are one annotator's: 522 answers, judge–human agreement reported, no agreement between people; the second and third labels of the 30 shared items are kept as repeats (the overlap was known, so this is not a blind test-retest).

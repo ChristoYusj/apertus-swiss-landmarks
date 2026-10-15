@@ -379,7 +379,7 @@ and one skeptic re-check. Fixed:
   `track_1b/RedPandas_Report.pdf`.
 
 ## Grading audit protocol v4: three annotators (15 Oct, ~12:45, before any human label exists)
-- Back to the registered design with three annotators (A1-A3), blind: the 522 items of the pre-registered 20 %
+- Three annotators (A1-A3) as registered, blind, but with a 30-item overlap instead of the registered 100 (deviation): the 522 items of the pre-registered 20 %
   sample that are still in the dataset are split (seed 20261018) into a 30-item overlap labelled by all three
   (Fleiss' kappa) and three disjoint parts; each annotator labels 194 items in their own seeded order, on a fillable
   PDF that shows no grade of any kind (`tools/audit_online/build_audit_v4.py`, `build_check_pdf.py --blind`).
@@ -388,6 +388,10 @@ and one skeptic re-check. Fixed:
   agreement (Cohen's kappa) and Fleiss' kappa are reported as planned.
 
 ## Extension runs (15 Oct, afternoon) and a post-run multiple-choice parsing fix
+- **Change after registration, before the run:** commit d9e3b44 (12:54:44, after the registration 5190a7d at
+  12:50:38 and 6 s before the first extension answer) strips a trailing parenthesis from the option name, so a
+  label like "San Gian (Celerina)" does not show the town twice. The shipped options were built with it; no
+  answer existed yet. Not logged at the time; recorded here after the final audit.
 - Apertus 70B and 8B answered the 2,008 extension items (`photo_mc` 1,004, `photo_main_w2` 1,004): all `ok`. The
   judge graded the second-wording items (1,004 per model, 0 failures); multiple choice is graded by code only.
 - **Multiple-choice parsing fix (after reading the answers; documented):** two options can share a name
@@ -410,16 +414,16 @@ and one skeptic re-check. Fixed:
 - Total judge usage on 15 Oct for the extensions and Gemma: about 4.9M input / 1.5M output tokens; the exact cost
   is on the Hugging Face billing page.
 
-## Report check (15 Oct, ~15:00) and deviations of the extension runs
-- An independent numbers audit of the new report text found: Gemma's wrong-name range is 86–94 %, 70B starts its
+## Report check (15 Oct, ~14:10) and deviations of the extension runs
+- An AI (Claude) numbers audit of the new report text found: Gemma's wrong-name range is 86–94 %, 70B starts its
   multiple-choice answer with "A" in 58 % (not 59 %), about 22 % correct when the answer is not A; the judge–code
   kappas apply to the 3,412 core items; the 8B model's caution also varies by language. Fixed in the report. The
   multiple-choice confidence intervals are now cluster-bootstrap intervals over landmarks (70B 29.7–39.7 %).
 - **Deviation (additional data, nothing replaced):** the plan registered the second wording (E3) for Apertus 70B
-  only and Gemma (E1) on the 3,412 core items; both extensions were also run on 8B and Gemma, so every model
+  only; it was also run on 8B and Gemma (multiple choice on all three models was registered, E2), so every model
   answered all 5,420 items. The 8B and Gemma second-wording results are reported as additional.
 - The re-reads of judge–code disagreements cover the core items of the Apertus models; the 40 new second-wording
-  disagreements (70B 15, 8B 25) and Gemma's are not re-read (stated in the report).
+  disagreements (70B 15, 8B 25) and Gemma's are not re-read (stated in the report since the final audit below).
 
 ## Human audit done (15 Oct, evening): one annotator, all 522 answers
 - The three blind PDFs of protocol audit-v4 came back filled (a first copy of part A1 had no answers saved). The team
@@ -431,3 +435,22 @@ and one skeptic re-check. Fixed:
 - Results: judge vs human κ = 0.76 (89.1 % identical), code vs human κ = 0.73 (87.7 %). Most disagreements: 29
   answers the judge counted as declines that the annotator marked incorrect, 18 the annotator marked correct that
   the judge did not. Merge: `tools/audit_online/merge_audit_v4.py --one-annotator A1`.
+
+## Final audit of the report and documents (15 Oct, evening)
+- An AI (Claude) audit of every number in the report found no wrong headline figure; a claims audit and a skeptic
+  re-check confirmed 24 wording issues, all fixed:
+  - "every disagreement was re-read" now says every *core* disagreement of the Apertus models (the 40 second-wording
+    and all 148 Gemma disagreements were not re-read), in the report, the AI-use statement and the card;
+  - the judge grades every free answer, not 100 % (multiple choice is code-only; 4 Gemma answers keep the code
+    label); the human audit covers 522 Apertus-70B core answers (no 8B, Gemma or extension items);
+  - Gemma names the landmark in 26 of 1,004 *answers* (13 landmarks; 70B: 4 answers, 3 landmarks);
+  - the dataset card: the judge's labels are final for free answers (the card generator treated the code-only
+    multiple-choice rows as missing judge labels), prompt versions are read from the data, Gemma and the paid
+    Hugging Face inference are named, the repeat file is described as known-overlap repeats (not a blind
+    test-retest), the unused v3 `repeats` list in `audit_sample.json` is labelled;
+  - extension templates (`q-v2-*`) no longer inherit the `q-v1` review status in `item_metadata.jsonl`: they were
+    locked without a recorded review;
+  - `human_audit.jsonl`: `in_overlap` marks the 30 shared items; `labelled_at` is the save time of each returned
+    PDF (A1 16:02, A2 16:15, A3 16:12 +03:00), not the merge time. No label changed;
+  - guideline: v4 is "as registered", the one-annotator run "as run"; the lead decided 6 photos on 4 landmarks
+    (San Bastian included, not one more); consent form lists the human and AI labels it now covers.

@@ -3,8 +3,9 @@
   python merge_audit_v4.py [--one-annotator A1] <assignment.json> <results dir> <source> [<source> ...]
 
 --one-annotator: all three parts were labelled by one person; their labels are recorded under that ID, once per
-item, and the second and third labels of the shared items go to human_audit_repeat.jsonl (self-consistency), never
-as other annotators.
+item, and the second and third labels of the shared items go to human_audit_repeat.jsonl (repeat labels by the same
+person, who knew the overlap existed: not a blind test-retest), never as other annotators. `in_overlap` marks the
+shared items. `labelled_at` is the save time of the returned PDF (or the page's click time online).
 
 A source is either a JSON list of database documents from the online page (collection `audit4`; each with the
 fields a, item, label, used_translation, unsure, t) or a downloaded audit_labels_<ID>.json (format
@@ -61,7 +62,7 @@ def main() -> None:
             first.setdefault(item, (a, r))
         mk = lambda item, part, r: {"item_id": item, "annotator_id": one, "label": r["label"],
                                     "used_translation": bool(r.get("used_translation")), "unsure": bool(r.get("unsure")),
-                                    "in_overlap": False, "part": part, "labelled_at": r.get("t"),
+                                    "in_overlap": item in overlap, "part": part, "labelled_at": r.get("t"),
                                     "protocol": "audit-v4 as run: one annotator labelled all three parts (blind)"}
         rows = [mk(item, a, r) for item, (a, r) in sorted(first.items())]
         repeats = [mk(item, a, r) for (a, item), r in sorted(best.items()) if first[item][0] != a]

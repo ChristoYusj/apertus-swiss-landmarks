@@ -19,6 +19,18 @@ from ..schema import ImageRecord, Landmark, TestCase
 from .questions import label_with_lang
 
 
+def _translation(c: dict) -> dict:
+    """Template provenance per item: the q-v1 statuses apply only to q-v1; the extension templates (q-v2-*) were
+    AI-drafted and locked before the run with no recorded review (templates_v2.yaml header)."""
+    if c["prompt_version"] != "q-v1":
+        return {"translation_method": "template drafted with AI coding assistant",
+                "translation_review_status": "not reviewed by a native speaker (exploratory)" if c["lang"] == "rm"
+                else "not reviewed (extension template)"}
+    return {"translation_method": "template drafted with AI coding assistant" + ("" if c["lang"] == "fr" else "; back-translation check"),
+            "translation_review_status": {"fr": "reviewed by French-speaking team members", "de": "back-translation checked",
+                                          "it": "back-translation checked", "rm": "not reviewed by a native speaker (exploratory)"}[c["lang"]]}
+
+
 def assemble(work: Path) -> dict:
     ds = work / "dataset"
     (ds / "images").mkdir(parents=True, exist_ok=True)
@@ -62,9 +74,7 @@ def assemble(work: Path) -> dict:
                 "gold_license": "CC0-1.0", "gold_source": f"Wikidata {lm['qid']} (P571, P131, labels), BFS municipality register 2026-10-01",
                 "image_license_spdx": im.get("license_spdx"), "image_attribution_text": im.get("attribution_text"),
                 "response_license": "CDLA-Permissive-2.0",
-                "translation_method": "template drafted with AI coding assistant" + ("" if c["lang"] == "fr" else "; back-translation check"),
-                "translation_review_status": {"fr": "reviewed by French-speaking team members", "de": "back-translation checked",
-                                              "it": "back-translation checked", "rm": "not reviewed by a native speaker (exploratory)"}[c["lang"]],
+                **_translation(c),
                 "fame_tier": lm["fame_tier"], "language_region": lm["language_region"], "type_group": lm["type_group"],
                 "heritage_class": lm["heritage_class"], "arm": c["arm"], "lang": c["lang"],
                 "post_cutoff_image": im.get("post_cutoff"),

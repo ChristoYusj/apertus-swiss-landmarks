@@ -1,7 +1,7 @@
 # Technical report — Swiss Heritage Factuality: does Apertus recognise Switzerland's landmarks?
 
-> Final labels are the frozen LLM judge's (`judge-v1`), checked by a blind human audit of the 20 % sample (one
-> annotator; judge–human κ = 0.76). Photos were screened by AI (see Annotation and Limitations).
+> Final labels are the frozen LLM judge's (`judge-v1`; multiple choice: code), checked on 522 Apertus-70B answers
+> by one blind human annotator (judge–human κ = 0.76). Photos were screened by AI (see Annotation and Limitations).
 
 > We built a four-language (FR/DE/IT/RM) benchmark of 5,420 questions about 251 Swiss heritage landmarks from the
 > federal inventory (KGS), stratified by language region and fame, with photo, second-view, multiple-choice,
@@ -98,19 +98,19 @@ is not distinctive or contains the town or a year; 170 items, kept with their an
   exclude" policy; the lead decided 6 edge cases. 13 landmarks were removed (privacy 4, wrong object 4, unclear 5;
   answers kept in `metadata/excluded_items.jsonl`), 429 photos shipped. ⟨P1⟩
 - *Grading audit (human, blind):* the pre-registered, seeded, stratified 20 % sample (546 of the 2,726 70B answers
-  before the screening; 522 still in the dataset; the later `photo_alt`/`trap_lowinfo` items are not covered) was
+  before the screening; 522 still in the dataset; `photo_alt`/`trap_lowinfo`, the extensions, 8B and Gemma are not covered) was
   graded by one annotator (A1, the team lead) on three fillable PDFs that show no grade of any kind, with an English
   machine gloss for non-French answers. The protocol planned three annotators; A1 graded all three parts, so no
   agreement between people is reported. A second AI agent graded the same sample as a separate cross-check.
 
 **Consent and personal data.** No person is a data subject: photos with recognisable people are excluded,
-EXIF is stripped. Annotators sign the consent form in `docs/consent_form_template.md` (pseudonymous IDs).
+EXIF is stripped. Annotator consent form: `docs/consent_form_template.md` (pseudonymous IDs).
 
 ## Dataset Details
 
 - **Quality metrics:** answer-key audit (above), selection funnel, per-cell counts, item-validity rules,
-  stability of answers at temperature 0 (below), judge–code agreement and an independent re-read of every
-  disagreement (AI-assisted), a blind human audit of the 20 % sample (one annotator) and an AI cross-check.
+  stability of answers at temperature 0 (below), judge–code agreement and a re-read of every core Apertus
+  disagreement (AI-assisted), a blind human audit of 522 70B answers (one annotator) and an AI cross-check.
 - **Diversity / edge cases:** four languages incl. Romansh; fame tiers; same-photo language contrast; text vs
   photo; false-premise traps with real look-alikes; low-information photos; ambiguous town names;
   non-distinctive names.
@@ -127,11 +127,11 @@ EXIF is stripped. Annotators sign the consent form in `docs/consent_form_templat
 - **Labels:** SimpleQA three-way. *Hallucination rate* = incorrect / attempted.
 - **Graders:** (1) a deterministic code grader on 100 % (alias matching with the distinctiveness and ambiguity
   rules, abstention and hedge detection in all four languages, a gazetteer of all Swiss cantons and current and
-  former municipalities); (2) an independent open-weights judge, `openai/gpt-oss-120b` (not Apertus), on 100 %,
+  former municipalities); (2) an independent open-weights judge, `openai/gpt-oss-120b` (not Apertus), on every free answer,
   pinned to one provider, temperature 0; prompt tuned on a 40-item dev set (labels proposed by Claude; the lead
   ruled on the 4 hard cases and accepted the other 36 without item-by-item review)
   (final prompt: 40/40 agreement, two runs identical) and frozen before the full run and the audit sample;
-  final label = judge's. Multiple choice is graded by code only (one option named by letter or text).
+  final label = judge's (4 empty Gemma verdicts: code's). Multiple choice is graded by code only (one option named by letter or text).
 - **Statistics:** cluster bootstrap over landmarks (2,000 resamples) for CIs; exact McNemar for paired
   contrasts; Holm correction across the registered tests; Wilson intervals for rates.
 
@@ -207,8 +207,8 @@ low-fame landmarks, while from the photo both are ≈ 0 %. The bottleneck is vis
 **6. Smaller model and comparison model.** Apertus 1.5 8B declines less (name: 28 % not attempted vs 64 % for
 70B) and is confidently wrong more often in every language (name wrong: FR 78 %, IT 48 %, DE 70 %, RM 90 %); it
 is not more misled by the false premise than by the plain question (71 % vs 83 %, n.s.) because it is already
-wrong on the plain question. Gemma-4-31B answers almost everything (names not attempted 9 %) and is wrong in 89 %; it names 26 of 1,004
-landmarks correctly (Apertus 70B: 4) and is the only model with a significant fame effect (H1: 99.7 % vs 93.2 %
+wrong on the plain question. Gemma-4-31B answers almost everything (names not attempted 9 %) and is wrong in 89 %; it names the landmark
+in 26 of 1,004 answers (13 landmarks; Apertus 70B: 4 answers, 3 landmarks) and is the only model with a significant fame effect (H1: 99.7 % vs 93.2 %
 hallucination, low vs high fame; H1b likewise; p_Holm 0.01–0.02). It invents a name for 24 % of the too-generic
 photos (Apertus 70B: 0 %) and adopts the false town in 69 % of premise traps.
 
@@ -217,7 +217,7 @@ labels), 0.94 (8B; 96.8 %), 0.92 (Gemma; 97.2 %). Every core disagreement of the
 two rounds, 224 still in the dataset;
 `disagreement_adjudication.jsonl`) was re-read independently against the written rules, with a second blind read
 where the judge looked wrong (AI-assisted, not a human audit): of the 224, the judge was right in 86, the code
-grader in 131, neither in 1, and 6 stayed unsettled. The judge is too strict on vague answers whose building type
+grader in 131, neither in 1, and 6 stayed unsettled; second-wording and Gemma disagreements were not re-read. The judge is too strict on vague answers whose building type
 fits the landmark and on saint names without a town, and leaves vague centuries outside the year window as not
 attempted. Replacing its label wherever the re-read settled it lowers the Romansh name-wrong rate from 68 % to
 59 % (70B; 8B 90 % → 81 %), raises the small Romansh year cell by 6 pp and lowers the premise-trap rate from 88 %
@@ -230,11 +230,11 @@ the same sample: κ = 0.96
 with the judge (98.2 % identical), 0.99 with the code grader.
 
 ## Dataset Limitations
-- Results are for one prompt template per language; Romansh templates were not reviewed by a native speaker
+- Results are for one template per language (plus a second wording in FR and RM); Romansh templates were not reviewed by a native speaker
   (exploratory). The language effect could partly reflect template wording; a no-abstention-cue variant is
   future work.
 - Gold comes from Wikidata; errors there propagate (mitigated by the rule-based checks, the 25-landmark live
-  re-check and the AI-assisted re-reading of every grader disagreement against the gold). The photo screening also found one
+  re-check and the AI-assisted re-reading of every core Apertus grader disagreement against the gold). The photo screening also found one
   Wikidata main photo of the wrong building (removed).
 - Fame is proxied by Wikipedia article counts. Low accuracy everywhere limits the power of fame contrasts (floor).
 - Neither automatic grader is perfect. The frozen judge is too strict on vague answers that fit the landmark
