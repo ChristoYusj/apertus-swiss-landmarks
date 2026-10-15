@@ -28,6 +28,24 @@ def test_multiple_choice_grading(text, label, rule):
     assert (g.label, g.rule) == (label, rule)
 
 
+def test_multiple_choice_real_answers_after_the_run():
+    """Post-run parsing fixes (CHANGELOG): shared option names and refusals that list the options."""
+    dup = {"answer_option": "A", "options": ["Rathausbrunnen (Lenzburg)", "Ryfflibrunnen (Bern)", "Rathausbrunnen (Thun)",
+                                             "Schöneckbrunnen (Basel)"]}
+    assert grade_mc(dup, "A) Rathausbrunnen (Lenzburg)").label == "correct"
+    assert grade_mc(dup, "C) Rathausbrunnen (Thun)").label == "incorrect"
+    assert grade_mc(dup, "Rathausbrunnen").label == "not_attempted"            # names no single option
+    inside = {"answer_option": "C", "options": ["Englische Kirche (Vevey)", "Reformierte Kirche (Bex)",
+                                                "Französische Kirche (Le Locle)", "Reformierte Kirche Saint-Étienne (Montcherand)"]}
+    g = grade_mc(inside, "D) Reformierte Kirche Saint-Étienne (Montcherand)")
+    assert (g.label, g.rule) == ("incorrect", "mc_option")                     # one option (D), not B and D
+    listing = {"answer_option": "A", "options": ["Ehemaliger Bahnhof Mammern (Mammern)", "stazione di Bienne (Biel/Bienne)",
+                                                 "Bahnhof Andelfingen (Andelfingen)", "Rathaus Zofingen (Zofingen)"]}
+    g = grade_mc(listing, "Non sono in grado di identificare con certezza l'edificio tra le opzioni fornite (A) Ehemaliger "
+                          "Bahnhof Mammern (Mammern), (B) stazione di Bienne (Biel/Bienne), (C) Bahnhof Andelfingen.")
+    assert (g.label, g.rule) == ("not_attempted", "mc_refusal_listing_options")
+
+
 def _lm(qid, typ, region, name):
     return {"qid": qid, "labels": {"fr": name, "de": name}, "name_aliases": [{"text": name, "lang": "fr"}],
             "place_aliases": [{"text": f"Town{qid}", "lang": "", "source": "bfs:name"}], "municipality_name": f"Town{qid}",

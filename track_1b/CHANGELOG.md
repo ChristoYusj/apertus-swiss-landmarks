@@ -386,3 +386,15 @@ and one skeptic re-check. Fixed:
   Replaces the single-annotator protocol v3 (no labels were collected under v3).
 - Human label = the annotator's label; on the overlap, the majority of the three. Judge-human and code-human
   agreement (Cohen's kappa) and Fleiss' kappa are reported as planned.
+
+## Extension runs (15 Oct, afternoon) and a post-run multiple-choice parsing fix
+- Apertus 70B and 8B answered the 2,008 extension items (`photo_mc` 1,004, `photo_main_w2` 1,004): all `ok`. The
+  judge graded the second-wording items (1,004 per model, 0 failures); multiple choice is graded by code only.
+- **Multiple-choice parsing fix (after reading the answers; documented):** two options can share a name
+  ("Rathausbrunnen (Lenzburg)" / "Rathausbrunnen (Thun)") or one name can sit inside another ("Reformierte Kirche"
+  inside "Reformierte Kirche Saint-Étienne"); the grader matched both and marked clear single answers as "several
+  options". Options are now matched by their full text, and by the bare name only when no other option contains
+  it. A refusal that lists the options ("I cannot tell which of (A) ..., (B) ...") is not attempted, as the plan's
+  refusal rule intends. Effect (70B): 12 answers moved from "several options" (incorrect) to a single option or a
+  refusal; regression tests pin the real cases.
+- Observed and reported: a strong position bias (70B starts with "A" in 59 % of answers; 8B 40 %).

@@ -695,14 +695,19 @@ def grade_mc(case: dict, text: str) -> CodeGrade:
     opts = case["options"]
     m = _MC_FIRST.match(text)
     chosen = ({m.group(1)} if m else set()) | set(_MC_ANY.findall(text))
-    t = normalize(text)
-    for letter, opt in zip("ABCD", opts):
-        name = normalize(opt.rsplit(" (", 1)[0])
-        if name and f" {name} " in f" {t} ":
+    t = f" {normalize(text)} "
+    names = [normalize(o.rsplit(" (", 1)[0]) for o in opts]
+    for letter, opt, name in zip("ABCD", opts, names):
+        # an option is named by its full text ("Rathausbrunnen (Thun)"), or by its bare name only when no other
+        # option's name contains it (two "Rathausbrunnen", or "Reformierte Kirche" inside a longer church name)
+        unique = name and not any(name in other for other in names if other is not name)
+        if f" {normalize(opt)} " in t or (unique and f" {name} " in t):
             chosen.add(letter)
     if not chosen:
         return CodeGrade("not_attempted", "mc_refusal" if abstains(text) or hedged(text) else "mc_no_option")
     if len(chosen) > 1:
+        if not m and (abstains(text) or hedged(text) or _abstain_phrase(text)):
+            return CodeGrade("not_attempted", "mc_refusal_listing_options")   # declines while listing the options
         return CodeGrade("incorrect", "mc_several_options")
     return CodeGrade("correct" if chosen == {case["answer_option"]} else "incorrect", "mc_option")
 
