@@ -102,7 +102,7 @@ def build_card(ds: Path, extra: dict | None = None) -> str:
                        + (f"{len(who)} annotators ({', '.join(who)}), each alone" if len(who) > 1 else f"one annotator ({who[0]})")
                        + " following `docs/annotation_guidelines.md`"
                        + (f"; {n_overlap} items were labelled by all of them" if len(who) > 1 and n_overlap else "")
-                       + (f"; {len(repeats)} items were shown a second time, unannounced, to measure self-consistency"
+                       + (f"; {len(repeats)} repeat labels of items shown more than once are kept as a consistency check"
                           if repeats else "")
                        + ".\n- **Agreement:** judge-human and code-human agreement (Cohen's kappa)"
                        + (" and agreement between the annotators (Fleiss' kappa)" if len(who) > 1 and n_overlap else "")

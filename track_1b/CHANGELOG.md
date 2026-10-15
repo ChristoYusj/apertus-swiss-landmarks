@@ -420,3 +420,14 @@ and one skeptic re-check. Fixed:
   answered all 5,420 items. The 8B and Gemma second-wording results are reported as additional.
 - The re-reads of judge–code disagreements cover the core items of the Apertus models; the 40 new second-wording
   disagreements (70B 15, 8B 25) and Gemma's are not re-read (stated in the report).
+
+## Human audit done (15 Oct, evening): one annotator, all 522 answers
+- The three blind PDFs of protocol audit-v4 came back filled (a first copy of part A1 had no answers saved). The team
+  lead stated that all three parts were graded by the team lead; the labels are therefore recorded as one annotator's (A1):
+  522 answers, the whole pre-registered 20 % sample still in the dataset (`human_audit.jsonl`, with the part each
+  label came from). The 30 shared items were labelled identically in all three parts (including the "unsure"
+  ticks); their second and third labels are kept in `human_audit_repeat.jsonl` and are not reported as agreement
+  between people (there is none).
+- Results: judge vs human κ = 0.76 (89.1 % identical), code vs human κ = 0.73 (87.7 %). Most disagreements: 29
+  answers the judge counted as declines that the annotator marked incorrect, 18 the annotator marked correct that
+  the judge did not. Merge: `tools/audit_online/merge_audit_v4.py --one-annotator A1`.

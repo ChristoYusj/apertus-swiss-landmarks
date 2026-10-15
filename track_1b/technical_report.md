@@ -1,7 +1,7 @@
 # Technical report — Swiss Heritage Factuality: does Apertus recognise Switzerland's landmarks?
 
-> Final labels are the frozen LLM judge's (`judge-v1`). Photos were screened by AI and the 20 % audit sample was
-> graded by a second AI system; no human audit of the grades was done (see Annotation and Limitations).
+> Final labels are the frozen LLM judge's (`judge-v1`), checked by a blind human audit of the 20 % sample (one
+> annotator; judge–human κ = 0.76). Photos were screened by AI (see Annotation and Limitations).
 
 > We built a four-language (FR/DE/IT/RM) benchmark of 5,420 questions about 251 Swiss heritage landmarks from the
 > federal inventory (KGS), stratified by language region and fame, with photo, second-view, multiple-choice,
@@ -97,11 +97,11 @@ is not distinctive or contains the town or a year; 170 items, kept with their an
   the 491 proposed for shipping, and a second AI agent (Hermes) reviewed them under the lead's "if unsure,
   exclude" policy; the lead decided 6 edge cases. 13 landmarks were removed (privacy 4, wrong object 4, unclear 5;
   answers kept in `metadata/excluded_items.jsonl`), 429 photos shipped. ⟨P1⟩
-- *Grading audit:* a seeded, stratified 20 % sample (546) of the 2,726 70B answers that existed before the
-  screening (522 still in the dataset; the later `photo_alt`/`trap_lowinfo` items are not covered), with a blind
-  labelling page (no grades shown; English machine gloss for non-French answers; 40 hidden repeats for
-  self-consistency). No human labels were collected: the sample was graded by the second AI agent (526 scored, 20
-  left unscored as uncertain), reported as AI-vs-judge agreement, **not** as a human audit.
+- *Grading audit (human, blind):* the pre-registered, seeded, stratified 20 % sample (546 of the 2,726 70B answers
+  before the screening; 522 still in the dataset; the later `photo_alt`/`trap_lowinfo` items are not covered) was
+  graded by one annotator (A1, the team lead) on three fillable PDFs that show no grade of any kind, with an English
+  machine gloss for non-French answers. The protocol planned three annotators; A1 graded all three parts, so no
+  agreement between people is reported. A second AI agent graded the same sample as a separate cross-check.
 
 **Consent and personal data.** No person is a data subject: photos with recognisable people are excluded,
 EXIF is stripped. Annotators sign the consent form in `docs/consent_form_template.md` (pseudonymous IDs).
@@ -110,7 +110,7 @@ EXIF is stripped. Annotators sign the consent form in `docs/consent_form_templat
 
 - **Quality metrics:** answer-key audit (above), selection funnel, per-cell counts, item-validity rules,
   stability of answers at temperature 0 (below), judge–code agreement and an independent re-read of every
-  disagreement (AI-assisted), and an AI grading of the 20 % audit sample (no human audit).
+  disagreement (AI-assisted), a blind human audit of the 20 % sample (one annotator) and an AI cross-check.
 - **Diversity / edge cases:** four languages incl. Romansh; fame tiers; same-photo language contrast; text vs
   photo; false-premise traps with real look-alikes; low-information photos; ambiguous town names;
   non-distinctive names.
@@ -222,7 +222,11 @@ fits the landmark and on saint names without a town, and leaves vague centuries 
 attempted. Replacing its label wherever the re-read settled it lowers the Romansh name-wrong rate from 68 % to
 59 % (70B; 8B 90 % → 81 %), raises the small Romansh year cell by 6 pp and lowers the premise-trap rate from 88 %
 to 83 %; no other 70B language × question cell moves by more than about 1.5 pp. The registered results keep the
-frozen judge's labels. *Human audit* ⟨H1⟩ *AI cross-check:* a second AI agent graded the same sample: κ = 0.96
+frozen judge's labels. *Human audit* (blind, one annotator, 522 answers): judge vs human κ = 0.76 (89 % identical),
+code grader vs human κ = 0.73 (88 %). Most disagreements are answers the judge counted as declines that the
+annotator marked incorrect (29) and answers the annotator marked correct that the judge did not (18); the 30
+answers that appear in all three parts got the same label each time. *AI cross-check:* a second AI agent graded
+the same sample: κ = 0.96
 with the judge (98.2 % identical), 0.99 with the code grader.
 
 ## Dataset Limitations
@@ -242,8 +246,8 @@ with the judge (98.2 % identical), 0.99 with the code grader.
   answer the code grader marked incorrect and moved 109 (70B) and 356 (8B) labels, mostly refusals
   phrased in ways the patterns did not know; a third read 831 labels and its fixes moved 14 (70B) and 29 (8B)
   more (every changed label was read individually; these reviews were AI-assisted, not a human audit).
-- No human audit of the grades: the 20 % audit sample was graded by a second AI system only, so judge accuracy is
-  supported by the dev set, judge–code agreement, the AI re-reads and the AI cross-check, not by human labels.
+- The human audit has one annotator, so agreement between people cannot be reported; the annotator's labels depart
+  from the written rules in places (declines marked incorrect), which lowers the judge–human agreement.
 - The photo screening was done by AI (two systems) with the team lead deciding edge cases; no person reviewed every
   shipped photo. It removed 13 landmarks; 3 of the 4 removed for privacy were busy town-centre scenes, which are
   also among the easiest to recognise, so the removal took away 3 of the 70B's 9 correct place answers from photos
