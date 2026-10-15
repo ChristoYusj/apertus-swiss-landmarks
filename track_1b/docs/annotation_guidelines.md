@@ -32,9 +32,9 @@ If unsure, choose the more cautious option: **Exclude** for privacy, no second v
 The page saves progress in the browser after every click; **Save progress** downloads `screening_team.json`
 and **Load saved file** resumes from it.
 
-### Task P as run: AI screening with a second AI review (protocol v3b-ai-review, 14–15 Oct)
+### Task P as run: AI screening with a second AI review and a third check (protocol v3b-ai-review, 14–15 Oct)
 The team did not have the hours to screen 917 photos jointly, so AI applied the rules above. The lead (A1) set
-the policy and decided edge cases. No model answer was shown at any step.
+the policy, decided edge cases and accepted the third check's flags. No model answer was shown at any step.
 
 1. **AI screening.** Claude (Opus 5.5) applied rules 1–3 to every photo, viewing each at the published size
    (8 parallel screeners, 33 landmarks each). Each photo got a structured record: people (none / distant and
@@ -48,14 +48,25 @@ the policy and decided edge cases. No model answer was shown at any step.
    on 4 landmarks (a partly visible licence plate, a borderline second view, ...), one landmark of them in chat (the
    "San Bastian" main photo shows Schloss Wildenberg: wrong object). A human check page
    (`tools/screening_online/check.html`: one row per landmark with only the published photos) was prepared but
-   used for 3 rows only, so **no person looked at every published photo**.
+   used for 3 rows only, so in this screening **no person looked at every published photo**. Result: 13
+   landmarks removed, 429 photos shipped (the first release).
+4. **Third check (15 Oct, evening).** A Gemini agent (`gemini-3.8-flash`, Google Antigravity) reviewed all 429
+   shipped photos on the blank photo-check form (`tools/screening_online/build_photo_check_pdf.py`) and flagged
+   14 by its own judgement; the lead accepted the flags. No person reviewed every shipped photo. Same rule as above: a flagged main photo removes its
+   landmark (9), a flagged 2nd view or too-generic photo only itself (4 on other landmarks; never replaced). Some
+   flags (a shop-window mannequin, a museum interior) go beyond rule 1: precautionary removals. 210 questions went
+   (answers kept in `metadata/excluded_items.jsonl`); 409 photos are shipped.
 
-The second review's verdict wins, except on the photos the lead decided (`landmarks-eval combine-screening`,
-converter `tools/screening_online/hermes_to_check.py`). A photo is published only if it was kept. A rejected 2nd
+The second review's verdict wins, except on the photos the lead decided and the third check's flags
+(`landmarks-eval combine-screening`, converter `tools/screening_online/hermes_to_check.py`; flags added by
+`tools/screening_online/apply_photo_check.py`). A photo is published only if it was kept. A rejected 2nd
 view or too-generic photo becomes "none" (never silently replaced). A rejected main photo drops the landmark, with
-the reason in the exclusion log (privacy, wrong object, or "may not show the landmark (excluded when unsure)").
-Image records name the reviewers (`ai:claude-opus-5-5`, `ai:hermes`, plus `A1` on the shipped photos a person
-decided).
+the reason in the exclusion log (privacy, wrong object, "may not show the landmark (excluded when unsure)", or the
+third check's flag with the AI's note).
+Image records name the screening reviewers (`ai:claude-opus-5-5`, `ai:hermes`, plus `A1` on photos a person
+decided; the 3 such photos were removed in the third check, so no shipped photo carries `A1`). The third check is
+recorded once, in `metadata/review.json` (`ai_photo_review`: the agent's flags and notes, accepted by A1), not
+per photo.
 
 ## Task G: grading audit (after the official run)
 Each annotator labels **independently**: alone (one shared computer is fine, one after the other, each under
@@ -107,5 +118,6 @@ on the overlap, the majority of the three. A second AI's grades of the same samp
 AI cross-check, never as Task G.
 
 **As run:** the team lead (A1) graded all three parts (stated 15 Oct), so the labels are one annotator's: 522
-answers, judge–human agreement reported, no agreement between people. The second and third labels of the 30
-shared items are kept as repeats (the overlap was known, so this is not a blind test-retest).
+answers, of which 499 are still in the dataset after the third photo check; judge–human agreement is computed on
+these 499, and there is no agreement between people. The second and third labels of the 30 shared items (27 still
+in the dataset) are kept as repeats (the overlap was known, so this is not a blind test-retest).

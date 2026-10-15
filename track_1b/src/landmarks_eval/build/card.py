@@ -20,11 +20,18 @@ def _table(rows: list[list], head: list[str]) -> str:
 
 
 def _human_check_line(hc: dict | None, n_photos: int) -> str:
-    """Claim a person checked every shipped photo only when the recorded check covers all of them, none flagged."""
-    if not hc or hc.get("photos") != n_photos or hc.get("flagged"):
+    """Claim a person checked every shipped photo only when the recorded check covers all of them: the photos it
+    flagged were removed, so the photos still shipped are the checked ones minus the flagged ones."""
+    flagged = (hc or {}).get("flagged") or []
+    if not hc or hc.get("photos", 0) - n_photos < len(flagged) or (not flagged and hc.get("photos") != n_photos):
         return "No person reviewed every shipped photo."
     how = "on a fillable PDF" if hc.get("method") == "fillable PDF" else "on the online check page"
-    return f"The team lead ({hc['checked_by']}) then checked all {n_photos} shipped photos {how} and flagged none."
+    if not flagged:
+        return f"The team lead ({hc['checked_by']}) then checked all {n_photos} shipped photos {how} and flagged none."
+    lm = len(hc.get("removed_landmarks") or [])
+    return (f"The team lead ({hc['checked_by']}) then checked all {hc['photos']} photos shipped at that point {how} and "
+            f"flagged {len(flagged)} as privacy problems; they were removed"
+            + (f", together with the {lm} landmarks whose main photo was flagged" if lm else "") + ".")
 
 
 def build_card(ds: Path, extra: dict | None = None) -> str:
@@ -89,7 +96,8 @@ def build_card(ds: Path, extra: dict | None = None) -> str:
                  "review.json": "photo-screening summary (protocol, counts, dropped landmarks and reasons)",
                  "selection_report.json": "landmark selection funnel, strata and seed",
                  "images_report.json": "photo download and licence-filter report (all candidates, before the screening)",
-                 "questions_report.json": "build report of the core questions (`q-v1`); the extension items are added later"}
+                 "questions_report.json": "build report of the core questions (`q-v1`) as first built; later removals "
+                                          "and the extension items are not in it (current counts: this card)"}
     meta_block = "\n".join(f"- `metadata/{f}`: {d}" for f, d in meta_desc.items() if (ds / "metadata" / f).exists())
     arm_desc = {"photo_main": "Wikidata main photo.",
                 "text_only": "no photo; the name is given and the question asks where the object is or when it was built.",
@@ -122,14 +130,26 @@ def build_card(ds: Path, extra: dict | None = None) -> str:
                f"{sum(1 for a in ai_in if a.get('label'))} of the {len(ai_in)} items still in the dataset (it left the "
                "rest unscored as uncertain). Its agreement with the judge and the code grader is in `scores.json`."
                if ai_check else "")
+    machine_annotators = (" Machine annotators (not people): the LLM judge (`openai/gpt-oss-120b`) and the code grader "
+                          "(grades); Claude (judge dev-set labels, disagreement re-reads, code-grader reviews, photo "
+                          "screening); Hermes (second photo review, AI cross-check of the audit sample)"
+                          + ("; Gemini (third photo review)" if review.get("ai_photo_review") else "") + "."
+                          if judge_done else "")
     if audit:
         n_items = len({a["item_id"] for a in audit})
+        n_in = len({a["item_id"] for a in audit} & in_ds)
         who = sorted({a["annotator_id"] for a in audit})
         n_overlap = len({a["item_id"] for a in audit if a.get("in_overlap")})
-        audit_block = (f"- **Human audit:** {n_items} `{ref.name}` answers (a seeded, stratified random sample, minus the "
-                       "landmarks removed in the photo screening) were labelled blind by "
+        sample_path = ref / "audit_sample.json"
+        n_sample = json.loads(sample_path.read_text(encoding="utf-8")).get("n_sample") if sample_path.exists() else None
+        drawn = (f"of the {n_sample} in the seeded, stratified random sample; the {n_sample - n_items} on landmarks "
+                 "removed in the first photo screening were not shown" if n_sample and n_sample > n_items
+                 else "a seeded, stratified random sample")
+        audit_block = (f"- **Human audit:** {n_items} `{ref.name}` answers ({drawn}) were "
+                       "labelled blind by "
                        + (f"{len(who)} annotators ({', '.join(who)}), each alone" if len(who) > 1 else f"one annotator ({who[0]})")
                        + " following `docs/annotation_guidelines.md`"
+                       + (f"; {n_in} of them are still in the dataset (agreement is computed on these)" if n_in < n_items else "")
                        + (f"; {n_overlap} items were labelled by all of them" if len(who) > 1 and n_overlap else "")
                        + (f"; the sample was split into three parts sharing {len({r['item_id'] for r in repeats})} items, "
                           f"whose second and third labels are kept separately ({len(repeats)} repeat labels)"
@@ -140,10 +160,26 @@ def build_card(ds: Path, extra: dict | None = None) -> str:
                        + " are in `scores.json` and the technical report." + ai_line)
         annot_details = ((f"{len(who)} student members of Team Red Pandas (pseudonyms {', '.join(who)}), French and English speakers."
                           if len(who) > 1 else f"One student member of Team Red Pandas (pseudonym {who[0]}), French and English speaker.")
-                         + (" Non-French answers were shown with a labelled English machine gloss." if gloss else ""))
+                         + (" Non-French answers were shown with a labelled English machine gloss." if gloss else "")
+                         + (" The \"used the translation\" box was never ticked." if not any(a.get("used_translation")
+                                                                                     for a in audit) else "")
+                         + machine_annotators)
     else:
         audit_block = "- **Human audit:** not part of this version." + ai_line
-        annot_details = "No human grading labels are published in this version; *Privacy screening* says who screened the photos."
+        annot_details = ("No human grading labels are published in this version; *Privacy screening* says who screened "
+                         "the photos." + machine_annotators)
+    hc = review.get("human_photo_check") or review.get("ai_photo_review") or {}
+    # the photo check's decisions are merged into the screening stats; the edge cases are the ones decided before it
+    edge_cases = (hc["edge_case_landmarks_before"] if hc.get("edge_case_landmarks_before") is not None
+                  else review.get("stats", {}).get("landmarks_with_human_decision", 0))
+    air = review.get("ai_photo_review")
+    ai_review_line = (f"A third AI review ({air['checked_by']}) of all {air['photos']} photos shipped at that point "
+                      f"flagged {len(air['flagged'])} more; the team lead ({air.get('accepted_by') or 'A1'}) accepted "
+                      "the flags and they were removed"
+                      + (f", together with the {len(air['removed_landmarks'])} landmarks whose main photo was flagged"
+                         if air.get("removed_landmarks") else "") + ". " if air else "")
+    # an AI review never counts as a person's check: without a recorded human check the card says so
+    check_line = _human_check_line(review.get("human_photo_check"), len(imgs))
     proto = review.get("guideline_version")
     revs = review.get("reviewers") or []
     if proto == "v3b-ai-review" and revs == ["ai:claude-opus-5-5", "ai:hermes"]:
@@ -151,8 +187,8 @@ def build_card(ds: Path, extra: dict | None = None) -> str:
             "  - An AI (Claude Opus 5.5) screened every candidate photo. Three further Claude instances re-checked every "
             "photo to be shipped, and a second AI agent (Hermes) reviewed them again under the team lead's "
             "\"if unsure, exclude\" policy.\n"
-            f"  - The team lead decided the edge cases of {review.get('stats', {}).get('landmarks_with_human_decision', 0)} "
-            "landmarks. " + _human_check_line(review.get("human_photo_check"), len(imgs)))
+            f"  - The team lead decided the edge cases of {edge_cases} "
+            "landmarks. " + (ai_review_line + check_line).rstrip())
     elif proto == "v3-ai-assisted" and "A1" in revs:
         screening_lines = ("  - Every candidate photo was screened by an AI (Claude Opus 5.5) and re-checked by further "
                            "Claude instances; annotator A1 then checked every shipped photo.")
@@ -188,8 +224,8 @@ configs:
   data_files: metadata/item_metadata.jsonl
 - config_name: images
   data_files: metadata/images.jsonl
----
-"""
+""" + "".join(f"- config_name: judgements_{n.replace('.', '_').replace('-', '_')}\n  data_files: responses/{n}/judgements.jsonl\n"
+              for n in files_of) + "---\n"
     body = f"""# Dataset Card for Swiss Heritage Factuality
 
 Does Apertus 1.5, Switzerland's open LLM, recognise Swiss heritage landmarks from a photo,
@@ -236,6 +272,7 @@ are included. Built for Hack Apertus 2026, Track 1B (Swiss Voices, core-task int
 - `data/test_cases.jsonl`: the evaluation set, one row per question. Fields:
   - identity and question: `item_id`, `landmark_qid`, `arm`, `question_type`, `lang`, `template_id`, `prompt_version`, `question_text`, `image_id`
   - expected behaviour and traps: `expected_behavior`, `trap_type`, `false_premise_claim`, `false_premise_aliases`, `paired_control_item_id`, `confusable_with`
+  - multiple choice (`photo_mc` only): `options`, `option_qids`, `answer_option`; a distractor QID can belong to a landmark removed in the screening (its answer key is in `metadata/excluded_landmarks.jsonl`)
 - `data/landmarks.jsonl`: answer keys, one row per landmark. Fields:
   - names: labels in 5 languages and `name_aliases` (each flagged `distinctive`; saint/type-only names count only together with the town)
   - place: `place_aliases` (names of the current municipality in all languages; districts, regions and former municipalities removed, see `metadata/removed_place_aliases.jsonl`), `ambiguous_place_aliases` (need the canton), `canton_aliases`
@@ -247,6 +284,7 @@ are included. Built for Hack Apertus 2026, Track 1B (Swiss Voices, core-task int
 - `metadata/item_metadata.jsonl`: per test case, the licence of each modality, translation provenance and review status, and design covariates.
 {meta_block}
 {responses_block}
+- Supporting files (stability, glosses, judge dev set, re-reads) keep their original samples; some rows refer to items removed later, whose answers are in `metadata/excluded_items.jsonl`.
 
 Test cases by arm and question type:
 
@@ -306,12 +344,12 @@ No person is a data subject: photos showing recognisable people were excluded.
   - An OpenCV face detector pre-flagged {sum(i['faces_detected'] > 0 for i in imgs)} of the shipped photos for the screening below (all were cleared there).
 {screening_lines}
     Excluded photos and unpicked candidate views are not shipped.
-  - Landmarks dropped in the screening: {len(review.get('dropped_landmarks', {}))} (main photo excluded for privacy, not showing the landmark, or excluded because that was unclear; reasons in `metadata/review.json`). Their answers are kept in `metadata/excluded_items.jsonl`.
+  - Landmarks dropped in the screening: {len(review.get('dropped_landmarks', {}))} (main photo excluded for privacy, not showing the landmark, {'excluded because that was unclear, or flagged in the third review' if air else 'or excluded because that was unclear'}; reasons in `metadata/review.json`). Their answers are kept in `metadata/excluded_items.jsonl`.
 {goldqc_line}
 
 #### Data Instance Licenses
 - Questions, answer keys (derived from CC0 Wikidata facts), labels and model responses: **CDLA-Permissive-2.0**.
-- Photos keep their own licence. Image licences: {', '.join(f'{k} ({v})' for k, v in sorted(lic.items()))}. NC, ND, GFDL-only and unlicensed files were excluded.
+- Photos keep their own licence. Image licences: {', '.join(f'{k} ({v})' for k, v in sorted(lic.items()))}. NC, ND, GFDL-only and unlicensed files were excluded. The SPDX id is the base licence; `license_url` gives the exact (sometimes ported) version.
 - Each image row carries a ready-to-use TASL attribution (title, author, source, licence) and its modifications. CC BY-SA images remain under CC BY-SA when reused.
 
 ### Annotations

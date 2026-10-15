@@ -367,7 +367,7 @@ and one skeptic re-check. Fixed:
   no person reviewed every shipped photo. The guideline's Task G "as run" text now says the human labels are not
   yet collected; the card no longer lists a `split` field (no test case has one).
 
-## Human audit: not done (15 Oct)
+## Human audit: not done (15 Oct, morning; superseded by "Human audit done" below)
 - No human labels were collected for the grading audit. The 20 % sample was graded by a second AI system only
   (`ai_crosscheck_audit`); the report states that the track's 20 % human check is not met. A non-blind check form
   (`tools/audit_online/build_check*.py`, `human_check.html`) was prepared but is not used for any result.
@@ -454,3 +454,59 @@ and one skeptic re-check. Fixed:
     PDF (A1 16:02, A2 16:15, A3 16:12 +03:00), not the merge time. No label changed;
   - guideline: v4 is "as registered", the one-annotator run "as run"; the lead decided 6 photos on 4 landmarks
     (San Bastian included, not one more); consent form lists the human and AI labels it now covers.
+
+## Third AI photo review (15 Oct, evening): 14 photos flagged, 9 landmarks removed
+- The lead had a Gemini agent (`gemini-3.8-flash`, Google Antigravity) review all 429 shipped photos on the blank
+  photo-check form (`tools/screening_online/build_photo_check_pdf.py`). It flagged 14 by its own
+  judgement; the lead accepted the flags. No person reviewed every shipped photo. Rule as documented: a flagged main photo removes its landmark; a flagged second
+  view or too-generic photo removes only itself (never replaced).
+- Applied: `work/review/photo_check/gemini_photo_review.json` -> `apply_photo_check.py decisions` (flags into
+  `work/review/a1_decisions.json`, marked `"by": "ai:gemini-3.8-flash"`) -> `hermes_to_check.py` (entries marked
+  `ai:...` override the second reviewer but are not credited to a person) -> `landmarks-eval combine-screening`
+  -> `merge-review` -> `apply_photo_check.py record` (stored as `ai_photo_review` in `metadata/review.json`) ->
+  `assemble` -> all three models re-scored; `verify` passes for each.
+- Counts: 14 flagged = 9 main photos (9 landmarks removed; one of them also had its second view flagged) + 3
+  second views + 1 too-generic photo on other landmarks. 210 questions removed (answers kept in
+  `metadata/excluded_items.jsonl`); every other question is byte-identical; no model was re-run. Items 5,420 ->
+  5,210 (core 3,412 -> 3,274), landmarks 251 -> 242, photos 429 -> 409 (the removed landmarks also took 6
+  unflagged second views). The photo screening has now removed 22 landmarks (13 + 9).
+- Some flags go beyond the written privacy rule (e.g. a shop-window mannequin at the Lenzburg fountain, the
+  interior of a museum, Museum Walserhaus): precautionary removals.
+- The PDF the agent filled was not used as a record (it carried generated tick times and a certification text)
+  and was deleted. The flags and notes were taken from the agent's script into `gemini_photo_review.json`; one
+  licence-plate number was redacted from the notes.
+- Effect on the headline numbers (old -> new, from `scores.json`):
+  - 70B multiple choice 34.7 % (348/1,004) -> 34.3 % (332/968); Gemma 61.1 % -> 60.4 %.
+  - 70B `photo_main` names wrong: FR 10.8 % -> 10.7 %, RM 67.7 % -> 69.0 %; RM places wrong 97.2 % -> 97.1 %.
+  - Romansh Graubünden pull: 96 of 190 -> 94 of 181 non-Graubünden landmarks (Gemma 95/190 -> 89/181).
+    Too-generic photos: 70B declined 34/34 -> 32/32; Gemma names one in 8 of 34 -> 8 of 32.
+  - Human audit: 522 -> 499 items in the dataset (23 sampled items went with the removed landmarks); judge-human
+    κ 0.765 -> 0.756, code-human 0.733 -> 0.727. AI cross-check: 504 -> 481 items compared.
+  - Significance: 8B H1b (fame, place) p_Holm 0.075 -> 0.035, now supported (hallucination 98.8 % low vs 93.0 %
+    high fame). No other registered test changes its verdict (70B H2 p_Holm 0.10 -> 0.19, still not supported;
+    Gemma H1 and H1b stay significant), and no exploratory McNemar test crosses 0.05.
+- Dataset card: the recorded AI review has its own sentence (reviewer, flags, acceptance by A1), followed by "No
+  person reviewed every shipped photo"; the dropped-landmark reasons cite the third review. AI-use statement,
+  guidelines, consent form and READMEs updated.
+- An earlier merge of the same flags (15 Oct, ~20:45) recorded them as a human check; it was undone from a backup
+  and redone as above before anything was committed or published. The data outcome is identical.
+
+## Final deep audit (16 Oct, night)
+- Four independent AI (Claude) auditors (numbers, claims and provenance, data and code integrity, a judge's view)
+  and a skeptic re-check: no number in the report, card or READMEs differs from the data. Fixed:
+  - photo-check provenance made consistent in every document (third AI review, flags accepted by the lead, no
+    person reviewed every shipped photo);
+  - five photo attributions that named no author (one held a third party's e-mail address instead): now the Commons
+    uploader of the "own work" files (Böhringer; Parpan05 for three) and the archive for the SBB Historic photo;
+  - report: three-sentence summary (template), AI-drafted templates and their review in the Languages row, the
+    terms "answer variations" and "source citation", the audit share (499 = 19.5 % of the 2,554 current 70B items
+    in the audited arms), "no answer named a landmark outside the four options" (registered in E2), judge settings
+    for live runs, a "for the dataset" lesson, figure references, narrower label columns;
+  - deviation not logged before: the plan had the team label the judge dev set; as run, Claude proposed the 40
+    labels and the lead ruled on 4 and accepted 36 without item-by-item review (now also in the report);
+  - card: multiple-choice fields, the 546 -> 522 -> 499 audit counts, machine annotators listed, the unused
+    translation box, one dataset config per model, a note that supporting files keep their original samples, the
+    SPDX note for ported licences;
+  - the online audit page no longer pairs the pseudonyms with first names.
+- Open, for the release decision: the first Hugging Face revision (26d86b35) still holds the 14 flagged photos;
+  either squash the repository history or say on the card that earlier revisions hold removed photos.

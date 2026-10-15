@@ -44,6 +44,16 @@ def test_ai_screening_and_ai_crosscheck_are_never_called_human(tmp_path):
     assert "reviewed by the team, jointly" not in card and "written by the team" not in card
 
 
+def test_ai_photo_review_is_named_as_ai_and_claims_no_human_check(tmp_path):
+    air = {"checked_by": "ai:some-model", "accepted_by": "A1", "photos": 4, "flagged": ["Q9-main"],
+           "removed_landmarks": ["Q9"], "edge_case_landmarks_before": 4}
+    card = build_card(_ds(tmp_path, {**V3B, "ai_photo_review": air}))
+    assert "A third AI review (ai:some-model) of all 4 photos" in card and "team lead (A1) accepted the flags" in card
+    assert "edge cases of 4 landmarks" in card and "flagged in the third review" in card
+    assert "checked all" not in card     # no human check is recorded, so the card never claims one
+    assert "No person reviewed every shipped photo." in card
+
+
 def test_unknown_screening_provenance_is_refused(tmp_path):
     with pytest.raises(SystemExit):
         build_card(_ds(tmp_path, {"guideline_version": None}))

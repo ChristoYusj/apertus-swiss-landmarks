@@ -1,13 +1,19 @@
 # Swiss Heritage Factuality — Hack Apertus 2026, Track 1B (Red Pandas)
 
 Does Apertus 1.5 recognise Switzerland's heritage landmarks, and does it say so when it does not? A
-four-language (FR/DE/IT/RM) benchmark: 5,420 questions on 251 landmarks of the Swiss inventory of cultural
-property (KGS), with 429 photos. Models: Apertus 1.5 70B and 8B, with Gemma-4-31B as a comparison. The harness
+four-language (FR/DE/IT/RM) benchmark: 5,210 questions on 242 landmarks of the Swiss inventory of cultural
+property (KGS), with 409 photos. Models: Apertus 1.5 70B and 8B, with Gemma-4-31B as a comparison. The harness
 grades, scores and verifies its own outputs.
 
-**Headline (Apertus 1.5 70B).** With four named options it picks the right landmark 35 % of the time (chance
-25 %; Gemma-4-31B: 61 %). In free answers on the same photos it mostly declines in French (11 % of names wrong)
-but answers in Romansh (68 % of names and 97 % of places wrong).
+**Headline (Apertus 1.5 70B).** With four named options it picks the right landmark 34 % of the time (chance
+25 %; Gemma-4-31B: 60 %). In free answers on the same photos it mostly declines in French (11 % of names wrong)
+but answers in Romansh (69 % of names and 97 % of places wrong).
+
+**Who checked what.** Photos: screened by AI (Claude, then a second AI agent, Hermes; the team lead decided 6
+edge cases), then reviewed again by a Gemini agent, whose 14 flags the team lead accepted; no person reviewed every
+shipped photo. Grading:
+one human annotator (the team lead) graded 522 Apertus-70B answers blind (499 still in the dataset; judge–human
+κ = 0.76). Details: `track_1b/docs/ai_use_statement.md`.
 
 | | |
 |---|---|
@@ -16,8 +22,9 @@ but answers in Romansh (68 % of names and 97 % of places wrong).
 | Dataset | Hugging Face `chrizzto/swiss-heritage-factuality` (CDLA-Permissive-2.0; photos keep their CC licences) |
 | Decisions and corrections | [`track_1b/CHANGELOG.md`](track_1b/CHANGELOG.md) |
 
-**Status.** The pinned dataset revision (`26d86b35`) is the first release: the 3,412 core items. Pending: a human
-check of every shipped photo (screened by AI so far), then a re-release with all 5,420 items.
+**Status.** The pinned dataset revision (`26d86b35`) is the first release: the 3,412 core items from before the
+third photo check (it still contains the 14 flagged photos). The photo screening is done. Pending: a re-release
+with all 5,210 items and a new pinned revision, `main` fast-forwarded with a new tag, and the final report PDF.
 
 **Run** (Docker, clean checkout):
 

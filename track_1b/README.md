@@ -3,12 +3,12 @@
 Track 1B, core-task intelligence (factuality). Does Apertus 1.5 recognise Swiss heritage landmarks, and does it
 say so when it does not?
 
-- **5,420 questions** on **251 landmarks** of the Swiss inventory of cultural property (KGS), with **429 photos**,
+- **5,210 questions** on **242 landmarks** of the Swiss inventory of cultural property (KGS), with **409 photos**,
   in French, German, Italian and Romansh.
-  - Core, 3,412: `photo_main` 2,276, `photo_alt` 732 (second view), `text_only` 322 (name given),
-    `trap_premise` 48 (false town in the question), `trap_lowinfo` 34 (photo too generic to identify).
-  - Extensions, registered before they were run (`docs/extensions_plan.md`), 2,008: `photo_mc` 1,004 (four named
-    options), `photo_main_w2` 1,004 (second wording).
+  - Core, 3,274: `photo_main` 2,196, `photo_alt` 688 (second view), `text_only` 314 (name given),
+    `trap_premise` 44 (false town in the question), `trap_lowinfo` 32 (photo too generic to identify).
+  - Extensions, registered before they were run (`docs/extensions_plan.md`), 1,936: `photo_mc` 968 (four named
+    options), `photo_main_w2` 968 (second wording).
 - **Models:** Apertus 1.5 70B and 8B; Gemma-4-31B as a comparison.
 - **Grading:** correct / incorrect / not attempted (SimpleQA). Final label: the frozen judge `openai/gpt-oss-120b`
   (prompt `judge-v1`) on free answers, code on multiple choice (4 empty Gemma verdicts keep the code label). A
@@ -16,32 +16,35 @@ say so when it does not?
 
 ## Results (Apertus 1.5 70B)
 
-- It rarely recognises a landmark from its photo. With four named options it is right 35 % of the time
-  (chance 25 %; Gemma-4-31B: 61 %), about equally in all four languages.
+- It rarely recognises a landmark from its photo. With four named options it is right 34 % of the time
+  (chance 25 %; Gemma-4-31B: 60 %), about equally in all four languages.
 - The question's language decides whether it admits this. On the same photos it mostly declines in French
-  (11 % of names wrong) but answers in Romansh (68 % of names and 97 % of places wrong).
-- In Romansh it places half of the landmarks outside Graubünden in Graubünden (96 of 190). Gemma does the same
-  (95 of 190).
-- On photos too generic to identify it declines every time (34 of 34). Gemma invents a name for a quarter of
-  them (8 of 34).
+  (11 % of names wrong) but answers in Romansh (69 % of names and 97 % of places wrong).
+- In Romansh it places half of the landmarks outside Graubünden in Graubünden (94 of 181). Gemma does the same
+  (89 of 181).
+- On photos too generic to identify it declines every time (32 of 32). Gemma invents a name for a quarter of
+  them (8 of 32).
 
 Method, hypotheses and limits: [`technical_report.md`](technical_report.md) (PDF: `RedPandas_Report.pdf`).
 
 ## Who checked what
 
-- **Photos:** screened by AI (Claude Opus 5.5 with three re-checkers, then a second AI agent, Hermes). The team
-  lead decided 6 photos on 4 landmarks. No person has reviewed every shipped photo yet; that check is pending.
+- **Photos:** screened by AI (Claude Opus 5.5 with three re-checkers, then a second AI agent, Hermes); the team
+  lead decided 6 photos on 4 landmarks. Then a Gemini agent reviewed all 429 shipped photos and flagged 14; the
+  team lead accepted the flags (9 landmarks and 4 other photos removed). No person reviewed every shipped photo.
 - **Grading audit:** one annotator (the team lead) graded 522 Apertus-70B core answers blind (the pre-registered
-  20 % sample minus the removed landmarks). Judge–human κ = 0.76, code–human κ = 0.73. There is no second human;
-  8B, Gemma, the extension items, `photo_alt` and `trap_lowinfo` have no human audit. Hermes graded the same sample as an AI cross-check.
+  20 % sample minus the landmarks the first screening removed); 499 are still in the dataset. On these,
+  judge–human κ = 0.76, code–human κ = 0.73. There is no second human; 8B, Gemma, the extension items,
+  `photo_alt` and `trap_lowinfo` have no human audit. Hermes graded the same sample as an AI cross-check.
 - **AI-assisted:** the re-reads of judge–code disagreements and the code-grader reviews (Claude). Full list:
   [`docs/ai_use_statement.md`](docs/ai_use_statement.md).
 
 ## Status
 
-The pinned dataset revision (`26d86b35`, in `config.json`) is the first release: the 3,412 core items. The
-multiple-choice, second-wording and Gemma results are not in it. Pending: the human photo check, then a
-re-release with all 5,420 items and a new pinned revision.
+The pinned dataset revision (`26d86b35`, in `config.json`) is the first release: the 3,412 core items from
+before the third photo check (it still contains the 14 flagged photos). The multiple-choice, second-wording and
+Gemma results are not in it. The photo screening is done, including the third check. Pending: a re-release with
+all 5,210 items and a new pinned revision, then `main` fast-forwarded with a new tag, and the final report PDF.
 
 ## Run
 

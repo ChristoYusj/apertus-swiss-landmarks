@@ -5,26 +5,39 @@ The `.html` files are sources for private claude.ai artifacts (decisions saved p
 database, or downloaded as JSON when the viewer cannot write).
 
 ## Used for the shipped photos (protocol v3b-ai-review)
-AI screening (Claude) and a second AI review (Hermes); the team lead decided 6 photos on 4 landmarks. No person
-reviewed every shipped photo.
+AI screening (Claude) and a second AI review (Hermes); the team lead decided 6 photos on 4 landmarks. Then a
+third check (15 Oct, evening): a Gemini agent reviewed all 429 shipped photos on the blank PDF form and flagged
+14 by its own judgement; the team lead accepted the flags (merged as below). No person reviewed every shipped
+photo.
 
 - `hermes_to_check.py <Hermes handoff.json> <a1_decisions.json> <out screening_check.json>`: converts the second
   AI review into a screening-check file. Per photo, the reviewer's verdict is used (the lead's edge decisions are
-  part of it); later lead decisions in `a1_decisions.json` (e.g. made in chat) override it. The class of each
-  dropped main photo comes from the reviewed table `MAIN_DROP_CLASS` in the script.
+  part of it); later entries in `a1_decisions.json` override it: the lead's own decisions (e.g. made in chat) and
+  AI flags the lead accepted (marked `"by": "ai:<name>"`, never credited to a person). The class of each dropped
+  main photo comes from the reviewed table `MAIN_DROP_CLASS` in the script.
 - Then `landmarks-eval combine-screening --ai work/review/screening_ai.json --check <screening_check.json> --out
   screening_team.json`, then `landmarks-eval merge-review screening_team.json`.
 
-## Human check of every shipped photo: prepared, not done yet
-Two forms for the same check (rule 1 of the screening: recognisable face, readable plate, private interior,
-personal text). A flagged main photo removes its landmark; a flagged 2nd view or too-generic photo removes only
-that photo.
-- `build_photo_check_page.py <dataset> <out dir>` + `photo_check.html`: one row per landmark with exactly the
-  published photos (byte for byte), face-detector hits first; collection `pcheck`, or download `photo_check_A1.json`.
-- `build_photo_check_pdf.py <dataset> <out.pdf>`: fillable PDF, 6 photos per page, one "problem" tick box per photo;
-  `read_photo_check_pdf.py <filled.pdf> <out.json>` lists the flagged photos.
-- `apply_photo_check.py <check.json> <work dir>`: records a complete check with no photo flagged (screening report +
-  reviewer on every shipped photo); refuses undecided photos and stops on flagged ones (those need a rebuild).
+## Check of every shipped photo (the third check)
+Rule 1 of the screening (recognisable face, readable plate, private interior, personal text). A flagged main
+photo removes its landmark; a flagged 2nd view or too-generic photo removes only that photo (never replaced).
+- Forms: `build_photo_check_page.py <dataset> <out dir>` + `photo_check.html` (one row per landmark with exactly
+  the published photos, face-detector hits first; collection `pcheck`, or download `photo_check_A1.json`), or
+  `build_photo_check_pdf.py <dataset> <out.pdf>` (fillable PDF, 6 photos per page, one "problem" tick box per
+  photo) and `read_photo_check_pdf.py <filled.pdf> <out.json>` (lists the ticked photos). The two PDF scripts need
+  `reportlab` and `pypdf`, which are not in the project `.venv`.
+- `apply_photo_check.py decisions|record <check.json> <work dir>`. `<check.json>` is a human check (the PDF
+  reader's output, or the online page's download or database documents; undecided photos are refused) or an AI
+  review (format `ai-photo-review`: `reviewer` `ai:<name>`, `accepted_by`, `photos`, `flagged`, `ai_notes`). An AI
+  review is recorded as `ai_photo_review` and credits no person; a human check is recorded as `human_photo_check`
+  and adds the checker to the reviewers of every photo still shipped.
+- Order: (1) `apply_photo_check.py decisions <check.json> work` writes the flags to `work/review/a1_decisions.json`;
+  (2) `hermes_to_check.py`, `combine-screening`, `merge-review` as above; (3) `apply_photo_check.py record
+  <check.json> work` removes exactly the items of removed photos and landmarks (every other item byte for byte),
+  logs them in `work/removed_items.jsonl` and stores the check in the screening report; (4) `landmarks-eval
+  assemble`, regenerate the card, re-score every model, `verify`.
+- As run: `work/review/photo_check/gemini_photo_review.json` (the agent's flags and notes, taken from its script;
+  one licence-plate number redacted).
 
 ## Earlier protocols
 - **v3-ai-assisted (human check of the AI screening), used for 3 rows only:** `build_check.py <track_1b dir>

@@ -8,7 +8,8 @@ Why a main photo was dropped is not a structured field in the handoff, so the cl
 listed in MAIN_DROP_CLASS below, read from the reviewer's reasons one by one (Claude, 15 Oct); the script stops if a
 drop is missing from the table. The photos a person decided (`explicit_human_edge_decision`) are recorded per role
 (`human_roles`), so A1 is credited only on those photos; a1_decisions.json holds later decisions the lead made
-directly (e.g. in chat) and overrides the reviewer for that landmark.
+directly (e.g. in chat) and overrides the reviewer for that landmark. Entries marked "by": "ai:<name>" are AI flags
+the lead accepted (the third AI photo review): they override the reviewer too but are not credited to a person.
 """
 import json
 import sys
@@ -60,11 +61,16 @@ dropped = {q for q, c in checks.items() if c.get("main") != "ok"}
 assert dropped == set(MAIN_DROP_CLASS), f"table and handoff disagree: {sorted(dropped ^ set(MAIN_DROP_CLASS))}"
 for qid, d in a1["decisions"].items():
     assert qid in checks, qid
-    roles = [k for k in ("main", "alt", "low") if k in d]
+    # an entry made by an AI and accepted by the lead ("by": "ai:..."), e.g. the third AI photo review, overrides the
+    # reviewer like the lead's own decisions but is never credited to a person
+    human = d.get("by", "A1") == "A1"
+    roles = [k for k in ("main", "alt", "low") if k in d] if human else []
     prev = checks[qid]
-    checks[qid] = {**prev, **{k: v for k, v in d.items() if k in ("main", "alt", "low", "reason")},   # A1 wins per photo
+    checks[qid] = {**prev, **{k: v for k, v in d.items() if k in ("main", "alt", "low", "reason")},   # wins per photo
                    "human_roles": sorted(set(prev.get("human_roles", [])) | set(roles))}
-    stats["a1_override"] += 1
+    if not checks[qid]["human_roles"]:
+        del checks[qid]["human_roles"]
+    stats["a1_override" if human else "ai_override_accepted_by_a1"] += 1
 for c in checks.values():
     if "human_roles" in c:
         c["human_roles"] = sorted(set(c["human_roles"]))
