@@ -62,7 +62,7 @@ for qid, d in a1["decisions"].items():
     assert qid in checks, qid
     roles = [k for k in ("main", "alt", "low") if k in d]
     prev = checks[qid]
-    checks[qid] = {**{k: v for k, v in d.items() if k in ("main", "alt", "low", "reason")},
+    checks[qid] = {**prev, **{k: v for k, v in d.items() if k in ("main", "alt", "low", "reason")},   # A1 wins per photo
                    "human_roles": sorted(set(prev.get("human_roles", [])) | set(roles))}
     stats["a1_override"] += 1
 for c in checks.values():
