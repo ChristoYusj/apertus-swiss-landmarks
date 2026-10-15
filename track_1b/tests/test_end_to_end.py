@@ -205,3 +205,24 @@ def test_verify_works_on_a_read_only_dataset(tmp_path, monkeypatch, fake_model):
     assert verify(FIXTURE, results, expected, log=log.append), "\n".join(log)
     assert any("read-only" in line for line in log)
     assert not (results / "scores.recomputed.json").exists()
+
+
+def test_non_blind_human_check_is_reported_apart(tmp_path, monkeypatch, fake_model):
+    """A person's grades given with the AI's proposal on screen are scored as `human_check` (blind: false), never as
+    the blind audit, with judge-, code- and AI-vs-human agreement."""
+    _patch_photo_answers(monkeypatch, fake_model)
+    results = tmp_path / "results"
+    run_mod.run(FIXTURE, results, Endpoint(model="fake/model", base_url="http://fake", api_key="x"),
+                concurrency=1, log=lambda *_: None)
+    grade_all(FIXTURE, results, judge_ep=None, log=lambda *_: None)
+    rows = [{"item_id": "Q101-photo_main-name-fr", "annotator_id": "A1", "label": "correct", "ai_label_shown": "correct",
+             "agreed_with_ai": True, "used_translation": False, "unsure": False},
+            {"item_id": "Q102-photo_main-name-fr", "annotator_id": "A1", "label": "incorrect",
+             "ai_label_shown": "not_attempted", "agreed_with_ai": False, "used_translation": True, "unsure": True}]
+    (results / "human_check.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+    s = compute_scores(FIXTURE, results, bootstrap=0)
+    h = s["human_check"]
+    assert "human_audit" not in s and h["blind"] is False and h["items"] == 2
+    assert h["code_vs_human"]["raw_agreement"] == 1.0                     # code: Q101 correct, Q102 incorrect
+    assert h["ai_vs_human"] == {"n": 2, "raw_agreement": 0.5, "cohen_kappa": h["ai_vs_human"]["cohen_kappa"]}
+    assert h["used_translation_rate"] == 0.5 and h["unsure_rate"] == 0.5

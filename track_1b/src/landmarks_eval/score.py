@@ -159,6 +159,19 @@ def compute_scores(dataset: Path, results: Path, bootstrap: int = 2000) -> dict:
         s["human_audit"]["sampled_items_dropped_with_landmark"] = gone
         if (results / "human_audit_repeat.jsonl").exists():
             s["human_audit"]["self_consistency"] = self_consistency(human, load_jsonl(results / "human_audit_repeat.jsonl"))
+    if (results / "human_check.jsonl").exists():
+        # a person's grades on part of the audit sample, given with the second AI's proposed grade on screen (NOT
+        # blind; tools/audit_online/build_check*.py): reported apart from the blind audit
+        rows, gone = in_dataset(load_jsonl(results / "human_check.jsonl"))
+        a = agreement(rows, judg, cases)
+        ai_pairs = [(r["label"], r["ai_label_shown"]) for r in rows if r.get("ai_label_shown")]
+        s["human_check"] = {
+            "blind": False, "shown_to_annotator": "the second AI's proposed grade", "annotator": "A1",
+            "items": a["items"], "sampled_items_dropped_with_landmark": gone,
+            "judge_vs_human": a["judge_vs_human"], "code_vs_human": a["code_vs_human"],
+            "ai_vs_human": {"n": len(ai_pairs), "raw_agreement": sum(x == y for x, y in ai_pairs) / len(ai_pairs),
+                            "cohen_kappa": cohen_kappa([x for x, _ in ai_pairs], [y for _, y in ai_pairs])} if ai_pairs else None,
+            "used_translation_rate": a["used_translation_rate"], "unsure_rate": a["unsure_rate"], "by_lang": a["by_lang"]}
     if (results / "ai_crosscheck_audit.jsonl").exists():
         # the audit sample graded by a second AI system (NOT the human audit): its agreement with the judge and code
         rows = load_jsonl(results / "ai_crosscheck_audit.jsonl")
