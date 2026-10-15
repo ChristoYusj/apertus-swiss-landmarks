@@ -14,7 +14,7 @@
 **Track:** Apertus Readiness - Track 1B (Swiss Voices), dimension: core-task intelligence (factuality)  
 **Event:** Online  
 **Team:** Red Pandas — Christopher Yazigi, Giovanni Yazbeck, Alfredo Pio Yazbeck  
-**Demo / data:** dataset `huggingface.co/datasets/chrizzto/swiss-heritage-factuality` ⟨to publish⟩ ·
+**Demo / data:** dataset `huggingface.co/datasets/chrizzto/swiss-heritage-factuality` ·
 code `github.com/ChristoYusj/apertus-swiss-landmarks`
 
 ----
@@ -265,7 +265,7 @@ Face, runs `verify` (schema, image hashes, coverage, re-grading reproduces every
 recomputed scores equal the expected scores), and, if `LLM_*` is set, evaluates that model on a stratified
 sample (`FULL=1` for all items). Hardware: any CPU; runtime ≈ 1 min for verification, under an hour for a
 full 70B run at 4 parallel requests. Seeds: selection 20261013, sampling 7, bootstrap 20261015, stability 20261016,
-audit 20261017. Exact commit and dataset revision: ⟨on submission⟩.
+audit 20261017. Dataset revision `26d86b35d1a6` (pinned in `config.json`); code: the `main` branch, tag `submission`.
 
 ## License
 Code: Apache-2.0. Dataset: CDLA-Permissive-2.0 (photos under their own CC licences, listed per item).

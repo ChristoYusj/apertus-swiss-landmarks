@@ -1,0 +1,1801 @@
+{
+ "H1_name_hallucination_low_minus_high": {
+  "ci95_cluster_bootstrap": [
+   -0.061823,
+   0.01626
+  ],
+  "estimate": -0.017308
+ },
+ "agreement_judge_vs_code": {
+  "cohen_kappa": 0.947572,
+  "n": 3412,
+  "raw_agreement": 0.978898
+ },
+ "ai_crosscheck_audit": {
+  "by_lang": {
+   "de": {
+    "code_vs_ai": {
+     "cohen_kappa": 1.0,
+     "n": 141,
+     "raw_agreement": 1.0
+    },
+    "judge_vs_ai": {
+     "cohen_kappa": 0.984605,
+     "n": 141,
+     "raw_agreement": 0.992908
+    },
+    "n": 141
+   },
+   "fr": {
+    "code_vs_ai": {
+     "cohen_kappa": 1.0,
+     "n": 146,
+     "raw_agreement": 1.0
+    },
+    "judge_vs_ai": {
+     "cohen_kappa": 1.0,
+     "n": 146,
+     "raw_agreement": 1.0
+    },
+    "n": 146
+   },
+   "it": {
+    "code_vs_ai": {
+     "cohen_kappa": 0.954933,
+     "n": 111,
+     "raw_agreement": 0.990991
+    },
+    "judge_vs_ai": {
+     "cohen_kappa": 0.954933,
+     "n": 111,
+     "raw_agreement": 0.990991
+    },
+    "n": 111
+   },
+   "rm": {
+    "code_vs_ai": {
+     "cohen_kappa": 0.955998,
+     "n": 106,
+     "raw_agreement": 0.981132
+    },
+    "judge_vs_ai": {
+     "cohen_kappa": 0.839324,
+     "n": 106,
+     "raw_agreement": 0.933962
+    },
+    "n": 106
+   }
+  },
+  "code_vs_ai": {
+   "cohen_kappa": 0.985907,
+   "confusion_ai_rows": {
+    "correct": {
+     "correct": 3,
+     "incorrect": 0,
+     "not_attempted": 0
+    },
+    "incorrect": {
+     "correct": 0,
+     "incorrect": 146,
+     "not_attempted": 1
+    },
+    "not_attempted": {
+     "correct": 0,
+     "incorrect": 2,
+     "not_attempted": 352
+    }
+   },
+   "n": 504,
+   "raw_agreement": 0.994048
+  },
+  "items": 504,
+  "judge_vs_ai": {
+   "cohen_kappa": 0.958045,
+   "confusion_ai_rows": {
+    "correct": {
+     "correct": 3,
+     "incorrect": 0,
+     "not_attempted": 0
+    },
+    "incorrect": {
+     "correct": 0,
+     "incorrect": 145,
+     "not_attempted": 2
+    },
+    "not_attempted": {
+     "correct": 0,
+     "incorrect": 7,
+     "not_attempted": 347
+    }
+   },
+   "n": 504,
+   "raw_agreement": 0.982143
+  },
+  "left_unscored_as_uncertain": 18,
+  "not_a_human_audit": true,
+  "reviewer": [
+   "ai:hermes"
+  ],
+  "sampled": 546,
+  "sampled_items_dropped_with_landmark": 24
+ },
+ "coverage": {
+  "final_source": {
+   "judge": 3412
+  },
+  "graded": 3412,
+  "responses": 3412,
+  "status": {
+   "ok": 3412
+  },
+  "test_cases": 3412
+ },
+ "hypotheses": {
+  "H1": {
+   "attempted_high": 130,
+   "attempted_low": 120,
+   "ci95_cluster_bootstrap": [
+    -0.061823,
+    0.01626
+   ],
+   "estimate": -0.017308,
+   "hallucination_high": 0.992308,
+   "hallucination_low": 0.975,
+   "p_two_sided": 0.430785
+  },
+  "H1b": {
+   "attempted_high": 123,
+   "attempted_low": 109,
+   "ci95_cluster_bootstrap": [
+    -0.009985,
+    0.063572
+   ],
+   "estimate": 0.023346,
+   "hallucination_high": 0.96748,
+   "hallucination_low": 0.990826,
+   "p_two_sided": 0.197901
+  },
+  "H2": {
+   "as_registered": {
+    "base": "share of DE municipalities named in wrong answers for DE landmarks",
+    "base_value": 0.731343,
+    "ci95_cluster_bootstrap": [
+     -0.272124,
+     -0.007353
+    ],
+    "estimate": -0.138751,
+    "p_two_sided": 0.034983
+   },
+   "by_question_language": {
+    "de": {
+     "n": 51,
+     "share_DE_named": 0.705882
+    },
+    "fr": {
+     "n": 5,
+     "share_DE_named": 0.4
+    },
+    "it": {
+     "n": 4,
+     "share_DE_named": 0.5
+    },
+    "rm": {
+     "n": 156,
+     "share_DE_named": 0.564103
+    }
+   },
+   "clarified": {
+    "base": "share of German-speaking municipalities among all current Swiss municipalities (BFS)",
+    "base_value": 0.651185,
+    "ci95_cluster_bootstrap": [
+     -0.127167,
+     0.010916
+    ],
+    "estimate": -0.058592,
+    "p_two_sided": 0.094953
+   },
+   "n_non_DE_landmarks": 216,
+   "n_wrong_naming_a_municipality": 283,
+   "note": "the registered base rate is not informative (wrong answers for DE landmarks stay mostly in DE); the clarified comparison is reported next to it; the registered test enters the Holm family",
+   "share_DE_named_for_non_DE_landmarks": 0.592593
+  },
+  "H2b": {
+   "examples": [
+    {
+     "item_id": "Q630414-photo_main-name-rm",
+     "landmark_qid": "Q630414",
+     "named": [
+      "Q125072234"
+     ]
+    },
+    {
+     "item_id": "Q630414-photo_main-place-de",
+     "landmark_qid": "Q630414",
+     "named": [
+      "Q125072234"
+     ]
+    },
+    {
+     "item_id": "Q630414-photo_main-place-rm",
+     "landmark_qid": "Q630414",
+     "named": [
+      "Q125072234"
+     ]
+    }
+   ],
+   "landmarks": 1,
+   "naming_a_lookalike_town": 3,
+   "note": "not testable when fewer than 10 landmarks contribute (floor effect); reported descriptively",
+   "testable": false,
+   "wrong_answers_on_landmarks_with_lookalikes": 182
+  },
+  "H3_de": {
+   "landmarks": 95,
+   "mcnemar_p": 0.021484,
+   "only_photo_correct": 1,
+   "only_text_correct": 9,
+   "photo_correct": 1,
+   "text_correct": 9
+  },
+  "H3_fr": {
+   "landmarks": 95,
+   "mcnemar_p": 0.007812,
+   "only_photo_correct": 0,
+   "only_text_correct": 8,
+   "photo_correct": 0,
+   "text_correct": 8
+  },
+  "H4": {
+   "control_incorrect": 14,
+   "control_incorrect_rate": 0.291667,
+   "definition": "premise adopted (pre-registered); premise_incorrect = adopted the false town",
+   "mcnemar_p": 1e-06,
+   "only_control_incorrect": 1,
+   "only_premise_incorrect": 25,
+   "pairs": 48,
+   "premise_incorrect": 38,
+   "premise_incorrect_ci95_wilson": [
+    0.657408,
+    0.882699
+   ],
+   "premise_incorrect_rate": 0.791667
+  },
+  "H4_lead_rule": {
+   "control_incorrect": 14,
+   "control_incorrect_rate": 0.291667,
+   "definition": "final label incorrect: adopted the false town OR named a wrong landmark",
+   "mcnemar_p": 0.0,
+   "only_control_incorrect": 0,
+   "only_premise_incorrect": 28,
+   "pairs": 48,
+   "premise_incorrect": 42,
+   "premise_incorrect_ci95_wilson": [
+    0.752993,
+    0.94143
+   ],
+   "premise_incorrect_rate": 0.875
+  },
+  "holm": {
+   "H1": {
+    "direction_as_hypothesised": false,
+    "p": 0.430785,
+    "p_holm": 0.430785,
+    "reject_at_0.05": false,
+    "supported": false
+   },
+   "H1b": {
+    "direction_as_hypothesised": true,
+    "p": 0.197901,
+    "p_holm": 0.395802,
+    "reject_at_0.05": false,
+    "supported": false
+   },
+   "H2": {
+    "direction_as_hypothesised": false,
+    "p": 0.034983,
+    "p_holm": 0.104948,
+    "reject_at_0.05": false,
+    "supported": false
+   },
+   "H3_de": {
+    "direction_as_hypothesised": true,
+    "p": 0.021484,
+    "p_holm": 0.085938,
+    "reject_at_0.05": false,
+    "supported": false
+   },
+   "H3_fr": {
+    "direction_as_hypothesised": true,
+    "p": 0.007812,
+    "p_holm": 0.039062,
+    "reject_at_0.05": true,
+    "supported": true
+   },
+   "H4": {
+    "direction_as_hypothesised": true,
+    "p": 1e-06,
+    "p_holm": 5e-06,
+    "reject_at_0.05": true,
+    "supported": true
+   }
+  },
+  "named_other_landmark": {
+   "dataset_tier_share": {
+    "high": 83,
+    "low": 86,
+    "mid": 82
+   },
+   "naming_another_dataset_landmark": 12,
+   "tier_of_named": {
+    "high": 12
+   },
+   "top": [
+    {
+     "name": "Tarasp Castle",
+     "qid": "Q668250",
+     "times": 12
+    }
+   ],
+   "wrong_name_answers": 360
+  }
+ },
+ "location_photo_main_place": {
+  "de": {
+   "abroad_countries": {
+    "AT": 1,
+    "DE": 1,
+    "IT": 1,
+    "LI": 1,
+    "RO": 1
+   },
+   "kinds": {
+    "abroad": 5,
+    "none": 126,
+    "swiss": 76,
+    "switzerland_only": 44
+   },
+   "n": 251,
+   "pct_abroad": 0.01992,
+   "pct_home_region_among_resolved": 0.710145,
+   "pct_home_region_among_wrong_resolved": 0.742424,
+   "pct_naming_a_swiss_place": 0.302789,
+   "pct_nonGR_landmarks_placed_in_GR": 0.073684,
+   "pct_placed_in_GR": 0.091633,
+   "predicted_region_dist": {
+    "DE": 49,
+    "FR": 4,
+    "IT": 12,
+    "RM": 4
+   }
+  },
+  "exploratory_paired_GR_pull": {
+   "rm_vs_de": {
+    "landmarks": 190,
+    "mcnemar_p": 0.0,
+    "only_de_says_GR": 0,
+    "only_rm_says_GR": 82
+   },
+   "rm_vs_fr": {
+    "landmarks": 190,
+    "mcnemar_p": 0.0,
+    "only_fr_says_GR": 0,
+    "only_rm_says_GR": 96
+   },
+   "rm_vs_it": {
+    "landmarks": 190,
+    "mcnemar_p": 0.0,
+    "only_it_says_GR": 0,
+    "only_rm_says_GR": 96
+   }
+  },
+  "fr": {
+   "abroad_countries": {},
+   "kinds": {
+    "none": 245,
+    "swiss": 6
+   },
+   "n": 251,
+   "pct_abroad": 0.0,
+   "pct_home_region_among_resolved": 0.5,
+   "pct_home_region_among_wrong_resolved": 0.6,
+   "pct_naming_a_swiss_place": 0.023904,
+   "pct_nonGR_landmarks_placed_in_GR": 0.0,
+   "pct_placed_in_GR": 0.0,
+   "predicted_region_dist": {
+    "DE": 2,
+    "FR": 3,
+    "IT": 1
+   }
+  },
+  "gold_pct_GR": 0.243028,
+  "gold_region_dist": {
+   "DE": 70,
+   "FR": 70,
+   "IT": 66,
+   "RM": 45
+  },
+  "it": {
+   "abroad_countries": {},
+   "kinds": {
+    "none": 246,
+    "swiss": 4,
+    "switzerland_only": 1
+   },
+   "n": 251,
+   "pct_abroad": 0.0,
+   "pct_home_region_among_resolved": 0.0,
+   "pct_home_region_among_wrong_resolved": 0.0,
+   "pct_naming_a_swiss_place": 0.015936,
+   "pct_nonGR_landmarks_placed_in_GR": 0.0,
+   "pct_placed_in_GR": 0.0,
+   "predicted_region_dist": {
+    "DE": 2,
+    "FR": 2
+   }
+  },
+  "rm": {
+   "abroad_countries": {
+    "DE": 1,
+    "IT": 1,
+    "LI": 3
+   },
+   "kinds": {
+    "abroad": 5,
+    "none": 7,
+    "swiss": 236,
+    "switzerland_only": 3
+   },
+   "n": 251,
+   "pct_abroad": 0.01992,
+   "pct_home_region_among_resolved": 0.199095,
+   "pct_home_region_among_wrong_resolved": 0.201835,
+   "pct_naming_a_swiss_place": 0.940239,
+   "pct_nonGR_landmarks_placed_in_GR": 0.505263,
+   "pct_placed_in_GR": 0.601594,
+   "predicted_region_dist": {
+    "DE": 134,
+    "FR": 8,
+    "IT": 35,
+    "RM": 44
+   }
+  }
+ },
+ "lowinfo_vs_main_name": {
+  "name": {
+   "correct_mcnemar_p": 1.0,
+   "correct_only_photo_main": 0,
+   "correct_only_trap_lowinfo": 0,
+   "incorrect_mcnemar_p": 0.015625,
+   "incorrect_only_photo_main": 7,
+   "incorrect_only_trap_lowinfo": 0,
+   "landmarks": 17,
+   "n_pairs": 34,
+   "photo_main": {
+    "correct": 0,
+    "correct_given_attempted": 0.0,
+    "f_score": 0.0,
+    "hallucination_rate": 1.0,
+    "incorrect": 7,
+    "n": 34,
+    "not_attempted": 27,
+    "pct_correct": 0.0,
+    "pct_incorrect": 0.205882,
+    "pct_not_attempted": 0.794118
+   },
+   "trap_lowinfo": {
+    "correct": 0,
+    "correct_given_attempted": null,
+    "f_score": 0.0,
+    "hallucination_rate": null,
+    "incorrect": 0,
+    "n": 34,
+    "not_attempted": 34,
+    "pct_correct": 0.0,
+    "pct_incorrect": 0.0,
+    "pct_not_attempted": 1.0
+   }
+  }
+ },
+ "model": [
+  "swiss-ai/Apertus-v1.5-70B"
+ ],
+ "overall_by_arm_qtype": {
+  "photo_alt|name": {
+   "correct": 2,
+   "correct_given_attempted": 0.025316,
+   "f_score": 0.009975,
+   "hallucination_rate": 0.974684,
+   "incorrect": 77,
+   "n": 322,
+   "not_attempted": 243,
+   "pct_correct": 0.006211,
+   "pct_incorrect": 0.23913,
+   "pct_not_attempted": 0.754658
+  },
+  "photo_alt|place": {
+   "correct": 1,
+   "correct_given_attempted": 0.026316,
+   "f_score": 0.005556,
+   "hallucination_rate": 0.973684,
+   "incorrect": 37,
+   "n": 322,
+   "not_attempted": 284,
+   "pct_correct": 0.003106,
+   "pct_incorrect": 0.114907,
+   "pct_not_attempted": 0.881988
+  },
+  "photo_alt|year": {
+   "correct": 0,
+   "correct_given_attempted": null,
+   "f_score": 0.0,
+   "hallucination_rate": null,
+   "incorrect": 0,
+   "n": 88,
+   "not_attempted": 88,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.0,
+   "pct_not_attempted": 1.0
+  },
+  "photo_main|name": {
+   "correct": 4,
+   "correct_given_attempted": 0.010989,
+   "f_score": 0.005848,
+   "hallucination_rate": 0.989011,
+   "incorrect": 360,
+   "n": 1004,
+   "not_attempted": 640,
+   "pct_correct": 0.003984,
+   "pct_incorrect": 0.358566,
+   "pct_not_attempted": 0.63745
+  },
+  "photo_main|place": {
+   "correct": 6,
+   "correct_given_attempted": 0.01791,
+   "f_score": 0.008962,
+   "hallucination_rate": 0.98209,
+   "incorrect": 329,
+   "n": 1004,
+   "not_attempted": 669,
+   "pct_correct": 0.005976,
+   "pct_incorrect": 0.327689,
+   "pct_not_attempted": 0.666335
+  },
+  "photo_main|year": {
+   "correct": 0,
+   "correct_given_attempted": 0.0,
+   "f_score": 0.0,
+   "hallucination_rate": 1.0,
+   "incorrect": 2,
+   "n": 268,
+   "not_attempted": 266,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.007463,
+   "pct_not_attempted": 0.992537
+  },
+  "text_only|place": {
+   "correct": 17,
+   "correct_given_attempted": 0.202381,
+   "f_score": 0.124088,
+   "hallucination_rate": 0.797619,
+   "incorrect": 67,
+   "n": 190,
+   "not_attempted": 106,
+   "pct_correct": 0.089474,
+   "pct_incorrect": 0.352632,
+   "pct_not_attempted": 0.557895
+  },
+  "text_only|year": {
+   "correct": 1,
+   "correct_given_attempted": 0.2,
+   "f_score": 0.014599,
+   "hallucination_rate": 0.8,
+   "incorrect": 4,
+   "n": 132,
+   "not_attempted": 127,
+   "pct_correct": 0.007576,
+   "pct_incorrect": 0.030303,
+   "pct_not_attempted": 0.962121
+  },
+  "trap_lowinfo|name": {
+   "correct": 0,
+   "correct_given_attempted": null,
+   "f_score": 0.0,
+   "hallucination_rate": null,
+   "incorrect": 0,
+   "n": 34,
+   "not_attempted": 34,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.0,
+   "pct_not_attempted": 1.0
+  },
+  "trap_premise|name": {
+   "correct": 0,
+   "correct_given_attempted": 0.0,
+   "f_score": 0.0,
+   "hallucination_rate": 1.0,
+   "incorrect": 42,
+   "n": 48,
+   "not_attempted": 6,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.875,
+   "pct_not_attempted": 0.125
+  }
+ },
+ "photo_alt_vs_main": {
+  "name": {
+   "correct_mcnemar_p": 1.0,
+   "correct_only_photo_alt": 2,
+   "correct_only_photo_main": 2,
+   "incorrect_mcnemar_p": 0.482789,
+   "incorrect_only_photo_alt": 33,
+   "incorrect_only_photo_main": 40,
+   "landmarks": 161,
+   "n_pairs": 322,
+   "photo_alt": {
+    "correct": 2,
+    "correct_given_attempted": 0.025316,
+    "f_score": 0.009975,
+    "hallucination_rate": 0.974684,
+    "incorrect": 77,
+    "n": 322,
+    "not_attempted": 243,
+    "pct_correct": 0.006211,
+    "pct_incorrect": 0.23913,
+    "pct_not_attempted": 0.754658
+   },
+   "photo_main": {
+    "correct": 2,
+    "correct_given_attempted": 0.023256,
+    "f_score": 0.009804,
+    "hallucination_rate": 0.976744,
+    "incorrect": 84,
+    "n": 322,
+    "not_attempted": 236,
+    "pct_correct": 0.006211,
+    "pct_incorrect": 0.26087,
+    "pct_not_attempted": 0.732919
+   }
+  },
+  "place": {
+   "correct_mcnemar_p": 1.0,
+   "correct_only_photo_alt": 1,
+   "correct_only_photo_main": 1,
+   "incorrect_mcnemar_p": 0.044384,
+   "incorrect_only_photo_alt": 17,
+   "incorrect_only_photo_main": 32,
+   "landmarks": 161,
+   "n_pairs": 322,
+   "photo_alt": {
+    "correct": 1,
+    "correct_given_attempted": 0.026316,
+    "f_score": 0.005556,
+    "hallucination_rate": 0.973684,
+    "incorrect": 37,
+    "n": 322,
+    "not_attempted": 284,
+    "pct_correct": 0.003106,
+    "pct_incorrect": 0.114907,
+    "pct_not_attempted": 0.881988
+   },
+   "photo_main": {
+    "correct": 1,
+    "correct_given_attempted": 0.018868,
+    "f_score": 0.005333,
+    "hallucination_rate": 0.981132,
+    "incorrect": 52,
+    "n": 322,
+    "not_attempted": 269,
+    "pct_correct": 0.003106,
+    "pct_incorrect": 0.161491,
+    "pct_not_attempted": 0.835404
+   }
+  },
+  "year": {
+   "correct_mcnemar_p": 1.0,
+   "correct_only_photo_alt": 0,
+   "correct_only_photo_main": 0,
+   "incorrect_mcnemar_p": 1.0,
+   "incorrect_only_photo_alt": 0,
+   "incorrect_only_photo_main": 0,
+   "landmarks": 44,
+   "n_pairs": 88,
+   "photo_alt": {
+    "correct": 0,
+    "correct_given_attempted": null,
+    "f_score": 0.0,
+    "hallucination_rate": null,
+    "incorrect": 0,
+    "n": 88,
+    "not_attempted": 88,
+    "pct_correct": 0.0,
+    "pct_incorrect": 0.0,
+    "pct_not_attempted": 1.0
+   },
+   "photo_main": {
+    "correct": 0,
+    "correct_given_attempted": null,
+    "f_score": 0.0,
+    "hallucination_rate": null,
+    "incorrect": 0,
+    "n": 88,
+    "not_attempted": 88,
+    "pct_correct": 0.0,
+    "pct_incorrect": 0.0,
+    "pct_not_attempted": 1.0
+   }
+  }
+ },
+ "photo_main_by_lang_qtype": {
+  "de|name": {
+   "correct": 2,
+   "correct_given_attempted": 0.019048,
+   "f_score": 0.011236,
+   "hallucination_rate": 0.980952,
+   "incorrect": 103,
+   "n": 251,
+   "not_attempted": 146,
+   "pct_correct": 0.007968,
+   "pct_incorrect": 0.410359,
+   "pct_not_attempted": 0.581673
+  },
+  "de|place": {
+   "correct": 2,
+   "correct_given_attempted": 0.025641,
+   "f_score": 0.012158,
+   "hallucination_rate": 0.974359,
+   "incorrect": 76,
+   "n": 251,
+   "not_attempted": 173,
+   "pct_correct": 0.007968,
+   "pct_incorrect": 0.302789,
+   "pct_not_attempted": 0.689243
+  },
+  "de|year": {
+   "correct": 0,
+   "correct_given_attempted": null,
+   "f_score": 0.0,
+   "hallucination_rate": null,
+   "incorrect": 0,
+   "n": 67,
+   "not_attempted": 67,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.0,
+   "pct_not_attempted": 1.0
+  },
+  "fr|name": {
+   "correct": 0,
+   "correct_given_attempted": 0.0,
+   "f_score": 0.0,
+   "hallucination_rate": 1.0,
+   "incorrect": 27,
+   "n": 251,
+   "not_attempted": 224,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.10757,
+   "pct_not_attempted": 0.89243
+  },
+  "fr|place": {
+   "correct": 1,
+   "correct_given_attempted": 0.166667,
+   "f_score": 0.007782,
+   "hallucination_rate": 0.833333,
+   "incorrect": 5,
+   "n": 251,
+   "not_attempted": 245,
+   "pct_correct": 0.003984,
+   "pct_incorrect": 0.01992,
+   "pct_not_attempted": 0.976096
+  },
+  "fr|year": {
+   "correct": 0,
+   "correct_given_attempted": null,
+   "f_score": 0.0,
+   "hallucination_rate": null,
+   "incorrect": 0,
+   "n": 67,
+   "not_attempted": 67,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.0,
+   "pct_not_attempted": 1.0
+  },
+  "it|name": {
+   "correct": 1,
+   "correct_given_attempted": 0.016393,
+   "f_score": 0.00641,
+   "hallucination_rate": 0.983607,
+   "incorrect": 60,
+   "n": 251,
+   "not_attempted": 190,
+   "pct_correct": 0.003984,
+   "pct_incorrect": 0.239044,
+   "pct_not_attempted": 0.756972
+  },
+  "it|place": {
+   "correct": 0,
+   "correct_given_attempted": 0.0,
+   "f_score": 0.0,
+   "hallucination_rate": 1.0,
+   "incorrect": 4,
+   "n": 251,
+   "not_attempted": 247,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.015936,
+   "pct_not_attempted": 0.984064
+  },
+  "it|year": {
+   "correct": 0,
+   "correct_given_attempted": null,
+   "f_score": 0.0,
+   "hallucination_rate": null,
+   "incorrect": 0,
+   "n": 67,
+   "not_attempted": 67,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.0,
+   "pct_not_attempted": 1.0
+  },
+  "rm|name": {
+   "correct": 1,
+   "correct_given_attempted": 0.005848,
+   "f_score": 0.004739,
+   "hallucination_rate": 0.994152,
+   "incorrect": 170,
+   "n": 251,
+   "not_attempted": 80,
+   "pct_correct": 0.003984,
+   "pct_incorrect": 0.677291,
+   "pct_not_attempted": 0.318725
+  },
+  "rm|place": {
+   "correct": 3,
+   "correct_given_attempted": 0.012146,
+   "f_score": 0.012048,
+   "hallucination_rate": 0.987854,
+   "incorrect": 244,
+   "n": 251,
+   "not_attempted": 4,
+   "pct_correct": 0.011952,
+   "pct_incorrect": 0.972112,
+   "pct_not_attempted": 0.015936
+  },
+  "rm|year": {
+   "correct": 0,
+   "correct_given_attempted": 0.0,
+   "f_score": 0.0,
+   "hallucination_rate": 1.0,
+   "incorrect": 2,
+   "n": 67,
+   "not_attempted": 65,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.029851,
+   "pct_not_attempted": 0.970149
+  }
+ },
+ "photo_main_by_region_qtype": {
+  "DE|name": {
+   "correct": 0,
+   "correct_given_attempted": 0.0,
+   "f_score": 0.0,
+   "hallucination_rate": 1.0,
+   "incorrect": 90,
+   "n": 280,
+   "not_attempted": 190,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.321429,
+   "pct_not_attempted": 0.678571
+  },
+  "DE|place": {
+   "correct": 2,
+   "correct_given_attempted": 0.024691,
+   "f_score": 0.01108,
+   "hallucination_rate": 0.975309,
+   "incorrect": 79,
+   "n": 280,
+   "not_attempted": 199,
+   "pct_correct": 0.007143,
+   "pct_incorrect": 0.282143,
+   "pct_not_attempted": 0.710714
+  },
+  "DE|year": {
+   "correct": 0,
+   "correct_given_attempted": null,
+   "f_score": 0.0,
+   "hallucination_rate": null,
+   "incorrect": 0,
+   "n": 116,
+   "not_attempted": 116,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.0,
+   "pct_not_attempted": 1.0
+  },
+  "FR|name": {
+   "correct": 0,
+   "correct_given_attempted": 0.0,
+   "f_score": 0.0,
+   "hallucination_rate": 1.0,
+   "incorrect": 94,
+   "n": 280,
+   "not_attempted": 186,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.335714,
+   "pct_not_attempted": 0.664286
+  },
+  "FR|place": {
+   "correct": 0,
+   "correct_given_attempted": 0.0,
+   "f_score": 0.0,
+   "hallucination_rate": 1.0,
+   "incorrect": 91,
+   "n": 280,
+   "not_attempted": 189,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.325,
+   "pct_not_attempted": 0.675
+  },
+  "FR|year": {
+   "correct": 0,
+   "correct_given_attempted": null,
+   "f_score": 0.0,
+   "hallucination_rate": null,
+   "incorrect": 0,
+   "n": 56,
+   "not_attempted": 56,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.0,
+   "pct_not_attempted": 1.0
+  },
+  "IT|name": {
+   "correct": 0,
+   "correct_given_attempted": 0.0,
+   "f_score": 0.0,
+   "hallucination_rate": 1.0,
+   "incorrect": 98,
+   "n": 264,
+   "not_attempted": 166,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.371212,
+   "pct_not_attempted": 0.628788
+  },
+  "IT|place": {
+   "correct": 4,
+   "correct_given_attempted": 0.042105,
+   "f_score": 0.022284,
+   "hallucination_rate": 0.957895,
+   "incorrect": 91,
+   "n": 264,
+   "not_attempted": 169,
+   "pct_correct": 0.015152,
+   "pct_incorrect": 0.344697,
+   "pct_not_attempted": 0.640152
+  },
+  "IT|year": {
+   "correct": 0,
+   "correct_given_attempted": 0.0,
+   "f_score": 0.0,
+   "hallucination_rate": 1.0,
+   "incorrect": 2,
+   "n": 72,
+   "not_attempted": 70,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.027778,
+   "pct_not_attempted": 0.972222
+  },
+  "RM|name": {
+   "correct": 4,
+   "correct_given_attempted": 0.04878,
+   "f_score": 0.030534,
+   "hallucination_rate": 0.95122,
+   "incorrect": 78,
+   "n": 180,
+   "not_attempted": 98,
+   "pct_correct": 0.022222,
+   "pct_incorrect": 0.433333,
+   "pct_not_attempted": 0.544444
+  },
+  "RM|place": {
+   "correct": 0,
+   "correct_given_attempted": 0.0,
+   "f_score": 0.0,
+   "hallucination_rate": 1.0,
+   "incorrect": 68,
+   "n": 180,
+   "not_attempted": 112,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.377778,
+   "pct_not_attempted": 0.622222
+  },
+  "RM|year": {
+   "correct": 0,
+   "correct_given_attempted": null,
+   "f_score": 0.0,
+   "hallucination_rate": null,
+   "incorrect": 0,
+   "n": 24,
+   "not_attempted": 24,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.0,
+   "pct_not_attempted": 1.0
+  }
+ },
+ "photo_main_by_tier_qtype": {
+  "high|name": {
+   "correct": 1,
+   "correct_given_attempted": 0.007692,
+   "f_score": 0.004329,
+   "hallucination_ci95_wilson": [
+    0.957714,
+    0.998641
+   ],
+   "hallucination_rate": 0.992308,
+   "incorrect": 129,
+   "n": 332,
+   "not_attempted": 202,
+   "pct_correct": 0.003012,
+   "pct_incorrect": 0.388554,
+   "pct_not_attempted": 0.608434
+  },
+  "high|place": {
+   "correct": 4,
+   "correct_given_attempted": 0.03252,
+   "f_score": 0.017582,
+   "hallucination_ci95_wilson": [
+    0.91936,
+    0.987282
+   ],
+   "hallucination_rate": 0.96748,
+   "incorrect": 119,
+   "n": 332,
+   "not_attempted": 209,
+   "pct_correct": 0.012048,
+   "pct_incorrect": 0.358434,
+   "pct_not_attempted": 0.629518
+  },
+  "high|year": {
+   "correct": 0,
+   "correct_given_attempted": 0.0,
+   "f_score": 0.0,
+   "hallucination_ci95_wilson": [
+    0.206543,
+    1.0
+   ],
+   "hallucination_rate": 1.0,
+   "incorrect": 1,
+   "n": 136,
+   "not_attempted": 135,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.007353,
+   "pct_not_attempted": 0.992647
+  },
+  "low|name": {
+   "correct": 3,
+   "correct_given_attempted": 0.025,
+   "f_score": 0.012931,
+   "hallucination_ci95_wilson": [
+    0.929069,
+    0.991462
+   ],
+   "hallucination_rate": 0.975,
+   "incorrect": 117,
+   "n": 344,
+   "not_attempted": 224,
+   "pct_correct": 0.008721,
+   "pct_incorrect": 0.340116,
+   "pct_not_attempted": 0.651163
+  },
+  "low|place": {
+   "correct": 1,
+   "correct_given_attempted": 0.009174,
+   "f_score": 0.004415,
+   "hallucination_ci95_wilson": [
+    0.949853,
+    0.998379
+   ],
+   "hallucination_rate": 0.990826,
+   "incorrect": 108,
+   "n": 344,
+   "not_attempted": 235,
+   "pct_correct": 0.002907,
+   "pct_incorrect": 0.313953,
+   "pct_not_attempted": 0.68314
+  },
+  "low|year": {
+   "correct": 0,
+   "correct_given_attempted": null,
+   "f_score": 0.0,
+   "hallucination_ci95_wilson": null,
+   "hallucination_rate": null,
+   "incorrect": 0,
+   "n": 36,
+   "not_attempted": 36,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.0,
+   "pct_not_attempted": 1.0
+  },
+  "mid|name": {
+   "correct": 0,
+   "correct_given_attempted": 0.0,
+   "f_score": 0.0,
+   "hallucination_ci95_wilson": [
+    0.9674,
+    1.0
+   ],
+   "hallucination_rate": 1.0,
+   "incorrect": 114,
+   "n": 328,
+   "not_attempted": 214,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.347561,
+   "pct_not_attempted": 0.652439
+  },
+  "mid|place": {
+   "correct": 1,
+   "correct_given_attempted": 0.009709,
+   "f_score": 0.00464,
+   "hallucination_ci95_wilson": [
+    0.947041,
+    0.998284
+   ],
+   "hallucination_rate": 0.990291,
+   "incorrect": 102,
+   "n": 328,
+   "not_attempted": 225,
+   "pct_correct": 0.003049,
+   "pct_incorrect": 0.310976,
+   "pct_not_attempted": 0.685976
+  },
+  "mid|year": {
+   "correct": 0,
+   "correct_given_attempted": 0.0,
+   "f_score": 0.0,
+   "hallucination_ci95_wilson": [
+    0.206543,
+    1.0
+   ],
+   "hallucination_rate": 1.0,
+   "incorrect": 1,
+   "n": 96,
+   "not_attempted": 95,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.010417,
+   "pct_not_attempted": 0.989583
+  }
+ },
+ "photo_main_by_type_qtype": {
+  "bridge|name": {
+   "correct": 0,
+   "correct_given_attempted": 0.0,
+   "f_score": 0.0,
+   "hallucination_rate": 1.0,
+   "incorrect": 15,
+   "n": 56,
+   "not_attempted": 41,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.267857,
+   "pct_not_attempted": 0.732143
+  },
+  "bridge|place": {
+   "correct": 0,
+   "correct_given_attempted": 0.0,
+   "f_score": 0.0,
+   "hallucination_rate": 1.0,
+   "incorrect": 16,
+   "n": 56,
+   "not_attempted": 40,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.285714,
+   "pct_not_attempted": 0.714286
+  },
+  "bridge|year": {
+   "correct": 0,
+   "correct_given_attempted": null,
+   "f_score": 0.0,
+   "hallucination_rate": null,
+   "incorrect": 0,
+   "n": 16,
+   "not_attempted": 16,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.0,
+   "pct_not_attempted": 1.0
+  },
+  "castle|name": {
+   "correct": 1,
+   "correct_given_attempted": 0.012048,
+   "f_score": 0.006116,
+   "hallucination_rate": 0.987952,
+   "incorrect": 82,
+   "n": 244,
+   "not_attempted": 161,
+   "pct_correct": 0.004098,
+   "pct_incorrect": 0.336066,
+   "pct_not_attempted": 0.659836
+  },
+  "castle|place": {
+   "correct": 3,
+   "correct_given_attempted": 0.034483,
+   "f_score": 0.018127,
+   "hallucination_rate": 0.965517,
+   "incorrect": 84,
+   "n": 244,
+   "not_attempted": 157,
+   "pct_correct": 0.012295,
+   "pct_incorrect": 0.344262,
+   "pct_not_attempted": 0.643443
+  },
+  "castle|year": {
+   "correct": 0,
+   "correct_given_attempted": null,
+   "f_score": 0.0,
+   "hallucination_rate": null,
+   "incorrect": 0,
+   "n": 76,
+   "not_attempted": 76,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.0,
+   "pct_not_attempted": 1.0
+  },
+  "church|name": {
+   "correct": 3,
+   "correct_given_attempted": 0.014706,
+   "f_score": 0.009434,
+   "hallucination_rate": 0.985294,
+   "incorrect": 201,
+   "n": 432,
+   "not_attempted": 228,
+   "pct_correct": 0.006944,
+   "pct_incorrect": 0.465278,
+   "pct_not_attempted": 0.527778
+  },
+  "church|place": {
+   "correct": 0,
+   "correct_given_attempted": 0.0,
+   "f_score": 0.0,
+   "hallucination_rate": 1.0,
+   "incorrect": 151,
+   "n": 432,
+   "not_attempted": 281,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.349537,
+   "pct_not_attempted": 0.650463
+  },
+  "church|year": {
+   "correct": 0,
+   "correct_given_attempted": 0.0,
+   "f_score": 0.0,
+   "hallucination_rate": 1.0,
+   "incorrect": 2,
+   "n": 136,
+   "not_attempted": 134,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.014706,
+   "pct_not_attempted": 0.985294
+  },
+  "civic|name": {
+   "correct": 0,
+   "correct_given_attempted": 0.0,
+   "f_score": 0.0,
+   "hallucination_rate": 1.0,
+   "incorrect": 19,
+   "n": 72,
+   "not_attempted": 53,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.263889,
+   "pct_not_attempted": 0.736111
+  },
+  "civic|place": {
+   "correct": 1,
+   "correct_given_attempted": 0.045455,
+   "f_score": 0.021277,
+   "hallucination_rate": 0.954545,
+   "incorrect": 21,
+   "n": 72,
+   "not_attempted": 50,
+   "pct_correct": 0.013889,
+   "pct_incorrect": 0.291667,
+   "pct_not_attempted": 0.694444
+  },
+  "civic|year": {
+   "correct": 0,
+   "correct_given_attempted": null,
+   "f_score": 0.0,
+   "hallucination_rate": null,
+   "incorrect": 0,
+   "n": 16,
+   "not_attempted": 16,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.0,
+   "pct_not_attempted": 1.0
+  },
+  "fountain|name": {
+   "correct": 0,
+   "correct_given_attempted": 0.0,
+   "f_score": 0.0,
+   "hallucination_rate": 1.0,
+   "incorrect": 2,
+   "n": 40,
+   "not_attempted": 38,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.05,
+   "pct_not_attempted": 0.95
+  },
+  "fountain|place": {
+   "correct": 0,
+   "correct_given_attempted": 0.0,
+   "f_score": 0.0,
+   "hallucination_rate": 1.0,
+   "incorrect": 10,
+   "n": 40,
+   "not_attempted": 30,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.25,
+   "pct_not_attempted": 0.75
+  },
+  "fountain|year": {
+   "correct": 0,
+   "correct_given_attempted": null,
+   "f_score": 0.0,
+   "hallucination_rate": null,
+   "incorrect": 0,
+   "n": 20,
+   "not_attempted": 20,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.0,
+   "pct_not_attempted": 1.0
+  },
+  "monument|name": {
+   "correct": 0,
+   "correct_given_attempted": 0.0,
+   "f_score": 0.0,
+   "hallucination_rate": 1.0,
+   "incorrect": 3,
+   "n": 8,
+   "not_attempted": 5,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.375,
+   "pct_not_attempted": 0.625
+  },
+  "monument|place": {
+   "correct": 1,
+   "correct_given_attempted": 0.25,
+   "f_score": 0.166667,
+   "hallucination_rate": 0.75,
+   "incorrect": 3,
+   "n": 8,
+   "not_attempted": 4,
+   "pct_correct": 0.125,
+   "pct_incorrect": 0.375,
+   "pct_not_attempted": 0.5
+  },
+  "museum|name": {
+   "correct": 0,
+   "correct_given_attempted": 0.0,
+   "f_score": 0.0,
+   "hallucination_rate": 1.0,
+   "incorrect": 34,
+   "n": 120,
+   "not_attempted": 86,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.283333,
+   "pct_not_attempted": 0.716667
+  },
+  "museum|place": {
+   "correct": 1,
+   "correct_given_attempted": 0.027027,
+   "f_score": 0.012739,
+   "hallucination_rate": 0.972973,
+   "incorrect": 36,
+   "n": 120,
+   "not_attempted": 83,
+   "pct_correct": 0.008333,
+   "pct_incorrect": 0.3,
+   "pct_not_attempted": 0.691667
+  },
+  "tower_gate|name": {
+   "correct": 0,
+   "correct_given_attempted": 0.0,
+   "f_score": 0.0,
+   "hallucination_rate": 1.0,
+   "incorrect": 4,
+   "n": 32,
+   "not_attempted": 28,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.125,
+   "pct_not_attempted": 0.875
+  },
+  "tower_gate|place": {
+   "correct": 0,
+   "correct_given_attempted": 0.0,
+   "f_score": 0.0,
+   "hallucination_rate": 1.0,
+   "incorrect": 8,
+   "n": 32,
+   "not_attempted": 24,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.25,
+   "pct_not_attempted": 0.75
+  },
+  "tower_gate|year": {
+   "correct": 0,
+   "correct_given_attempted": null,
+   "f_score": 0.0,
+   "hallucination_rate": null,
+   "incorrect": 0,
+   "n": 4,
+   "not_attempted": 4,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.0,
+   "pct_not_attempted": 1.0
+  }
+ },
+ "photo_main_place_canton_correct_rate": 0.076693,
+ "sensitivity_adjudicated": {
+  "overall_by_arm_qtype": {
+   "photo_alt|name": {
+    "correct": 2,
+    "correct_given_attempted": 0.025641,
+    "f_score": 0.01,
+    "hallucination_rate": 0.974359,
+    "incorrect": 76,
+    "n": 322,
+    "not_attempted": 244,
+    "pct_correct": 0.006211,
+    "pct_incorrect": 0.236025,
+    "pct_not_attempted": 0.757764
+   },
+   "photo_alt|place": {
+    "correct": 2,
+    "correct_given_attempted": 0.047619,
+    "f_score": 0.010989,
+    "hallucination_rate": 0.952381,
+    "incorrect": 40,
+    "n": 322,
+    "not_attempted": 280,
+    "pct_correct": 0.006211,
+    "pct_incorrect": 0.124224,
+    "pct_not_attempted": 0.869565
+   },
+   "photo_alt|year": {
+    "correct": 0,
+    "correct_given_attempted": null,
+    "f_score": 0.0,
+    "hallucination_rate": null,
+    "incorrect": 0,
+    "n": 88,
+    "not_attempted": 88,
+    "pct_correct": 0.0,
+    "pct_incorrect": 0.0,
+    "pct_not_attempted": 1.0
+   },
+   "photo_main|name": {
+    "correct": 1,
+    "correct_given_attempted": 0.002985,
+    "f_score": 0.001494,
+    "hallucination_rate": 0.997015,
+    "incorrect": 334,
+    "n": 1004,
+    "not_attempted": 669,
+    "pct_correct": 0.000996,
+    "pct_incorrect": 0.332669,
+    "pct_not_attempted": 0.666335
+   },
+   "photo_main|place": {
+    "correct": 6,
+    "correct_given_attempted": 0.017857,
+    "f_score": 0.008955,
+    "hallucination_rate": 0.982143,
+    "incorrect": 330,
+    "n": 1004,
+    "not_attempted": 668,
+    "pct_correct": 0.005976,
+    "pct_incorrect": 0.328685,
+    "pct_not_attempted": 0.665339
+   },
+   "photo_main|year": {
+    "correct": 0,
+    "correct_given_attempted": 0.0,
+    "f_score": 0.0,
+    "hallucination_rate": 1.0,
+    "incorrect": 6,
+    "n": 268,
+    "not_attempted": 262,
+    "pct_correct": 0.0,
+    "pct_incorrect": 0.022388,
+    "pct_not_attempted": 0.977612
+   },
+   "text_only|place": {
+    "correct": 17,
+    "correct_given_attempted": 0.204819,
+    "f_score": 0.124542,
+    "hallucination_rate": 0.795181,
+    "incorrect": 66,
+    "n": 190,
+    "not_attempted": 107,
+    "pct_correct": 0.089474,
+    "pct_incorrect": 0.347368,
+    "pct_not_attempted": 0.563158
+   },
+   "text_only|year": {
+    "correct": 1,
+    "correct_given_attempted": 0.166667,
+    "f_score": 0.014493,
+    "hallucination_rate": 0.833333,
+    "incorrect": 5,
+    "n": 132,
+    "not_attempted": 126,
+    "pct_correct": 0.007576,
+    "pct_incorrect": 0.037879,
+    "pct_not_attempted": 0.954545
+   },
+   "trap_lowinfo|name": {
+    "correct": 0,
+    "correct_given_attempted": null,
+    "f_score": 0.0,
+    "hallucination_rate": null,
+    "incorrect": 0,
+    "n": 34,
+    "not_attempted": 34,
+    "pct_correct": 0.0,
+    "pct_incorrect": 0.0,
+    "pct_not_attempted": 1.0
+   },
+   "trap_premise|name": {
+    "correct": 0,
+    "correct_given_attempted": 0.0,
+    "f_score": 0.0,
+    "hallucination_rate": 1.0,
+    "incorrect": 40,
+    "n": 48,
+    "not_attempted": 8,
+    "pct_correct": 0.0,
+    "pct_incorrect": 0.833333,
+    "pct_not_attempted": 0.166667
+   }
+  },
+  "photo_main_by_lang_qtype": {
+   "de|name": {
+    "correct": 0,
+    "correct_given_attempted": 0.0,
+    "f_score": 0.0,
+    "hallucination_rate": 1.0,
+    "incorrect": 101,
+    "n": 251,
+    "not_attempted": 150,
+    "pct_correct": 0.0,
+    "pct_incorrect": 0.40239,
+    "pct_not_attempted": 0.59761
+   },
+   "de|place": {
+    "correct": 2,
+    "correct_given_attempted": 0.025316,
+    "f_score": 0.012121,
+    "hallucination_rate": 0.974684,
+    "incorrect": 77,
+    "n": 251,
+    "not_attempted": 172,
+    "pct_correct": 0.007968,
+    "pct_incorrect": 0.306773,
+    "pct_not_attempted": 0.685259
+   },
+   "de|year": {
+    "correct": 0,
+    "correct_given_attempted": null,
+    "f_score": 0.0,
+    "hallucination_rate": null,
+    "incorrect": 0,
+    "n": 67,
+    "not_attempted": 67,
+    "pct_correct": 0.0,
+    "pct_incorrect": 0.0,
+    "pct_not_attempted": 1.0
+   },
+   "fr|name": {
+    "correct": 0,
+    "correct_given_attempted": 0.0,
+    "f_score": 0.0,
+    "hallucination_rate": 1.0,
+    "incorrect": 24,
+    "n": 251,
+    "not_attempted": 227,
+    "pct_correct": 0.0,
+    "pct_incorrect": 0.095618,
+    "pct_not_attempted": 0.904382
+   },
+   "fr|place": {
+    "correct": 1,
+    "correct_given_attempted": 0.166667,
+    "f_score": 0.007782,
+    "hallucination_rate": 0.833333,
+    "incorrect": 5,
+    "n": 251,
+    "not_attempted": 245,
+    "pct_correct": 0.003984,
+    "pct_incorrect": 0.01992,
+    "pct_not_attempted": 0.976096
+   },
+   "fr|year": {
+    "correct": 0,
+    "correct_given_attempted": null,
+    "f_score": 0.0,
+    "hallucination_rate": null,
+    "incorrect": 0,
+    "n": 67,
+    "not_attempted": 67,
+    "pct_correct": 0.0,
+    "pct_incorrect": 0.0,
+    "pct_not_attempted": 1.0
+   },
+   "it|name": {
+    "correct": 0,
+    "correct_given_attempted": 0.0,
+    "f_score": 0.0,
+    "hallucination_rate": 1.0,
+    "incorrect": 62,
+    "n": 251,
+    "not_attempted": 189,
+    "pct_correct": 0.0,
+    "pct_incorrect": 0.247012,
+    "pct_not_attempted": 0.752988
+   },
+   "it|place": {
+    "correct": 0,
+    "correct_given_attempted": 0.0,
+    "f_score": 0.0,
+    "hallucination_rate": 1.0,
+    "incorrect": 4,
+    "n": 251,
+    "not_attempted": 247,
+    "pct_correct": 0.0,
+    "pct_incorrect": 0.015936,
+    "pct_not_attempted": 0.984064
+   },
+   "it|year": {
+    "correct": 0,
+    "correct_given_attempted": null,
+    "f_score": 0.0,
+    "hallucination_rate": null,
+    "incorrect": 0,
+    "n": 67,
+    "not_attempted": 67,
+    "pct_correct": 0.0,
+    "pct_incorrect": 0.0,
+    "pct_not_attempted": 1.0
+   },
+   "rm|name": {
+    "correct": 1,
+    "correct_given_attempted": 0.006757,
+    "f_score": 0.005013,
+    "hallucination_rate": 0.993243,
+    "incorrect": 147,
+    "n": 251,
+    "not_attempted": 103,
+    "pct_correct": 0.003984,
+    "pct_incorrect": 0.585657,
+    "pct_not_attempted": 0.410359
+   },
+   "rm|place": {
+    "correct": 3,
+    "correct_given_attempted": 0.012146,
+    "f_score": 0.012048,
+    "hallucination_rate": 0.987854,
+    "incorrect": 244,
+    "n": 251,
+    "not_attempted": 4,
+    "pct_correct": 0.011952,
+    "pct_incorrect": 0.972112,
+    "pct_not_attempted": 0.015936
+   },
+   "rm|year": {
+    "correct": 0,
+    "correct_given_attempted": 0.0,
+    "f_score": 0.0,
+    "hallucination_rate": 1.0,
+    "incorrect": 6,
+    "n": 67,
+    "not_attempted": 61,
+    "pct_correct": 0.0,
+    "pct_incorrect": 0.089552,
+    "pct_not_attempted": 0.910448
+   }
+  },
+  "replaced": 54
+ },
+ "text_only_by_tier_qtype": {
+  "high|place": {
+   "correct": 11,
+   "correct_given_attempted": 0.22,
+   "f_score": 0.15942,
+   "hallucination_rate": 0.78,
+   "incorrect": 39,
+   "n": 88,
+   "not_attempted": 38,
+   "pct_correct": 0.125,
+   "pct_incorrect": 0.443182,
+   "pct_not_attempted": 0.431818
+  },
+  "high|year": {
+   "correct": 0,
+   "correct_given_attempted": 0.0,
+   "f_score": 0.0,
+   "hallucination_rate": 1.0,
+   "incorrect": 4,
+   "n": 68,
+   "not_attempted": 64,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.058824,
+   "pct_not_attempted": 0.941176
+  },
+  "low|place": {
+   "correct": 2,
+   "correct_given_attempted": 0.105263,
+   "f_score": 0.054795,
+   "hallucination_rate": 0.894737,
+   "incorrect": 17,
+   "n": 54,
+   "not_attempted": 35,
+   "pct_correct": 0.037037,
+   "pct_incorrect": 0.314815,
+   "pct_not_attempted": 0.648148
+  },
+  "low|year": {
+   "correct": 0,
+   "correct_given_attempted": null,
+   "f_score": 0.0,
+   "hallucination_rate": null,
+   "incorrect": 0,
+   "n": 16,
+   "not_attempted": 16,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.0,
+   "pct_not_attempted": 1.0
+  },
+  "mid|place": {
+   "correct": 4,
+   "correct_given_attempted": 0.266667,
+   "f_score": 0.126984,
+   "hallucination_rate": 0.733333,
+   "incorrect": 11,
+   "n": 48,
+   "not_attempted": 33,
+   "pct_correct": 0.083333,
+   "pct_incorrect": 0.229167,
+   "pct_not_attempted": 0.6875
+  },
+  "mid|year": {
+   "correct": 1,
+   "correct_given_attempted": 1.0,
+   "f_score": 0.040816,
+   "hallucination_rate": 0.0,
+   "incorrect": 0,
+   "n": 48,
+   "not_attempted": 47,
+   "pct_correct": 0.020833,
+   "pct_incorrect": 0.0,
+   "pct_not_attempted": 0.979167
+  }
+ },
+ "traps": {
+  "trap_lowinfo": {
+   "correct": 0,
+   "correct_given_attempted": null,
+   "f_score": 0.0,
+   "hallucination_rate": null,
+   "incorrect": 0,
+   "n": 34,
+   "not_attempted": 34,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.0,
+   "pct_not_attempted": 1.0
+  },
+  "trap_premise": {
+   "correct": 0,
+   "correct_given_attempted": 0.0,
+   "f_score": 0.0,
+   "hallucination_rate": 1.0,
+   "incorrect": 42,
+   "n": 48,
+   "not_attempted": 6,
+   "pct_correct": 0.0,
+   "pct_incorrect": 0.875,
+   "pct_not_attempted": 0.125
+  }
+ }
+}

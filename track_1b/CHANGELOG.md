@@ -371,3 +371,9 @@ and one skeptic re-check. Fixed:
 - No human labels were collected for the grading audit. The 20 % sample was graded by a second AI system only
   (`ai_crosscheck_audit`); the report states that the track's 20 % human check is not met. A non-blind check form
   (`tools/audit_online/build_check*.py`, `human_check.html`) was prepared but is not used for any result.
+
+## Release (15 Oct 2026)
+- Dataset published: `huggingface.co/datasets/chrizzto/swiss-heritage-factuality`, revision
+  `26d86b35d1a6c157b55cf331cdc4daf249257a49`, pinned in `config.json`. Reference scores for `verify` V6 added
+  (`src/landmarks_eval/expected/reference.scores.json` = the 70B scores of that revision). Report PDF:
+  `track_1b/RedPandas_Report.pdf`.
