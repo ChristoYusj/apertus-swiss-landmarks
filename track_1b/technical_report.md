@@ -13,7 +13,7 @@
 
 **Track:** Apertus Readiness - Track 1B (Swiss Voices), dimension: core-task intelligence (factuality)  
 **Event:** Online  
-**Team:** Red Pandas — `member`, `member`, `member`, `member`  
+**Team:** Red Pandas — Christopher Yazigi, Giovanni Yazbeck, Alfredo Pio Yazbeck  
 **Demo / data:** dataset `huggingface.co/datasets/chrizzto/swiss-heritage-factuality` ⟨to publish⟩ ·
 code `github.com/ChristoYusj/apertus-swiss-landmarks`
 
