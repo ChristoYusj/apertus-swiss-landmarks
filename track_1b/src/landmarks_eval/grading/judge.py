@@ -1,8 +1,9 @@
 """LLM-as-a-judge (SimpleQA-style three-way grading) with an independent open-weights model.
 
-The tested model never grades itself. Default judge: openai/gpt-oss-120b via the
-Hugging Face router (OpenAI-compatible); configure with JUDGE_MODEL / JUDGE_BASE_URL /
-JUDGE_API_KEY. Judgements are cached by content hash so `make verify` replays them offline.
+The tested model never grades itself. The judge is set only through JUDGE_MODEL / JUDGE_BASE_URL /
+JUDGE_API_KEY (no built-in fallback); the official runs used openai/gpt-oss-120b via the Hugging Face router
+(OpenAI-compatible). Judgements are reused by response hash and prompt version, and `verify` checks the stored
+judgements offline.
 """
 
 from __future__ import annotations
@@ -19,7 +20,8 @@ JUDGE_PROMPT_VERSION = "judge-v1"
 # max_tokens covers the judge's hidden reasoning too (gpt-oss: ~250-400 reasoning tokens per item); 1500 avoids
 # truncated, unparseable verdicts
 JUDGE_PARAMS = {"temperature": 0.0, "max_tokens": 1500}
-# Default judge: pinned to one inference provider on the Hugging Face router so verdicts are reproducible
+# The judge of the official runs (for reference; the code reads JUDGE_*): pinned to one inference provider on the
+# Hugging Face router so verdicts are reproducible
 DEFAULT_JUDGE_MODEL = "openai/gpt-oss-120b:groq"
 DEFAULT_JUDGE_BASE_URL = "https://router.huggingface.co/v1"
 

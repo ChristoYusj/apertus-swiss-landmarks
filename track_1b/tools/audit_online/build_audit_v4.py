@@ -9,6 +9,9 @@ each annotator's items in their own seeded order. No grade (judge, code or AI cr
     python build_audit_v4.py <dataset> <results> <audit_sample.json> <out dir>
 
 Writes <out>/assignment.json and <out>/items_A1.json ... items_A3.json (input for build_check_pdf.py --blind).
+
+As registered: three annotators. As run: one person (A1) labelled all three parts, so there is no agreement between
+people; the labels were merged with merge_audit_v4.py --one-annotator A1.
 """
 
 from __future__ import annotations

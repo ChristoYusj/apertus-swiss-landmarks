@@ -32,6 +32,8 @@ CHURCH = {"kirche", "chiesa", "eglise", "baselgia", "baselgetta", "chapelle", "k
 def _is_church(t: str) -> bool:
     """Church words, including compounds such as Stiftskirche, Wallfahrtskapelle, Benediktinerkloster."""
     return t in CHURCH or t.endswith(("kirche", "kapelle", "kloster", "chille", "chiesa", "chapelle"))
+
+
 # Place names that are also everyday words ("mit Zug" = by train, "baden" = to bathe) count only right after a
 # place cue ("in Zug", "Kanton Zug", "à Baden").
 CONTEXT_ONLY = {"zug", "baden", "sent"}   # "sent" is also Romansh for "saint" ("Sent Martin")

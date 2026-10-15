@@ -61,14 +61,14 @@ def build_card(ds: Path, extra: dict | None = None) -> str:
                  "scores.json": "all scores recomputed by `landmarks-eval score`",
                  "stability.json": "temperature-0 stability check", "stability_responses.jsonl": "the re-asked answers",
                  "human_audit.jsonl": "blind human labels (annotator A1)",
-                 "human_audit_repeat.jsonl": "the same annotator's labels of the shared items in the other two parts "
-                                             "(repeat labels; the overlap was known, so not a blind test-retest)",
+                 "human_audit_repeat.jsonl": "the same annotator's second and third labels of the shared items "
+                                             "(repeats; the overlap was known, so not a blind test-retest)",
                  "audit_sample.json": "the seeded, stratified audit sample (item ids, strata; its `repeats` list belongs "
                                       "to an earlier protocol that was not run)",
                  "ai_crosscheck_audit.jsonl": "the audit sample graded by a second AI system: a cross-check, not a human audit",
                  "disagreement_adjudication.jsonl": "AI-assisted re-reading of every judge-vs-code disagreement on the "
                                                     "core items (sensitivity analysis; second-wording items not re-read)",
-                 "judge_dev_set.jsonl": "judge tuning items and labels", "judge_dev_eval.json": "the frozen judge on its dev set",
+                 "judge_dev_set.jsonl": "judge tuning items and labels", "judge_dev_eval.json": "the frozen judge's results on its dev set",
                  "glosses.jsonl": "English machine glosses of answers (annotation aid)"}
     responses_block = "\n".join(
         f"- `responses/{name}/`:\n" + "\n".join(f"  - `{f}`: {file_desc.get(f, '')}".rstrip(": ") for f in fs
@@ -78,10 +78,13 @@ def build_card(ds: Path, extra: dict | None = None) -> str:
                  "excluded_landmarks.jsonl": "answer keys of landmarks removed in the photo screening",
                  "removed_place_aliases.jsonl": "place labels removed from the answer keys (district, region or former municipality)",
                  "gazetteer.json": "Swiss cantons, current and former municipalities and countries (location analysis)",
-                 "review.json": "photo-screening summary (protocol, counts, dropped landmarks and reasons)"}
+                 "review.json": "photo-screening summary (protocol, counts, dropped landmarks and reasons)",
+                 "selection_report.json": "landmark selection funnel, strata and seed",
+                 "images_report.json": "photo download and licence-filter report (all candidates, before the screening)",
+                 "questions_report.json": "build report of the core questions (`q-v1`); the extension items are added later"}
     meta_block = "\n".join(f"- `metadata/{f}`: {d}" for f, d in meta_desc.items() if (ds / "metadata" / f).exists())
     arm_desc = {"photo_main": "Wikidata main photo.",
-                "text_only": "the object's name is given; the question asks where it is or when it was built.",
+                "text_only": "no photo; the name is given and the question asks where the object is or when it was built.",
                 "photo_alt": "a second view of the same object, accepted in the photo screening.",
                 "trap_premise": "the question falsely states the town of a real look-alike.",
                 "trap_lowinfo": "a photo too generic to identify; abstaining is correct.",
@@ -91,33 +94,38 @@ def build_card(ds: Path, extra: dict | None = None) -> str:
     arms_block = "\n".join(f"- `{a}`: {d}" for a, d in arm_desc.items() if a in present_arms)
     goldqc_line = f"- **Answer-key spot check:** {gold_qc}." if gold_qc else ""
     grading_block = (
-        "  - Every model answer was graded by a deterministic code grader; every free answer also by an independent "
+        "  - A deterministic code grader graded every answer. Every free answer was also graded by an independent "
         "open-weights LLM judge (`openai/gpt-oss-120b`, temperature 0), whose label is final"
         + (f" ({no_verdict} answers with an empty judge verdict keep the code label)" if no_verdict else "")
         + (". Multiple-choice answers are graded by code only (one option named by letter or text)" if mc else "")
         + ".\n"
-        "  - The judge prompt was tuned on a 40-item dev set (labels proposed by Claude; the team lead ruled on the 4 "
-        "hard cases and accepted the other 36 without item-by-item review) and frozen before the audit sample was drawn."
+        "  - The judge prompt was tuned on a 40-item dev set and frozen before the audit sample was drawn. Claude "
+        "proposed the dev-set labels; the team lead ruled on the 4 hard cases and accepted the other 36 without "
+        "item-by-item review."
         if judge_done else
         "  - Every model answer was graded by a deterministic code grader (rules in the repository, each post-run change "
         "documented in the CHANGELOG). LLM-judge labels are not part of this version; final label = code-grader label.")
     ai_check = _load(ref / "ai_crosscheck_audit.jsonl") if (ref / "ai_crosscheck_audit.jsonl").exists() else []
     repeats = _load(ref / "human_audit_repeat.jsonl") if (ref / "human_audit_repeat.jsonl").exists() else []
+    in_ds = {c["item_id"] for c in cases}
+    ai_in = [a for a in ai_check if a["item_id"] in in_ds]
     ai_line = (f"\n- **AI cross-check (not a human audit):** a second AI system "
-               f"({', '.join(sorted({a['annotator_id'] for a in ai_check}))}) graded the same sample "
-               f"({sum(1 for a in ai_check if a.get('label'))} of {len(ai_check)} items; the rest were left unscored as "
-               "uncertain); its agreement with the judge and the code grader is in `scores.json`." if ai_check else "")
+               f"({', '.join(sorted({a['annotator_id'] for a in ai_check}))}) graded the same sample: "
+               f"{sum(1 for a in ai_in if a.get('label'))} of the {len(ai_in)} items still in the dataset (it left the "
+               "rest unscored as uncertain). Its agreement with the judge and the code grader is in `scores.json`."
+               if ai_check else "")
     if audit:
         n_items = len({a["item_id"] for a in audit})
         who = sorted({a["annotator_id"] for a in audit})
         n_overlap = len({a["item_id"] for a in audit if a.get("in_overlap")})
-        audit_block = (f"- **Human audit:** {n_items} `{ref.name}` answers of a seeded, stratified random sample were labelled blind by "
+        audit_block = (f"- **Human audit:** {n_items} `{ref.name}` answers (a seeded, stratified random sample, minus the "
+                       "landmarks removed in the photo screening) were labelled blind by "
                        + (f"{len(who)} annotators ({', '.join(who)}), each alone" if len(who) > 1 else f"one annotator ({who[0]})")
                        + " following `docs/annotation_guidelines.md`"
                        + (f"; {n_overlap} items were labelled by all of them" if len(who) > 1 and n_overlap else "")
                        + (f"; the sample was split into three parts sharing {len({r['item_id'] for r in repeats})} items, "
-                          f"and the second and third labels of the shared items are kept separately ({len(repeats)} "
-                          "repeat labels)" if repeats else "")
+                          f"whose second and third labels are kept separately ({len(repeats)} repeat labels)"
+                          if repeats else "")
                        + ".\n- **Agreement:** judge-human and code-human agreement (Cohen's kappa)"
                        + (" and agreement between the annotators (Fleiss' kappa)" if len(who) > 1 and n_overlap else "")
                        + (" and how often the repeat labels match" if repeats else "")
@@ -132,11 +140,11 @@ def build_card(ds: Path, extra: dict | None = None) -> str:
     revs = review.get("reviewers") or []
     if proto == "v3b-ai-review" and revs == ["ai:claude-opus-5-5", "ai:hermes"]:
         screening_lines = (
-            "  - Every candidate photo was screened by an AI (Claude Opus 5.5); three further Claude instances re-checked "
-            "every photo to be shipped, and a second AI agent (Hermes) reviewed them again under the team lead's "
+            "  - An AI (Claude Opus 5.5) screened every candidate photo. Three further Claude instances re-checked every "
+            "photo to be shipped, and a second AI agent (Hermes) reviewed them again under the team lead's "
             "\"if unsure, exclude\" policy.\n"
             f"  - The team lead decided the edge cases of {review.get('stats', {}).get('landmarks_with_human_decision', 0)} "
-            "landmarks directly. No person reviewed every shipped photo.")
+            "landmarks. No person reviewed every shipped photo.")
     elif proto == "v3-ai-assisted" and "A1" in revs:
         screening_lines = ("  - Every candidate photo was screened by an AI (Claude Opus 5.5) and re-checked by further "
                            "Claude instances; annotator A1 then checked every shipped photo.")
@@ -148,12 +156,14 @@ def build_card(ds: Path, extra: dict | None = None) -> str:
     else:  # never guess who screened the photos
         raise SystemExit(f"unknown screening protocol {proto!r} / reviewers {revs}: cannot describe the screening")
     n_post = sum(1 for i in imgs if i.get("post_cutoff"))
-    contam_line = ("The `photo_alt` arm (a second view of the same object) is the only, indirect image-side check"
+    n_late = sum(1 for i in imgs if (i.get("upload_timestamp") or "")[:10] > "2026-07-14")
+    contam_line = ("The only image-side check is indirect: the `photo_alt` arm (a second view of the same object)"
                    + (f"; {n_post} shipped photos post-date 14 Jul 2026" if n_post else
-                      "; no shipped photo was uploaded or taken after 14 Jul 2026, so a post-cutoff contrast was not possible")
+                      f". {n_late} shipped photos were uploaded after 14 Jul 2026 but taken before it; none post-dates it, "
+                      "so a post-cutoff contrast was not possible")
                    + ". URL-level checks against web-scale image corpora were infeasible.")
-    stab_line = (f" Re-asking 100 items gave {stab['identical_text_rate']:.0%} identical text and "
-                 f"{stab['same_code_label_rate']:.0%} identical labels." if stab else "")
+    stab_line = (f" On a first re-ask of {stab.get('rerun_n', 100)} items, {stab['identical_text_rate']:.0%} of the answers had "
+                 f"identical text and {stab['same_code_label_rate']:.0%} identical code labels." if stab else "")
     yaml_head = """---
 license: cdla-permissive-2.0
 language: [fr, de, it, rm]
@@ -175,44 +185,43 @@ configs:
     body = f"""# Dataset Card for Swiss Heritage Factuality
 
 Does Apertus 1.5, Switzerland's open LLM, recognise Swiss heritage landmarks from a photo,
-and does it say "I don't know" instead of inventing an answer? This dataset holds
-**{len(cases):,} test questions** about **{len(lms)} landmarks** from the federal
-inventory of protected cultural property (the KGS inventory). Each question asks
-for the landmark's name, its municipality and canton, or its year of construction,
-in French, German, Italian and Romansh. Every answer key cites Wikidata and the
-official BFS municipality register. The responses of {', '.join(f'`{m}`' for m in models) or 'the evaluated models'}
-are included with their grades. It was built for Hack Apertus 2026, Track 1B
-(Swiss Voices, core-task intelligence).
+and does it say "I don't know" rather than invent an answer? The dataset has
+**{len(cases):,} test questions** on **{len(lms)} landmarks** from the federal
+inventory of protected cultural property (KGS inventory). Each question asks for a
+landmark's name, its municipality and canton, or its construction year, in French,
+German, Italian or Romansh. Every answer key cites Wikidata and the official BFS
+municipality register. The graded responses of {' and '.join(', '.join(f'`{m}`' for m in models).rsplit(', ', 1)) or 'the evaluated models'}
+are included. Built for Hack Apertus 2026, Track 1B (Swiss Voices, core-task intelligence).
 
 ## Dataset Details
 
 - **Curated by:** Team Red Pandas (Hack Apertus 2026 online hackathon)
-- **Funded by:** none; Apertus inference was provided by CSCS through the hackathon endpoint{'; the LLM judge' + (' and the comparison model' if others else '') + ' ran on paid Hugging Face inference providers (paid by the team)' if judge_done else ''}
+- **Funded by:** none. Apertus inference was provided by CSCS through the hackathon endpoint{'; the LLM judge' + (' and the comparison model' if others else '') + ' ran on Hugging Face inference providers, paid by the team' if judge_done else ''}.
 - **Shared by:** Team Red Pandas
 - **Language(s) (NLP):** French, German (Swiss orthography), Italian, Romansh (Rumantsch Grischun)
-- **License:** CDLA-Permissive-2.0 for the compilation, questions, answer keys, labels and model responses. Each photograph keeps its own free licence (see *Data Instance Licenses*).
+- **License:** CDLA-Permissive-2.0 for the compilation, questions, answer keys, labels and model responses. Each photo keeps its own free licence (see *Data Instance Licenses*).
 - **Git repository:** {REPO}
 
 ## Uses
 
 ### Direct Use
-- Measure factual accuracy and hallucination rates of vision-language models on Swiss cultural heritage, in Switzerland's national languages. The harness accepts any OpenAI-compatible model.
+- Measure factual accuracy and hallucination of vision-language models on Swiss cultural heritage, in Switzerland's national languages. The harness accepts any OpenAI-compatible model.
 - Compare *recognising* a landmark (from a photo) with *knowing about* it (its name given in text).
-- Test whether a model abstains when it cannot know (low-information photos) and whether it resists false premises in a question.
+- Test whether a model abstains when it cannot know (too-generic photos) and whether it resists a false premise in the question.
 
 ### Out-of-Scope Use
 - Not an authoritative heritage register. Answer keys come from Wikidata, which can be wrong{'; we measured an error rate on a sample (see *Quality Control*)' if gold_qc else ''}.
-- Do not use it to rank people or places, to train surveillance or person-identification systems, or as a guide to private property. Photos with recognisable people were excluded.
-- Romansh results are exploratory: the Romansh question templates were not reviewed by a native speaker.
+- Not for ranking people or places, training surveillance or person-identification systems, or guiding people to private property.
+- Romansh results are exploratory: no native speaker reviewed the Romansh question templates.
 
 ### Specifications
-- **Domain:** objects of the Swiss Inventory of Cultural Property of National and Regional Significance (Wikidata P1435 classes A/B and cantonal/local significance) that are public landmark types: churches and monasteries, castles and castle ruins, bridges, fountains, towers and gates, town halls and stations, museums, monuments.
+- **Domain:** public landmark types in the Swiss Inventory of Cultural Property of National and Regional Significance (Wikidata P1435: classes A/B and cantonal/local significance): churches and monasteries, castles and castle ruins, bridges, fountains, towers and gates, town halls and stations, museums, monuments.
 - **Strata:** official BFS language region of the municipality (SPRGEB2020) × fame tier. Fame is the number of Wikipedia articles about the object: low = 0, mid = 1–2, high = 3+.
 
 {_table(cells, ["Region", "high (3+ articles)", "mid (1–2)", "low (0)"])}
 
-- **Questions per landmark:** Q1 name; Q2 municipality + canton; Q3 year built (only when Wikidata has a single consistent year- or decade-precision inception; never for museums, whose inception is usually the founding of the institution).
-- **Prompts:** every question explicitly allows the model to say it is unsure (prompt versions {', '.join(f'`{v}`' for v in prompt_versions)}).
+- **Questions per landmark:** Q1 name; Q2 municipality + canton; Q3 year built (only when Wikidata has one consistent inception at year or decade precision; never for museums, whose inception is usually the institution's founding).
+- **Prompts:** every question explicitly lets the model say it is unsure (prompt versions {', '.join(f'`{v}`' for v in prompt_versions)}).
 
 ## Dataset Structure
 
@@ -226,7 +235,7 @@ are included with their grades. It was built for Hack Apertus 2026, Track 1B
   - inventory: KGS number, heritage class
   - design covariates: fame tier, language region, type, coordinates
 - `images/`: {len(imgs)} JPEG files, 500 px wide.
-- `metadata/images.jsonl`: per image the role (main Wikidata image or a second view), Commons title and URL, author, licence (SPDX), ready-to-use attribution text, modifications, hashes, upload/capture dates and the privacy review.
+- `metadata/images.jsonl`: per image the role (`main_p18` = Wikidata main photo; `alt` = second view or too-generic photo), Commons title and URL, author, licence (SPDX), ready-to-use attribution text, modifications, hashes, upload/capture dates, and the privacy-screening decision with its reviewers.
 - `metadata/item_metadata.jsonl`: per test case, the licence of each modality, translation provenance and review status, and design covariates.
 {meta_block}
 {responses_block}
@@ -242,32 +251,31 @@ Questions per language: {', '.join(f'{k}: {v}' for k, v in sorted(lang.items()))
 ## Dataset Creation
 
 ### Curation Rationale
-Swiss heritage is a domain where a wrong but confident answer causes quiet harm. A
-cataloguer files a photo under the wrong monument, or a visitor is told a Lausanne
-fountain is in Bern. Hallucination is more likely for the many small regional
-monuments than for famous ones, and possibly more likely outside the German-speaking
-majority. Existing Swiss benchmarks test legal or administrative text. To our
-knowledge, none tests visual recognition of Swiss heritage, abstention, or
-susceptibility to false premises, and no audio or vision results have been published
-for Apertus 1.5.
+In Swiss heritage, a wrong but confident answer does quiet harm: a cataloguer files a
+photo under the wrong monument, or a visitor is told a Lausanne fountain is in Bern.
+Hallucination is more likely for the many small regional monuments than for famous
+ones, and possibly more likely outside the German-speaking majority. Existing Swiss
+benchmarks test legal or administrative text. To our knowledge, none tests visual
+recognition of Swiss heritage, abstention, or susceptibility to false premises, and
+no audio or vision results have been published for Apertus 1.5.
 
 ### Source Data
 
 #### Data Collection
 - **Selection:**
-  - Candidates were pulled from Wikidata (via the QLever mirror, snapshot of 13 Oct 2026; frozen queries in the repository) and the BFS municipality register (typology export valid on 1 Oct 2026).
+  - Sources: Wikidata (QLever mirror, snapshot of 13 Oct 2026; frozen queries in the repository) and the BFS municipality register (typology export valid on 1 Oct 2026).
   - Funnel: {funnel.get('pulled', '?')} heritage objects with a photo → {funnel.get('eligible', '?')} eligible public landmarks with a specific name and a current municipality.
   - Exclusions: non-public types, villas and private houses, archaeological sites, collections and archives, generic labels.
   - Seeded random draw: seed {sel.get('seed', 20261013)}, 50 % soft cap per type.
 - **Photos:**
   - Each object's main image (Wikidata P18) and up to three other views from its Commons category.
   - Licence-filtered, downscaled to 500 px, re-encoded without metadata.
-  - Main photos that failed the licence filter were replaced by a reserve landmark from the same stratum (never silently).
+  - A landmark whose main photo failed the licence filter was replaced by a reserve landmark from the same stratum (never silently).
 
 #### Source Data Producers and Data Subjects
 - **Photographs:** Wikimedia Commons contributors, credited per image.
 - **Facts:** Wikidata editors and the Swiss Federal Statistical Office.
-- **Questions:** fixed templates drafted with an AI coding assistant (Claude Code); for `q-v1`, French reviewed by French-speaking team members, German and Italian back-translation checked, Romansh not reviewed by a native speaker{'; the extension templates (' + ', '.join(f'`{v}`' for v in prompt_versions if v != 'q-v1') + ') were locked before the run without a recorded review' if len(prompt_versions) > 1 else ''}.
+- **Questions:** fixed templates drafted with an AI coding assistant (Claude Code). `q-v1`: French reviewed by French-speaking team members, German and Italian checked by back-translation, Romansh not reviewed by a native speaker{'. Extension templates (' + ', '.join(f'`{v}`' for v in prompt_versions if v != 'q-v1') + '): locked before the run without a recorded review' if len(prompt_versions) > 1 else ''}.
 - **Model responses:** Apertus 1.5 (CSCS endpoint){''.join(f'; `{m}` (Hugging Face inference provider)' for m in others)}.
 
 No person is a data subject: photos showing recognisable people were excluded.
@@ -287,10 +295,10 @@ No person is a data subject: photos showing recognisable people were excluded.
   - An independent script re-checked 25 random landmarks against live Wikidata (25/25 matched).
   - It also scanned all answer keys for hazards; the fixes are documented in the repository CHANGELOG.
 - **Privacy screening:**
-  - An OpenCV face detector pre-flagged {sum(i['faces_detected'] > 0 for i in imgs)} shipped photos.
+  - An OpenCV face detector pre-flagged {sum(i['faces_detected'] > 0 for i in imgs)} of the shipped photos for the screening below (all were cleared there).
 {screening_lines}
     Excluded photos and unpicked candidate views are not shipped.
-  - Landmarks dropped in the screening: {len(review.get('dropped_landmarks', {}))} (main photo excluded for privacy, not showing the landmark, or excluded because that was unclear; reasons in `metadata/review.json`); their answers are kept in `metadata/excluded_items.jsonl`.
+  - Landmarks dropped in the screening: {len(review.get('dropped_landmarks', {}))} (main photo excluded for privacy, not showing the landmark, or excluded because that was unclear; reasons in `metadata/review.json`). Their answers are kept in `metadata/excluded_items.jsonl`.
 {goldqc_line}
 
 #### Data Instance Licenses
@@ -309,14 +317,14 @@ No person is a data subject: photos showing recognisable people were excluded.
 {annot_details}
 
 ## Risks, Bias, and Limitations
-- **Wikidata coverage:** coverage is uneven. The Romansh region has only 12 listed landmarks with 3+ Wikipedia articles (all included), and Italian and Romansh cells draw on smaller pools.
+- **Wikidata coverage:** uneven. The Romansh region has only 12 listed landmarks with 3+ Wikipedia articles (all included); Italian and Romansh cells draw on smaller pools.
 - **Romansh templates:** not native-reviewed (exploratory).
-- **Inception dates:** these can refer to an earlier building on the same site. Answer-key errors are {'estimated on a sample, not eliminated' if gold_qc else 'reduced by rule-based checks, not eliminated'}.
+- **Inception dates:** may refer to an earlier building on the same site. Answer-key errors are {'estimated on a sample, not eliminated' if gold_qc else 'reduced by rule-based checks, not eliminated'}.
 - **Contamination:** famous objects and their Wikipedia text are likely in pre-training data. {contam_line}
-- **Determinism:** model outputs at temperature 0 are not perfectly reproducible on shared GPU servers. Scores are verified by replaying the stored responses.{stab_line}
+- **Determinism:** temperature-0 outputs are not perfectly reproducible on shared GPU servers; scores are verified by replaying the stored responses.{stab_line}
 
 ### Personally Identifiable Information
-No personal data. Photos were screened, and any with recognisable people, readable licence plates, private interiors or personal text were excluded. EXIF metadata, which can contain camera owner names and GPS positions, was stripped from every file.
+No personal data. Photos with recognisable people, readable licence plates, private interiors or personal text were excluded in the screening (see *Privacy screening*). EXIF metadata, which can hold camera owner names and GPS positions, was stripped from every file.
 
 ### Sensitive Information
 Some objects are religious buildings (churches, chapels, monasteries). The dataset records only their names, locations and construction dates, and makes no statement about beliefs.
@@ -348,7 +356,7 @@ Report hallucination as incorrect ÷ attempted, alongside accuracy, and break re
 ## More Information
 - Pre-registered analysis plan and changelog: see the Git repository.
 - Type groups: {', '.join(f'{k} {v}' for k, v in sorted(types.items()))}.
-- Canary GUID (do not train on this dataset): `hackapertus-swiss-heritage-7d1f3c2a-1b5e-4c9d-9e0a-6f2b8c4d1a73`
+- Canary GUID (please keep this evaluation set out of training data): `hackapertus-swiss-heritage-7d1f3c2a-1b5e-4c9d-9e0a-6f2b8c4d1a73`
 
 ## Dataset Card Authors
 Team Red Pandas
@@ -358,5 +366,5 @@ Open a discussion on this dataset's Hugging Face page.
 """
     text = yaml_head + body
     assert "[More Information Needed]" not in text
-    (ds / "README.md").write_text(text, encoding="utf-8")
+    (ds / "README.md").write_text(text, encoding="utf-8", newline="\n")
     return text

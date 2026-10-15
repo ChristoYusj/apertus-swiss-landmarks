@@ -1,17 +1,34 @@
-# Online photo screening (team annotation tool)
+# Photo-screening tools (Task P)
 
-The shared, live version of the photo-screening page (Task P, guideline v2-team), published as a private
-claude.ai artifact so team members on different devices screen together. `build_packs.py` builds the
-photo packs (420 px JPEG, base64, 22 landmarks per pack) and `data/cards.json` from `work/`; `screening.html`
-stores one joint decision per landmark in the artifact's shared database (collection `screening`, one document
-per landmark QID: `main`, `main_id`, `alt`, `low`, `t`), or on the device with a downloadable
-`screening_team.json` when the viewer cannot write. The decisions use the same format as the offline page and
-are merged with `landmarks-eval merge-review`.
+Team-only tools for the photo screening (`docs/annotation_guidelines.md`, Task P). Run them with the project venv.
+The `.html` files are sources for private claude.ai artifacts (decisions saved per click in the artifact
+database, or downloaded as JSON when the viewer cannot write).
 
-## Human check of the AI screening (protocol v3-ai-assisted)
-`check.html` + `build_check.py` (`python build_check.py <track_1b dir> work/review/screening_ai.json <output dir>`):
-one row per landmark with only the photos the AI screening would publish (main, 2nd view, too generic), flagged
-rows first. A1 clicks **Agree with AI ✓** or rejects a photo; checks are stored per landmark in the artifact's
-database (collection `check`) or downloaded as `screening_check.json`. `landmarks-eval combine-screening --ai
-work/review/screening_ai.json --check screening_check.json --out screening_team.json` turns them into the decision
-file for `merge-review` (A1's verdict wins; unchecked landmarks stay pending).
+## Used for the shipped photos (protocol v3b-ai-review)
+AI screening (Claude) and a second AI review (Hermes); the team lead decided 6 photos on 4 landmarks. No person
+reviewed every shipped photo.
+
+- `hermes_to_check.py <Hermes handoff.json> <a1_decisions.json> <out screening_check.json>`: converts the second
+  AI review into a screening-check file. Per photo, the reviewer's verdict is used (the lead's edge decisions are
+  part of it); later lead decisions in `a1_decisions.json` (e.g. made in chat) override it. The class of each
+  dropped main photo comes from the reviewed table `MAIN_DROP_CLASS` in the script.
+- Then `landmarks-eval combine-screening --ai work/review/screening_ai.json --check <screening_check.json> --out
+  screening_team.json`, then `landmarks-eval merge-review screening_team.json`.
+
+## Human check of every shipped photo: prepared, not done yet
+Two forms for the same check (rule 1 of the screening: recognisable face, readable plate, private interior,
+personal text). A flagged main photo removes its landmark; a flagged 2nd view or too-generic photo removes only
+that photo.
+- `build_photo_check_page.py <dataset> <out dir>` + `photo_check.html`: one row per landmark with exactly the
+  published photos (byte for byte), face-detector hits first; collection `pcheck`, or download `photo_check_A1.json`.
+- `build_photo_check_pdf.py <dataset> <out.pdf>`: fillable PDF, 6 photos per page, one "problem" tick box per photo;
+  `read_photo_check_pdf.py <filled.pdf> <out.json>` lists the flagged photos.
+
+## Earlier protocols
+- **v3-ai-assisted (human check of the AI screening), used for 3 rows only:** `build_check.py <track_1b dir>
+  work/review/screening_ai.json <out dir>` + `check.html`: one row per landmark with the photos the AI screening
+  would publish, flagged rows first; collection `check`, or download `screening_check.json` for
+  `combine-screening`.
+- **v2-team (joint team screening), not run (0 decisions):** `build_packs.py <track_1b dir> <out dir>` (420 px
+  photo packs, 22 landmarks per pack, `data/cards.json`) + `screening.html`: one joint decision per landmark
+  (collection `screening`, or download `screening_team.json`), merged with `landmarks-eval merge-review`.

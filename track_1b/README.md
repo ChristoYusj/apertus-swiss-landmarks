@@ -1,3 +1,91 @@
+# Swiss Heritage Factuality (Team Red Pandas)
+
+Track 1B, core-task intelligence (factuality). Does Apertus 1.5 recognise Swiss heritage landmarks, and does it
+say so when it does not?
+
+- **5,420 questions** on **251 landmarks** of the Swiss inventory of cultural property (KGS), with **429 photos**,
+  in French, German, Italian and Romansh.
+  - Core, 3,412: `photo_main` 2,276, `photo_alt` 732 (second view), `text_only` 322 (name given),
+    `trap_premise` 48 (false town in the question), `trap_lowinfo` 34 (photo too generic to identify).
+  - Extensions, registered before they were run (`docs/extensions_plan.md`), 2,008: `photo_mc` 1,004 (four named
+    options), `photo_main_w2` 1,004 (second wording).
+- **Models:** Apertus 1.5 70B and 8B; Gemma-4-31B as a comparison.
+- **Grading:** correct / incorrect / not attempted (SimpleQA). Final label: the frozen judge `openai/gpt-oss-120b`
+  (prompt `judge-v1`) on free answers, code on multiple choice (4 empty Gemma verdicts keep the code label). A
+  deterministic code grader grades every item as a second rater.
+
+## Results (Apertus 1.5 70B)
+
+- It rarely recognises a landmark from its photo. With four named options it is right 35 % of the time
+  (chance 25 %; Gemma-4-31B: 61 %), about equally in all four languages.
+- The question's language decides whether it admits this. On the same photos it mostly declines in French
+  (11 % of names wrong) but answers in Romansh (68 % of names and 97 % of places wrong).
+- In Romansh it places half of the landmarks outside Graubünden in Graubünden (96 of 190). Gemma does the same
+  (95 of 190).
+- On photos too generic to identify it declines every time (34 of 34). Gemma invents a name for a quarter of
+  them (8 of 34).
+
+Method, hypotheses and limits: [`technical_report.md`](technical_report.md) (PDF: `RedPandas_Report.pdf`).
+
+## Who checked what
+
+- **Photos:** screened by AI (Claude Opus 5.5 with three re-checkers, then a second AI agent, Hermes). The team
+  lead decided 6 photos on 4 landmarks. No person has reviewed every shipped photo yet; that check is pending.
+- **Grading audit:** one annotator (the team lead) graded 522 Apertus-70B core answers blind (the pre-registered
+  20 % sample minus the removed landmarks). Judge–human κ = 0.76, code–human κ = 0.73. There is no second human;
+  8B, Gemma, the extension items, `photo_alt` and `trap_lowinfo` have no human audit. Hermes graded the same sample as an AI cross-check.
+- **AI-assisted:** the re-reads of judge–code disagreements and the code-grader reviews (Claude). Full list:
+  [`docs/ai_use_statement.md`](docs/ai_use_statement.md).
+
+## Status
+
+The pinned dataset revision (`26d86b35`, in `config.json`) is the first release: the 3,412 core items. The
+multiple-choice, second-wording and Gemma results are not in it. Pending: the human photo check, then a
+re-release with all 5,420 items and a new pinned revision.
+
+## Run
+
+From the repo root or this folder (Docker, clean checkout):
+
+```bash
+make run
+```
+
+- **No keys:** downloads the pinned dataset and checks the reference results (Apertus 70B): schema, image hashes,
+  coverage, the code grader re-run on every stored answer, the final-label rule, a screening decision for every
+  shipped photo, and recomputed scores equal to the published ones (checks V1–V7; exit code = result). CPU only,
+  about a minute.
+- **Live run:** with `LLM_NAME`, `LLM_BASE_URL`, `LLM_API_KEY` set (any OpenAI-compatible endpoint), it also
+  evaluates that model on a seeded, stratified sample (`SAMPLE=150`) or on all items (`FULL=1`). Results go to
+  `results/live-<model>/` (`scores.json`).
+- **Judge (optional):** `JUDGE_MODEL`, `JUDGE_BASE_URL`, `JUDGE_API_KEY`. We used `openai/gpt-oss-120b:groq` via
+  `https://router.huggingface.co/v1`. Without a judge, the code grader grades alone.
+- `make` does not read `.env` by itself. Copy [`.env.example`](.env.example) to `.env`, fill it in, then run
+  `set -a; . ./.env; set +a; make run` in this folder.
+- **Other targets:** `make test` (unit and end-to-end tests), `make smoke` (live run on 20 items), `make shell`,
+  `make clean`. Team only, in this folder: `make report` (PDF from `technical_report.md`; needs pandoc and xelatex).
+- **Requirements:** Docker. An API key only for live runs. No model weights are downloaded. A full 70B run takes
+  under an hour at 4 parallel requests.
+
+Without Docker (Python ≥ 3.11, in this folder): `pip install -e .`, then `landmarks-eval verify`, or
+`landmarks-eval live --sample 150` with the `LLM_*` variables set. Single steps: `landmarks-eval run`, `grade`,
+`score`, `verify`, each with `--results <dir>`. `landmarks-eval --help` lists every command.
+
+## Layout
+
+| Path | Content |
+|---|---|
+| `src/landmarks_eval/` | Harness: dataset build (team only), run, graders, scores, `verify`, figures |
+| `tests/` | Unit and end-to-end tests (offline fixture dataset) |
+| `docs/` | `analysis_plan.md` (pre-registration), `extensions_plan.md`, `annotation_guidelines.md`, `ai_use_statement.md`, `consent_form_template.md`, `figures/` |
+| `tools/` | Team-only pages for the grading audit and the photo check; the report's LaTeX header |
+| `CHANGELOG.md` | Every decision and post-run correction, with its effect |
+| `config.json` | Pinned dataset revision |
+
+---
+
+*The organisers' challenge description follows, unchanged.*
+
 # Challenge 1B: Swiss Voices
 
 This track 1 is focused on improving the multimodal Apertus v1.5 8B and 70B models. There are two different paths. Path B focuses on localising Apertus to the languages, dialects, knowledge and values of Switzerland. Submissions can focus either on the 8B or 70B model.

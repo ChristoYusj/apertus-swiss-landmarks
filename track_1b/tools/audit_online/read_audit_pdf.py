@@ -4,6 +4,9 @@
 
 One row per answered page: item_id, annotator_id, label, used_translation, unsure, in_overlap. Pages left on
 "Choose..." are skipped and counted. The item order of each PDF comes from items_<ID>.json next to assignment.json.
+
+Not the source of the published labels: it records the three parts as three annotators, but one person (A1) labelled
+all of them, so human_audit.jsonl comes from merge_audit_v4.py --one-annotator A1.
 """
 
 from __future__ import annotations

@@ -33,11 +33,14 @@ V3B = {"guideline_version": "v3b-ai-review", "reviewers": ["ai:claude-opus-5-5",
 
 
 def test_ai_screening_and_ai_crosscheck_are_never_called_human(tmp_path):
-    card = build_card(_ds(tmp_path, V3B, ai_rows=[{"item_id": "a", "annotator_id": "ai:hermes", "label": "correct"},
-                                                  {"item_id": "b", "annotator_id": "ai:hermes", "label": None}]))
+    # counts are over the items still in the dataset: a row of a removed landmark is not counted
+    card = build_card(_ds(tmp_path, V3B, ai_rows=[
+        {"item_id": "Q101-photo_main-name-fr", "annotator_id": "ai:hermes", "label": "correct"},
+        {"item_id": "Q101-text_only-place-fr", "annotator_id": "ai:hermes", "label": None},
+        {"item_id": "Q999-photo_main-name-fr", "annotator_id": "ai:hermes", "label": "correct"}]))
     assert "No person reviewed every shipped photo" in card and "edge cases of 4 landmarks" in card
     assert "**Human audit:** not part of this version." in card
-    assert "AI cross-check (not a human audit)" in card and "(1 of 2 items" in card
+    assert "AI cross-check (not a human audit)" in card and "1 of the 2 items still in the dataset" in card
     assert "reviewed by the team, jointly" not in card and "written by the team" not in card
 
 

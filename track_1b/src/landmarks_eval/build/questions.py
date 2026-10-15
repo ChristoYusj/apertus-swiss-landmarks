@@ -4,9 +4,10 @@ Arms and languages (every landmark gets the same language set within an arm):
   photo_main   Q1 name, Q2 place, Q3 year (if a gold year exists)        x fr de it rm
   text_only    Q2 place (only if no shown name reveals the town and the name is distinctive),
                Q3 year (with the town given, since only the date is asked)  x fr de
-  photo_alt    Q1-Q3 on a second, human-accepted photo of the same object    x fr de   (after review)
+  photo_alt    Q1-Q3 on a second photo of the same object                    x fr de   (after the photo screening)
   trap_premise Q1 name, the question asserts the town of a real look-alike  x fr de
-  trap_lowinfo Q1 name on a human-confirmed low-information photo            x fr de   (after review)
+  trap_lowinfo Q1 name on a low-information photo                           x fr de   (after the photo screening)
+The plan says "human-accepted" / "human-confirmed" photos; as run, the screening was AI-led (review_merge.py).
 """
 
 from __future__ import annotations

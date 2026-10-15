@@ -41,8 +41,6 @@ def fake_model(monkeypatch):
         for iid, ans in ANSWERS.items():
             qid = iid.split("-")[0]
             name = {"Q101": "Fontaine Alpha", "Q102": "Château Beta", "Q103": "Tour Gamma"}[qid]
-            if has_img and "photo_main" in iid and any(qid in m.get("image_url", {}).get("url", "") or True for m in q[:-1]):
-                pass
             if not has_img and "text_only" in iid and name in text:
                 return Result(ans, "ok", "stop", {"total_tokens": 10}, 0.01, "fake")
         return Result(None, "ok")  # replaced below for photo items

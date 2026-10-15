@@ -1,5 +1,6 @@
-"""Judge dev set: run the LLM judge on the 40 items whose labels the team lead confirmed, before the judge prompt
-is frozen. Reports agreement with the confirmed labels (and with the code grader) and lists every disagreement,
+"""Judge dev set: run the LLM judge on the 40 dev items before the judge prompt is frozen. Their labels
+(`confirmed_label`) were proposed by Claude; the team lead ruled on 4 hard cases and accepted the other 36 without
+item-by-item review. Reports agreement with these labels (and with the code grader) and lists every disagreement,
 so prompt changes are made on these 40 items only and never on the audit sample (which is drawn afterwards).
 Writes <results>/judge_dev_eval.json.
 """
@@ -32,7 +33,7 @@ def judge_dev(dataset: Path, results: Path, ep: Endpoint, log=print) -> dict:
     with cf.ThreadPoolExecutor(max_workers=int(os.environ.get("JUDGE_CONCURRENCY", "4"))) as ex:
         verdicts = list(ex.map(one, dev))
     items = []
-    for d, (label, place, raw, _h) in zip(dev, verdicts):
+    for d, (label, _place, raw, _h) in zip(dev, verdicts):
         items.append({"item_id": d["item_id"], "confirmed": d["confirmed_label"], "judge": label,
                       "code": code.get(d["item_id"], {}).get("code_label"), "answer": resp[d["item_id"]]["response_text"],
                       "judge_raw": raw, "confirmed_by": d.get("confirmed_by")})

@@ -10,6 +10,9 @@
                   "Load saved file" resumes. tools/audit_online builds the same items as an online page
   merge_labels()  audit_labels.json (one or several) -> <results>/human_audit.jsonl (first labels) and
                   human_audit_repeat.jsonl (the second labels of the repeated items)
+Protocol v3 was replaced by audit-v4 before any label was collected. As run, draw_sample() still defines the
+20 % sample (audit_sample.json); the published labels come from tools/audit_online (build_audit_v4.py,
+merge_audit_v4.py).
 """
 
 from __future__ import annotations

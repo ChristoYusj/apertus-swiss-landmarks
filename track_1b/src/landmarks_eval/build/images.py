@@ -5,9 +5,9 @@ Per landmark:
           landmark is replaced by a reserve from the same cell (never a silent swap).
   alt   = up to 3 candidate photos of the same object from its Commons category
           (licence ok, perceptual-hash distance >= ALT_MIN_DIST from main, preferring
-          other authors and post-cutoff uploads). A human accepts at most one on the
-          contact sheet (exterior view, object clearly visible, no people).
-Every shipped file gets an images.csv/jsonl record with its licence, author, TASL
+          other authors and post-cutoff uploads). The photo screening (Task P) accepts at
+          most one as the 2nd view (exterior view, object clearly visible, no people).
+Every shipped file gets an images.jsonl record with its licence, author, TASL
 attribution, hashes and privacy-screening fields.
 """
 

@@ -44,7 +44,8 @@ _ADDED_IN_FIX_V2_V3 = {  # added to TYPE_WORDS after the run (CHANGELOG, fixes v
 TYPE_WORDS_V1 = frozenset(TYPE_WORDS - _ADDED_IN_FIX_V2_V3)  # = TYPE_WORDS at the pre-registration commit a73986e
 
 # Audit 2026-10-13 (post-run, documented in CHANGELOG): every token that made a name alias or a shown label
-# "specific" was listed (786 tokens) and each was classified by hand as a proper name or a generic word.
+# "specific" was listed (786 tokens) and each was classified one by one (AI-assisted: Claude, not a person) as a
+# proper name or a generic word.
 # Generic words found: building types, religious-order compounds, dedications shared by many churches,
 # museum/railway/military vocabulary, function words. Kept as specific on purpose: national qualifiers
 # (suisse, swiss, svizzero: "Musée suisse des douanes" is unique), figure names of fountains, every

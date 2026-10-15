@@ -20,7 +20,6 @@ from reportlab.pdfgen import canvas
 
 W, H, M = 768, 1152, 36
 COLS, ROWS = 2, 3
-ROLE = {"main_p18": "main photo", "alt": "photo"}
 
 
 def main(ds: Path, out: Path) -> None:

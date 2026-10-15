@@ -1,30 +1,40 @@
 # Swiss Heritage Factuality — Hack Apertus 2026, Track 1B (Red Pandas)
 
-Does Apertus 1.5 recognise Switzerland's heritage landmarks? A four-language (FR/DE/IT/RM) benchmark of
-photo, text-only and trap questions about 251 landmarks of the Swiss inventory of cultural property, with a
-fully automated harness that grades, scores and **verifies its own outputs**.
+Does Apertus 1.5 recognise Switzerland's heritage landmarks, and does it say so when it does not? A
+four-language (FR/DE/IT/RM) benchmark: 5,420 questions on 251 landmarks of the Swiss inventory of cultural
+property (KGS), with 429 photos. Models: Apertus 1.5 70B and 8B, with Gemma-4-31B as a comparison. The harness
+grades, scores and verifies its own outputs.
+
+**Headline (Apertus 1.5 70B).** With four named options it picks the right landmark 35 % of the time (chance
+25 %; Gemma-4-31B: 61 %). In free answers on the same photos it mostly declines in French (11 % of names wrong)
+but answers in Romansh (68 % of names and 97 % of places wrong).
 
 | | |
 |---|---|
-| Project | [`track_1b/`](track_1b/) — code in `track_1b/src/landmarks_eval`, tests in `track_1b/tests` |
+| Project | [`track_1b/`](track_1b/): overview, results, layout and commands in its README |
 | Report | [`track_1b/technical_report.md`](track_1b/technical_report.md) (PDF: `track_1b/RedPandas_Report.pdf`) |
-| Dataset | Hugging Face `chrizzto/swiss-heritage-factuality` (CDLA-Permissive-2.0, per-photo CC licences) |
-| Changes and decisions | [`track_1b/CHANGELOG.md`](track_1b/CHANGELOG.md) (pre-registration, every post-run correction) |
+| Dataset | Hugging Face `chrizzto/swiss-heritage-factuality` (CDLA-Permissive-2.0; photos keep their CC licences) |
+| Decisions and corrections | [`track_1b/CHANGELOG.md`](track_1b/CHANGELOG.md) |
 
-**Run it** (Docker, clean checkout):
+**Status.** The pinned dataset revision (`26d86b35`) is the first release: the 3,412 core items. Pending: a human
+check of every shipped photo (screened by AI so far), then a re-release with all 5,420 items.
+
+**Run** (Docker, clean checkout):
 
 ```bash
 make run
 ```
 
-- Without keys: downloads the pinned dataset, re-grades every stored answer and checks that the recomputed
-  scores equal the published ones (exit code = verification result). No GPU, about a minute.
-- With `LLM_NAME`, `LLM_BASE_URL`, `LLM_API_KEY` set (any OpenAI-compatible endpoint, e.g. the CSCS Apertus
-  endpoint): also evaluates that model on a seeded, stratified sample (`SAMPLE=150`) or on everything (`FULL=1`).
-- Optional independent judge: `JUDGE_MODEL`, `JUDGE_BASE_URL`, `JUDGE_API_KEY` (we used `openai/gpt-oss-120b:groq`
-  via the Hugging Face router, `https://router.huggingface.co/v1`, prompt `judge-v1`); without it the deterministic code grader is used. See `track_1b/.env.example`.
-- Requirements: Docker; runtime ~1 min (verify), under an hour for a full 70B run; API key only for live runs;
-  no model weights are downloaded.
+- No keys: downloads the pinned dataset and checks the reference results (Apertus 70B): every stored answer
+  re-graded by the code grader, recomputed scores equal to the published ones (exit code = result). CPU only,
+  about a minute.
+- With `LLM_NAME`, `LLM_BASE_URL`, `LLM_API_KEY` exported (any OpenAI-compatible endpoint): also evaluates that
+  model on a seeded, stratified sample (`SAMPLE=150`) or on all items (`FULL=1`).
+- Optional judge: `JUDGE_MODEL`, `JUDGE_BASE_URL`, `JUDGE_API_KEY` (we used `openai/gpt-oss-120b:groq` via
+  `https://router.huggingface.co/v1`, prompt `judge-v1`). Without it, the code grader grades alone. Variables:
+  `track_1b/.env.example`.
+- Requirements: Docker. An API key only for live runs. No model weights are downloaded. A full 70B run takes
+  under an hour.
 
 ---
 

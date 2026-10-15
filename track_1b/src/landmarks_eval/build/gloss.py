@@ -1,6 +1,7 @@
 """English machine glosses of answers for the human audit (annotation aid only; docs/ai_use_statement.md).
 
-Only items of the audit sample whose answer is not in French are glossed (the team reads French and English).
+Only audit-sample items whose question is not in French (and whose answer is not empty) are glossed (the team
+reads French and English).
 The gloss keeps every proper name exactly as written, so annotators still compare names against the gold
 themselves; the original answer stays authoritative and is shown next to the gloss. Same open-weights model as
 the judge, temperature 0. Cached in <results>/glosses.jsonl by response hash.

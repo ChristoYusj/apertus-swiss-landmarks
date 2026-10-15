@@ -76,8 +76,8 @@ def verify(dataset: Path, results: Path, expected: Path | None, log=print) -> bo
             bad.append(rec["image_id"])
     check("V2 image hashes", not bad, f"{len(bad)} mismatched: {bad[:5]}")
     # V7 privacy: every shipped photo was cleared in the photo screening (Task P; as run: AI review + the lead's edge
-    # decisions, reviewers per photo in pii_reviewer_ids); an unscreened dataset is
-    # not publishable, whatever the other checks say
+    # decisions, reviewers per photo in pii_reviewer_ids); an unscreened dataset is not publishable, whatever the
+    # other checks say
     on_disk = {p.stem for p in (dataset / "images").glob("*.jpg")}
     uncleared += sorted(on_disk - {r["image_id"] for r in image_recs})
     check("V7 privacy screening", not uncleared,

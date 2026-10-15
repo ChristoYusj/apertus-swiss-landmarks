@@ -1,10 +1,10 @@
 """Command-line entry point: `landmarks-eval <command>` (or `python -m landmarks_eval`).
 
-Judge-facing commands (no network needed for `verify`):
+Judge-facing commands (`verify` needs no API key):
   verify   re-check shipped responses/judgements against the dataset and expected scores (exit 1 on any mismatch)
-  live     ask the model in LLM_NAME/LLM_BASE_URL/LLM_API_KEY a seeded sample, grade it, print scores
+  live     ask the model in LLM_NAME/LLM_BASE_URL/LLM_API_KEY (all items or a seeded --sample), grade, print scores
   run / grade / score   the individual stages
-Team-only commands (network, build the dataset): build-landmarks, build-images, build-questions
+Team-only commands (dataset build, photo screening, grading audit) are marked "(team only)" in --help.
 """
 
 from __future__ import annotations
@@ -19,6 +19,15 @@ PKG = Path(__file__).resolve().parent
 ROOT = PKG.parents[1]  # track_1b/ in a source checkout
 DEFAULT_WORK = ROOT / "work"
 EXPECTED = PKG / "expected" / "reference.scores.json"
+DS_HELP = "dataset dir or hf:<repo>@<revision> (default: config.json)"
+RES_HELP = "results directory (responses.jsonl, judgements.jsonl)"
+STAGE_HELP = {
+    "run": "ask the model in LLM_* every item (or a seeded --sample N); writes responses.jsonl",
+    "grade": "code grader on every answer, plus the judge (JUDGE_*, if set) on free answers; writes judgements.jsonl",
+    "score": "compute scores.json from responses and judgements",
+    "verify": "offline checks V1-V7 against the dataset and expected scores (exit 1 on any failure)",
+    "live": "run + grade + score in one go (needs LLM_*; JUDGE_* optional)",
+}
 
 
 def resolve_dataset(spec: str | None) -> Path:
@@ -51,47 +60,55 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("build-images", help="(team only, network) fetch, licence-filter and re-encode photos")
     sub.add_parser("build-questions", help="(team only) generate test cases from the frozen templates")
     sub.add_parser("build-extensions", help="(team only) add the registered extension items (docs/extensions_plan.md)")
-    r = sub.add_parser("review-page", help="(team only) write the offline photo-screening page + photos")
+    r = sub.add_parser("review-page",
+                       help="(team only) write the offline photo-screening page + photos (protocol v2-team)")
     r.add_argument("--out", type=Path, default=None, help="output folder (default: <work>/review/photo_screening)")
-    m = sub.add_parser("merge-review", help="(team only) merge the team's screening_team.json decision file")
-    m.add_argument("files", nargs=1, type=Path)
-    cs = sub.add_parser("combine-screening", help="(team only) AI screening + A1's check -> screening_team.json")
+    m = sub.add_parser("merge-review",
+                       help="(team only) merge a screening_team.json decision file into the image records")
+    m.add_argument("files", nargs=1, type=Path, help="screening_team.json")
+    cs = sub.add_parser("combine-screening",
+                        help="(team only) AI screening + a check file (by A1 or a second AI) -> screening_team.json")
     cs.add_argument("--ai", type=Path, required=True, help="screening_ai.json (format ai-screening)")
     cs.add_argument("--check", type=Path, required=True, help="screening_check.json (format screening-check)")
-    cs.add_argument("--out", type=Path, required=True)
+    cs.add_argument("--out", type=Path, required=True, help="screening_team.json to write")
     sub.add_parser("assemble", help="(team only) assemble the publishable dataset folder")
-    ap_ = sub.add_parser("audit-page", help="(team only) draw the human-audit sample and write the blind labelling page")
-    ap_.add_argument("--dataset")
-    ap_.add_argument("--results", type=Path, required=True)
-    ap_.add_argument("--out", type=Path, required=True)
-    ma = sub.add_parser("merge-audit", help="(team only) merge audit_labels.json files into <results>/human_audit.jsonl")
-    ma.add_argument("--results", type=Path, required=True)
+    ap_ = sub.add_parser("audit-page",
+                         help="(team only) draw the human-audit sample and write the protocol-v3 blind labelling page")
+    ap_.add_argument("--dataset", help=DS_HELP)
+    ap_.add_argument("--results", type=Path, required=True, help=RES_HELP)
+    ap_.add_argument("--out", type=Path, required=True, help="output folder")
+    ma = sub.add_parser("merge-audit", help="(team only) merge protocol-v3 audit_labels.json files into "
+                                            "<results>/human_audit.jsonl "
+                                            "(as run: tools/audit_online/merge_audit_v4.py)")
+    ma.add_argument("--results", type=Path, required=True, help=RES_HELP)
     ma.add_argument("--sample", type=Path, required=True, help="audit_sample.json written by audit-page")
-    ma.add_argument("files", nargs="+", type=Path)
+    ma.add_argument("files", nargs="+", type=Path, help="audit_labels.json files")
 
     fg = sub.add_parser("figures", help="report figures from a scores.json (needs the [figures] extra)")
-    fg.add_argument("--scores", type=Path, required=True)
-    fg.add_argument("--out", type=Path, default=Path("docs/figures"))
+    fg.add_argument("--scores", type=Path, required=True, help="scores.json of the main model")
+    fg.add_argument("--out", type=Path, default=Path("docs/figures"), help="output folder (default: docs/figures)")
     fg.add_argument("--compare", nargs="*", default=[], help="label=scores.json pairs for the model comparison figure")
-    gl = sub.add_parser("glosses", help="(team only) English machine glosses of non-French answers in the audit sample")
-    gl.add_argument("--dataset")
-    gl.add_argument("--results", type=Path, required=True)
+    gl = sub.add_parser("glosses", help="(team only, judge endpoint) English machine glosses of non-French answers "
+                                        "in the audit sample")
+    gl.add_argument("--dataset", help=DS_HELP)
+    gl.add_argument("--results", type=Path, required=True, help=RES_HELP)
     gl.add_argument("--sample", type=Path, required=True, help="audit_sample.json written by audit-page")
-    jd = sub.add_parser("judge-dev", help="(team only) run the LLM judge on the confirmed 40-item dev set")
-    jd.add_argument("--dataset")
-    jd.add_argument("--results", type=Path, required=True)
-    st = sub.add_parser("stability", help="re-ask a seeded sample to measure temperature-0 answer stability")
-    st.add_argument("--dataset")
-    st.add_argument("--results", type=Path, required=True)
-    st.add_argument("--n", type=int, default=100)
-    st.add_argument("--probe", type=int, default=20)
-    st.add_argument("--repeats", type=int, default=2)
+    jd = sub.add_parser("judge-dev", help="(team only, judge endpoint) run the LLM judge on the 40-item dev set")
+    jd.add_argument("--dataset", help=DS_HELP)
+    jd.add_argument("--results", type=Path, required=True, help=RES_HELP)
+    st = sub.add_parser("stability", help="re-ask a seeded sample to measure temperature-0 answer stability "
+                                          "(needs LLM_* unless --regrade)")
+    st.add_argument("--dataset", help=DS_HELP)
+    st.add_argument("--results", type=Path, required=True, help=RES_HELP)
+    st.add_argument("--n", type=int, default=100, help="items asked once more (default 100)")
+    st.add_argument("--probe", type=int, default=20, help="of those, items asked --repeats more times (default 20)")
+    st.add_argument("--repeats", type=int, default=2, help="extra answers per probe item (default 2)")
     st.add_argument("--regrade", action="store_true", help="no requests: re-label the stored stability responses")
 
     for name in ("run", "grade", "score", "verify", "live"):
-        p = sub.add_parser(name)
-        p.add_argument("--dataset", help="dataset dir or hf:<repo>@<revision> (default: config.json)")
-        p.add_argument("--results", type=Path, help="results directory (responses.jsonl, judgements.jsonl)")
+        p = sub.add_parser(name, help=STAGE_HELP[name])
+        p.add_argument("--dataset", help=DS_HELP)
+        p.add_argument("--results", type=Path, help=RES_HELP)
         if name in ("run", "live"):
             p.add_argument("--sample", type=int, default=None, help="seeded stratified sample size (default: all)")
         if name in ("score", "verify"):

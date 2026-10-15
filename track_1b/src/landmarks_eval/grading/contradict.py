@@ -1,8 +1,8 @@
 """Contradictions in otherwise vague answers (review 4, 14 Oct; post-hoc, see CHANGELOG).
 
 SimpleQA's NOT_ATTEMPTED requires that the answer does not contradict the gold. An independent adjudication of
-all 192 judge-vs-code disagreements (two reads) found that a vague answer is still an error when it states
-something the gold excludes:
+all 192 judge-vs-code disagreements (two reads by AI adjudicator agents) found that a vague answer is still an
+error when it states something the gold excludes:
   * a building TYPE the landmark is not ("Chasa communala" = town hall for a church; a "mill" for a castle);
     a type that fits ("Chasa da baselgia" for a church) stays not attempted;
   * a denomination the landmark does not have ("reformed" for a Catholic church);

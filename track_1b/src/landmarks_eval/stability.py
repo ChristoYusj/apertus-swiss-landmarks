@@ -3,7 +3,7 @@
 Hosted inference with batching is not bit-for-bit deterministic even at temperature 0, which is why
 `verify` replays the STORED answers instead of re-querying. This check measures how much it matters:
   * rerun:  a seeded stratified sample of N items is asked once more (fresh request, no cache)
-  * probe:  the first K of those are asked R more times
+  * probe:  a seeded random K of those are asked R more times
 Reported: identical-text rate, same-code-label rate, Cohen's kappa (official vs rerun labels), and per
 probe item the number of distinct answers / labels. Responses are stored in stability_responses.jsonl.
 """

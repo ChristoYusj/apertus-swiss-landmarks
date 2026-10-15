@@ -11,7 +11,7 @@ D = "http://wikiba.se/ontology#DeprecatedRank"
 
 
 def test_year_precision_year():
-    y, w, raw, p = year_gold([("1585-01-01T00:00:00Z", 9, N)])
+    y, w, _, p = year_gold([("1585-01-01T00:00:00Z", 9, N)])
     assert (y, w, p) == (1585, (1580, 1590), 9)
 
 

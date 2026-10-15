@@ -1,10 +1,10 @@
 # Annotation guidelines (v2)
 
-The guideline was written for three annotators (pseudonymous IDs **A1, A2, A3**); as run, the team has **one** annotator, A1
-(see the protocol notes under each task and `CHANGELOG.md`). There are two tasks: photo screening (Task P) and the
-grading audit (Task G).
+Written for three annotators (pseudonymous IDs **A1, A2, A3**). As run, there was **one** annotator, A1 (see the
+"as run" notes under each task and `CHANGELOG.md`). Two tasks: photo screening (Task P) and the grading audit
+(Task G).
 
-## Task P: photo screening (guideline v2-team, joint decisions)
+## Task P: photo screening (guideline v2-team, joint decisions; not run, see *as run* below)
 The team screens **together on one computer** and records **one joint decision per landmark** (no split, no
 separate votes). Disagreements are discussed until the team agrees; if it cannot agree, the cautious option is
 recorded. The page shows no model answers. One card per landmark:
@@ -15,28 +15,28 @@ recorded. The page shows no model answers. One card per landmark:
    - the inside of a private home;
    - any text with personal data (name plates, letters).
 
-   People who are tiny and unrecognisable in a crowd or in the distance are fine. We **exclude and replace**
-   photos; we never blur them, because blurring would modify a CC BY-SA work. Choose **Wrong object** if the
-   photo does not show this landmark (another building, a map, a painting). An excluded or wrong main photo
-   removes the landmark from the dataset; its existing answers are kept in `metadata/excluded_items.jsonl`.
+   Tiny, unrecognisable people in a crowd or in the distance are fine. We **exclude and replace** photos; we never
+   blur them, because blurring would modify a CC BY-SA work. Choose **Wrong object** if the photo does not show
+   this landmark (another building, a map, a painting). An excluded or wrong main photo removes the landmark from
+   the dataset; its existing answers are kept in `metadata/excluded_items.jsonl`.
 2. **Second view.** Among the other photos, click **Use as 2nd view** on the best one: the **same object**, from
-   the **outside** (or the main visible feature for a fountain, bridge or statue), clearly enough that someone
-   who knows the object could recognise it, and with **no recognisable people** (rule 1). If none qualifies,
-   click **None usable** (different building, interior, detail only, mostly scenery, old engraving or map).
-3. **Low-information (optional).** Click **Too generic** on a photo (also with no people) that alone would not
+   the **outside** (or the main visible feature for a fountain, bridge or statue), clear enough that someone who
+   knows the object could recognise it, and with **no recognisable people** (rule 1). If none qualifies, click
+   **None usable** (different building, interior, detail only, mostly scenery, old engraving or map).
+3. **Too generic (optional).** Click **Too generic** on a photo (also with no people) that alone would not
    let even an expert know *which* object it is: a close-up of a generic door, a typical chapel interior, a
    plain wall. It becomes an "unknowable" trap item, where the correct behaviour is to say "I can't tell".
 
-Only the photos picked in 2 and 3 are shipped besides the main photo; the others are never published.
-If unsure, choose the more cautious option: **Exclude** for privacy, don't pick a second view.
-Progress is saved in the browser after every click; **Save progress** downloads `screening_team.json`
-at any time, and **Load saved file** resumes from it.
+Besides the main photo, only the photos picked in 2 and 3 are shipped; the others are never published.
+If unsure, choose the more cautious option: **Exclude** for privacy, no second view.
+The page saves progress in the browser after every click; **Save progress** downloads `screening_team.json`
+and **Load saved file** resumes from it.
 
 ### Task P as run: AI screening with a second AI review (protocol v3b-ai-review, 14–15 Oct)
-The team did not have the hours for a joint screening of 917 photos, so the rules above were applied by AI, with
-the lead (A1) setting the policy and deciding edge cases. No model answer was shown at any step.
+The team did not have the hours to screen 917 photos jointly, so AI applied the rules above. The lead (A1) set
+the policy and decided edge cases. No model answer was shown at any step.
 
-1. **AI screening.** Claude (Opus 5.5) applied rules 1–3 to every photo, viewing each one at the published size
+1. **AI screening.** Claude (Opus 5.5) applied rules 1–3 to every photo, viewing each at the published size
    (8 parallel screeners, 33 landmarks each). Each photo got a structured record: people (none / distant and
    unrecognisable / recognisable), licence plate, private interior, personal text, whether it shows the landmark,
    the kind of view, and whether it is too generic.
@@ -50,21 +50,23 @@ the lead (A1) setting the policy and deciding edge cases. No model answer was sh
    (`tools/screening_online/check.html`: one row per landmark with only the published photos) was prepared but
    used for 3 rows only, so **no person looked at every published photo**.
 
-The second review's verdict wins (`landmarks-eval combine-screening`, converter
-`tools/screening_online/hermes_to_check.py`): a photo is published only if it was kept; a rejected 2nd view or
-too-generic photo becomes "none" (never silently replaced); a rejected main photo drops the landmark, with the reason
-in the exclusion log (privacy, wrong object, or "may not show the landmark (excluded when unsure)"). Image records
-name the reviewers (`ai:claude-opus-5-5`, `ai:hermes`, plus `A1` on the shipped photos a person decided).
+The second review's verdict wins, except on the photos the lead decided (`landmarks-eval combine-screening`,
+converter `tools/screening_online/hermes_to_check.py`). A photo is published only if it was kept. A rejected 2nd
+view or too-generic photo becomes "none" (never silently replaced). A rejected main photo drops the landmark, with
+the reason in the exclusion log (privacy, wrong object, or "may not show the landmark (excluded when unsure)").
+Image records name the reviewers (`ai:claude-opus-5-5`, `ai:hermes`, plus `A1` on the shipped photos a person
+decided).
 
 ## Task G: grading audit (after the official run)
-Task G is done **independently**: each annotator labels alone (sharing one computer is fine, one after the
-other, each under their own ID), and no item is discussed until all annotators have submitted their labels.
-Agreement between annotators is only meaningful if the labels are independent.
-Two equivalent tools show the same items in the same order: the offline page (`landmarks-eval audit-page`) and an
-online page for annotators on other devices (`tools/audit_online`, labels stored per annotator; the page only
-shows your own). Answers not in French come with a labelled English machine gloss (same model as the judge;
-proper names left untranslated); the original answer is authoritative, and you tick *used translation* if you
-relied on the gloss.
+Each annotator labels **independently**: alone (one shared computer is fine, one after the other, each under
+their own ID), and no item is discussed until all annotators have submitted. Agreement between annotators is only
+meaningful if the labels are independent.
+
+Forms: as run (protocol audit-v4), one blind fillable PDF per part (below). The earlier protocol v3 had an
+offline page (`landmarks-eval audit-page`) and an online page (`tools/audit_online`) with the same items in the
+same order; it was replaced before any label was collected. Answers not in French come with a labelled English
+machine gloss (same model as the judge; proper names left untranslated). The original answer is authoritative;
+tick *used translation* if you relied on the gloss.
 
 You see the question, the gold answer (with accepted alternatives) and the model's answer. You do **not** see the automatic grades. Choose exactly one label:
 
@@ -96,4 +98,14 @@ Worked examples:
 | En quelle année… ? | 1585 (window 1580–1590) | "Au XVIe siècle." | Not attempted |
 | Ce monument se trouve à Berne… ? | Lausanne | "Ce n'est pas Berne : c'est la Fontaine de la Justice à Lausanne." | Correct |
 
-**As registered (protocol audit-v4, 15 Oct ~12:47):** three annotators (A1, A2, A3) each label 194 answers blind, on a fillable PDF that shows no grade of any kind (`tools/audit_online/build_audit_v4.py`, `build_check_pdf.py --blind`): 164 of their own and a 30-item overlap that all three label (Fleiss' κ). The 522 items are the pre-registered 20 % sample minus the landmarks the photo screening removed. Work alone, without looking anything up, and do not discuss items until all three have finished. Human label = the annotator's label; on the overlap, the majority of the three. A second AI's grades of the same sample are reported separately as an AI cross-check, never as Task G. **As run:** the team lead (A1) graded all three parts (stated 15 Oct), so the labels are one annotator's: 522 answers, judge–human agreement reported, no agreement between people; the second and third labels of the 30 shared items are kept as repeats (the overlap was known, so this is not a blind test-retest).
+**As registered (protocol audit-v4, 15 Oct ~12:47):** three annotators (A1, A2, A3) each label 194 answers blind,
+on a fillable PDF that shows no grade of any kind (`tools/audit_online/build_audit_v4.py`,
+`build_check_pdf.py --blind`): 164 of their own and a 30-item overlap that all three label (Fleiss' κ). The 522
+items are the pre-registered 20 % sample minus the landmarks the photo screening removed. Work alone, without
+looking anything up, and do not discuss items until all three have finished. Human label = the annotator's label;
+on the overlap, the majority of the three. A second AI's grades of the same sample are reported separately as an
+AI cross-check, never as Task G.
+
+**As run:** the team lead (A1) graded all three parts (stated 15 Oct), so the labels are one annotator's: 522
+answers, judge–human agreement reported, no agreement between people. The second and third labels of the 30
+shared items are kept as repeats (the overlap was known, so this is not a blind test-retest).

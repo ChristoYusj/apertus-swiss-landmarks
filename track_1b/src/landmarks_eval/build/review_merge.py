@@ -1,7 +1,7 @@
-"""Merge the team's photo-screening file (screening_team.json) into the image records.
+"""Merge a photo-screening decision file (screening_team.json) into the image records.
 
-The team screens together on one computer and records one joint decision per landmark
-(docs/annotation_guidelines.md, Task P, guideline v2-team). Decision rules:
+Protocol v2-team (not run): the team screens together on one computer and records one joint decision per landmark
+(docs/annotation_guidelines.md, Task P). Decision rules (every protocol):
   main photo  "ok"       -> privacy keep
               "exclude"  -> privacy exclude; the landmark is dropped and reported (no silent swap)
               "wrong"    -> the photo does not show the landmark; the landmark is dropped and reported
@@ -10,10 +10,13 @@ The team screens together on one computer and records one joint decision per lan
   other alts  not picked -> stay "pending" and are never shipped
 A landmark without a decision stays pending (reported), so a partial file can be merged safely.
 
-Protocol v3-ai-assisted (14 Oct, before any team decision existed): an AI screens every photo and a second AI pass
-re-checks every photo it would ship; annotator A1 then checks every published photo (tools/screening_online/check.html).
-`combine_ai_check` turns the AI decisions + A1's checks into the same decision file; a photo is shipped only when A1
-accepted it, and the file names both reviewers.
+Protocol v3-ai-assisted (14 Oct, before any team decision existed; used for 3 rows only): an AI screens every photo
+and a second AI pass re-checks every photo it would ship; annotator A1 then checks every published photo
+(tools/screening_online/check.html). `combine_ai_check` turns the AI decisions + A1's checks into the same decision
+file; a photo is shipped only when A1 accepted it, and the file names both reviewers.
+
+As run (protocol v3b-ai-review, 15 Oct): the check came from a second AI reviewer (Hermes) instead of A1; A1 is
+credited only on the photos a person decided (see combine_ai_check).
 """
 
 from __future__ import annotations
@@ -114,8 +117,9 @@ def combine_ai_check(ai: dict, check: dict) -> dict:
     """AI screening (format ai-screening) + A1's check (format screening-check) -> a decision file for merge_review.
 
     A1's verdict wins: the main photo is kept only if A1 marked it OK; a 2nd view or too-generic photo is shipped
-    only if A1 marked it OK, otherwise it becomes "none" (no silent replacement). A landmark A1 did not check stays
-    pending, so the privacy gate (verify V7) keeps failing until every published photo was seen by a person.
+    only if A1 marked it OK, otherwise it becomes "none" (no silent replacement). A landmark the checker did not
+    check stays pending, so the privacy gate (verify V7) keeps failing until every published photo was checked (by
+    A1 under v3-ai-assisted; by the second AI under v3b-ai-review).
 
     The check can also come from a second AI reviewer (check["annotator"] = "ai:<name>", protocol v3b-ai-review): then
     the file names the two AI reviewers, and A1 is added only to the photos a person decided (a check's

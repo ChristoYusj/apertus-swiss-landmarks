@@ -7,9 +7,10 @@ Wikipedia articles about the object in any language edition (Wikidata sitelinks 
   mid  = 1-2 articles
   high = 3 or more articles
 The same definition is used in every region. TARGET landmarks are drawn at random
-(seeded) per cell with a soft cap of 50 % per type group, plus up to R reserves per
-cell used to replace photos excluded during the privacy (PII) screening. When a cell
-has fewer candidates than TARGET (Romansh / high), the whole cell is taken (census).
+(seeded) per cell with a soft cap of 50 % per type group, plus up to RESERVES reserves
+per cell. A reserve replaces a landmark with no usable name (here) or no acceptable main
+photo (images.py); landmarks removed in the photo screening are not replaced. When a
+cell has fewer candidates than TARGET (Romansh / high), the whole cell is taken (census).
 """
 
 from __future__ import annotations

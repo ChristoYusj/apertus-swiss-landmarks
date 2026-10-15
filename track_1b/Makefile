@@ -1,6 +1,7 @@
 # Hack Apertus 2026 - Track 1B - Swiss heritage factuality benchmark
 # Judges: `make run` (Docker). Offline verification always runs and sets the exit code;
 # a live evaluation of LLM_NAME/LLM_BASE_URL/LLM_API_KEY runs on a seeded sample when they are set.
+# SAMPLE=N sets the sample size, FULL=1 asks every item, STRICT=1 makes a failed live run fail `make`.
 IMAGE  ?= apertus-swiss-landmarks
 SAMPLE ?= 150
 FULL   ?= 0

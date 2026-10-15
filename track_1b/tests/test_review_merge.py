@@ -1,4 +1,5 @@
-"""Photo screening (guideline v2-team): one joint decision per landmark, dropped landmarks, no silent deletion."""
+"""Photo screening merge (protocols v2-team, v3-ai-assisted, v3b-ai-review): decisions per landmark, dropped
+landmarks, no silent deletion, reviewers credited per photo."""
 
 import json
 

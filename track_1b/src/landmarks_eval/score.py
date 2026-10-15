@@ -1,4 +1,5 @@
-"""Grade responses (code grader on 100 %, judge on 100 % when available) and compute scores.json."""
+"""Grade responses (code grader on every answer; the judge, when set, on every free answer: multiple choice is
+code-only) and compute scores.json."""
 
 from __future__ import annotations
 
@@ -190,7 +191,7 @@ def compute_scores(dataset: Path, results: Path, bootstrap: int = 2000) -> dict:
     adj_path = results / "disagreement_adjudication.jsonl"
     if adj_path.exists():
         # sensitivity analysis (not the registered result): the judge's label replaced by the adjudicated label where
-        # an independent two-read adjudication of a judge-vs-code disagreement settled it
+        # an independent two-read adjudication (AI-assisted) of a judge-vs-code disagreement settled it
         adj = {a["item_id"]: a["adjudicated_label"] for a in load_jsonl(adj_path) if a.get("adjudicated_label")}
         alt = [{**r, "label": adj.get(r["item_id"], r["label"])} for r in graded]
         alt_main = [r for r in alt if r["arm"] == "photo_main"]

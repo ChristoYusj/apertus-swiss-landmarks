@@ -277,7 +277,8 @@ def test_proper_names_that_look_generic_stay_distinctive():
 
 
 # --- Fix v5 (13 Oct): pre-registered "vague answers = not attempted", applied to hedged guesses ----------------
-# Every text below is a real answer from the official run (the 145 changed labels were all read by hand).
+# Every text below is a real answer from the official run (the 145 changed labels were all read one by one,
+# AI-assisted: Claude, not a person).
 from landmarks_eval.analysis import Gazetteer as _Gz
 
 _GZ = _Gz({"cantons": {"TG": {"names": ["thurgau"], "region": "DE"}, "GR": {"names": ["graubunden", "grischun"], "region": None},
@@ -362,7 +363,7 @@ def test_sent_is_a_town_only_outside_dedications():
     assert gz.locate("La baselgia da Sent Martin.")["kind"] == "none"
 
 
-# --- Review 2 (13 Oct): a second independent reviewer read every answer graded incorrect --------------------
+# --- Review 2 (13 Oct): a second independent reviewer (AI agent) read every answer graded incorrect ---------
 # Each case is a real answer from the official run (70B or 8B); comments name the reviewer's finding.
 _GZ2 = Gazetteer({
     "cantons": {"GR": {"names": ["graubunden", "grischun", "grisons", "grigioni"], "region": None},
@@ -527,7 +528,7 @@ def test_review2_sent_and_cuera():
     assert _GZ2.locate("probabilmente in Danimarca")["kind"] == "abroad"
 
 
-# --- Review 3 (13 Oct): a third reviewer read 831 labels (all small rule groups + a random 150 per model) ---------
+# --- Review 3 (13 Oct): a third reviewer (AI agent) read 831 labels (all small rule groups + a random 150 per model)
 @pytest.mark.parametrize("text,label", [
     # a named landmark was missed: a lowercase place adjective, two capitalised short words mid-sentence
     ("Musee gruérien", "incorrect"),
@@ -570,7 +571,7 @@ def test_review3_sursilvan_refusal():
                        gold_canton="BE").label == "not_attempted"
 
 
-# --- Review 4 (14 Oct): two independent reads of all 192 judge-vs-code disagreements ---------------------------
+# --- Review 4 (14 Oct): two independent reads (AI agents) of all 192 judge-vs-code disagreements ----------------
 # A vague answer is still an error when it contradicts the gold (SimpleQA: not attempted = "without contradicting").
 from landmarks_eval.grading import contradict as C  # noqa: E402
 

@@ -67,7 +67,7 @@ def test_page_is_blind_and_repeats_are_spaced(tmp_path):
 
 
 def test_merge_keeps_latest_and_splits_repeats(tmp_path):
-    ds, res, data, sample = _labels_page(tmp_path)
+    _, res, _, sample = _labels_page(tmp_path)
     rep = sample["repeats"][0]
     solo = next(x["item_id"] for x in sample["items"] if x["item_id"] != rep["item_id"])
     f1 = tmp_path / "a.json"
@@ -110,7 +110,6 @@ def test_agreement_majority_and_kappas():
 
 def test_glosses_only_non_french_and_cached(tmp_path, monkeypatch):
     """Glosses: machine translation of non-French audit answers, labelled, cached by response hash."""
-    import json
     from landmarks_eval.build import gloss as G
     from landmarks_eval.client import Endpoint, Result
     ds = tmp_path / "ds"

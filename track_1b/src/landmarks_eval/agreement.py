@@ -1,7 +1,9 @@
 """Agreement between the human audit (Task G), the LLM judge and the code grader (analysis_plan.md, "Human audit").
 
-The human label of an item is the annotator's label; on the 100 overlap items it is the majority of the three
-(no majority -> left out of the human-vs-grader comparisons, counted as "no_majority").
+The human label of an item is the annotator's label; on an item labelled by three annotators it is the majority
+of the three (no majority -> left out of the human-vs-grader comparisons, counted as "no_majority"). As run
+(audit-v4), human_audit.jsonl holds one label per item, all by one annotator (A1); the repeat labels of the 30
+shared items are in human_audit_repeat.jsonl.
 """
 
 from __future__ import annotations
@@ -67,8 +69,8 @@ def agreement(human_rows: list[dict], judgements: dict, cases: dict) -> dict:
 
 
 def self_consistency(first_rows: list[dict], repeat_rows: list[dict]) -> dict | None:
-    """Test-retest agreement of one annotator on the items shown twice (protocol v3: one annotator, so this
-    replaces the agreement between three annotators)."""
+    """Agreement of one annotator with their own repeat labels of the same items (designed for protocol v3's hidden
+    repeats; as run, the repeats are the 30 shared items of audit-v4, a known overlap, so not a blind test-retest)."""
     first = {(r["item_id"], r["annotator_id"]): r["label"] for r in first_rows}
     pairs = [(first[(r["item_id"], r["annotator_id"])], r["label"]) for r in repeat_rows
              if (r["item_id"], r["annotator_id"]) in first]

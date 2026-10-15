@@ -8,6 +8,8 @@ SimpleQA three-way labels. Edge rules (pre-registered in docs/analysis_plan.md):
     century-only answers ("15th century") are too vague -> not_attempted
   * place: correct iff a municipality alias is mentioned (canton scored separately)
   * premise trap: correct iff the answer does not adopt the false town
+Later documented changes (team-lead rules of 13 Oct, fixes v2-v5, reviews 2-4; CHANGELOG) are noted where they
+apply below.
 """
 
 from __future__ import annotations
@@ -41,7 +43,8 @@ ABSTAIN_PATTERNS = [
     # en
     r"i (do not|don t) know", r"(cannot|can t|unable to) (identify|determine|tell|say|recognize|recognise)",
     r"not (sure|certain)", r"no (way|information) to", r"\bunknown\b", r"\buncertain\b", r"^\s*n a\s*$",
-    # added 13 Oct after the second independent review read every answer graded incorrect (242 refusals missed)
+    # added 13 Oct after the second independent review (an AI agent) read every answer graded incorrect (242
+    # refusals missed)
     r"non e sicuro", r"(bin|sind) (mir |uns )?nicht (ganz )?sicher",
     r"nicht (eindeutig |sicher |genau )?aus dem bild( allein)? (ableitbar|bestimmbar|zu bestimmen|erkennbar)",
     r"\bableitbar\b", r"mir nicht bekannt", r"(ist|sind) .{0,70}nicht moglich", r"je ne trouve pas", r"ne dispose pas d", r"non identifiable",
@@ -164,6 +167,8 @@ _DEDICATED = re.compile(r"(d[ée]di[ée]e?s?|consacr[ée]e?s?|dedicat[aoie]|dedi
 
 def _place_preps(text: str):
     return [m for m in _PREP_PLACE.finditer(text) if not _DEDICATED.search(text[max(0, m.start() - 20):m.start()])]
+
+
 _BOLD = re.compile(r"\*\*([^*]{3,80})\*\*")
 # Italian/French definite article + capitalised word mid-sentence: in these languages a capitalised noun after the
 # article is a name ("il Castello di Mir"); German capitalises every noun, so German articles are not used.

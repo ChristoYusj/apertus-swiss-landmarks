@@ -80,7 +80,7 @@ class Expected(str, Enum):
 
 
 class Label3(str, Enum):
-    """SimpleQA three-way grade (+ api_error kept as a separate bucket)."""
+    """SimpleQA three-way grade. API errors get no grade (they stay a response status)."""
     correct = "correct"
     incorrect = "incorrect"
     not_attempted = "not_attempted"
