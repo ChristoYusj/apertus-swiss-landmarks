@@ -7,10 +7,10 @@
 > federal inventory (KGS), stratified by language region and fame, with photo, second-view, multiple-choice,
 > text-only and trap variants and per-item licences. Apertus 1.5 70B almost never recognises a landmark from its
 > photo: given four named options it is right only 35 % of the time (chance 25 %; the open model Gemma-4-31B:
-> 61 %), equally in all four languages. What the language changes is whether it admits it: on the same photos
+> 61 %), about equally in all four languages. What the language changes is whether it admits it: on the same photos
 > it mostly declines in French (11 % of names confidently wrong) but answers in Romansh (68 % of names and
 > 97 % of places wrong), where it also relocates half of all non-Graubünden landmarks to Graubünden, a pull
-> Gemma shares. Shown a photo too generic to identify, it declines every time; Gemma guesses.
+> Gemma shares. Shown a photo too generic to identify, it declines every time; Gemma invents a name for a quarter.
 
 **Track:** Apertus Readiness - Track 1B (Swiss Voices), dimension: core-task intelligence (factuality)  
 **Event:** Online  
@@ -65,7 +65,7 @@ from *knowledge*. `trap_premise`: the question asserts the town of a real look-a
 ("This building is in Rothrist. Which building is it?"). `photo_alt` (FR, DE): a second view of the same object,
 a memorisation hint. `trap_lowinfo` (FR, DE): a photo too generic to identify; declining is right.
 Extensions, registered before they were run (`docs/extensions_plan.md`): `photo_mc`, the main photo with four
-named options (the landmark and three of the same type, mostly from the same region; chance 25 %), in all four
+named options (the landmark and three others, of the same type and mostly the same region; chance 25 %), in all four
 languages; `photo_main_w2` (FR, RM), the name and place questions with a second, independent wording.
 
 **Selection funnel** (seed 20261013): 13,417 heritage objects with a photo → 4,153 eligible (public landmark
@@ -155,15 +155,15 @@ kept their label over four answers: the endpoint is not bit-for-bit deterministi
 Only 4 of 1,004 names and 6 of 1,004 places are right; 360 of 364 committed names are wrong. The same instruction
 ("if you are not sure, say so") gives honest refusals in French and confident fabrication in Romansh, on identical
 images. **With four named options** (`photo_mc`) the language gap disappears: 70B picks the right landmark in
-32–39 % in every language (34.7 % overall, 95 % CI 31.8–37.7; chance 25 %), 8B in 31–33 %. Part of the margin
-over chance is a position bias (70B starts with "A" in 59 % of answers; 74 % correct when the answer is A, about
-21 % otherwise, still above the ~14 % a pure "A" bias would give). So recognition is weak in every language; the
+32–39 % in every language (34.7 % overall, 95 % CI 29.7–39.7 resampling landmarks; chance 25 %), 8B in 31–33 %.
+Part of the margin over chance is a position bias (70B starts with "A" in 58 % of answers; 74 % correct when the
+answer is A, about 22 % otherwise, still above the ~14 % a pure "A" bias would give). So recognition is weak in every language; the
 language changes whether the model admits it. **A second, independent wording** (`photo_main_w2`, registered
-before the run) keeps the gap: Romansh names 93 % wrong vs French 20 % (70B); the 8B model is very sensitive to
+before the run for 70B, also run on 8B and Gemma) keeps the gap: Romansh names 93 % wrong vs French 20 % (70B); the 8B model is very sensitive to
 wording (French names wrong 78 % → 32 %) but Romansh stays its worst language (79 %). The comparison model, Gemma-4-31B, has no such gap: it rarely declines (names not attempted 5–10 %), gives a
-wrong name in 87–94 % of answers in every language, and with four options is right 61 % of the time, again in
-every language. It recognises far more than Apertus but does not say when it does not know; the
-language-dependent caution is specific to Apertus 70B.
+wrong name in 86–94 % of answers in every language, and with four options is right 61 % of the time (95 % CI
+55.8–66.4; 61–63 % in every language). It recognises far more than Apertus but does not say when it does not
+know; the language-dependent caution is an Apertus trait (both sizes, strongest in 70B).
 
 ![Free answer (left) vs multiple choice (right), same photos, by question language and model.](docs/figures/fig4_models.png){width=100%}
 
@@ -212,8 +212,9 @@ landmarks correctly (Apertus 70B: 4) and is the only model with a significant fa
 hallucination, low vs high fame; H1b likewise; p_Holm 0.01–0.02). It invents a name for 24 % of the too-generic
 photos (Apertus 70B: 0 %) and adopts the false town in 69 % of premise traps.
 
-**7. Agreement and judge errors.** Judge vs code grader: κ = 0.95 (70B; 97.9 % identical labels) and 0.94 (8B;
-96.8 %). Every disagreement (236 re-reads over two rounds, 224 still in the dataset;
+**7. Agreement and judge errors.** Judge vs code grader on the 3,412 core items: κ = 0.95 (70B; 97.9 % identical
+labels), 0.94 (8B; 96.8 %), 0.92 (Gemma; 97.2 %). Every core disagreement of the Apertus models (236 re-reads over
+two rounds, 224 still in the dataset;
 `disagreement_adjudication.jsonl`) was re-read independently against the written rules, with a second blind read
 where the judge looked wrong (AI-assisted, not a human audit): of the 224, the judge was right in 86, the code
 grader in 131, neither in 1, and 6 stayed unsettled. The judge is too strict on vague answers whose building type

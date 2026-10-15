@@ -397,7 +397,7 @@ and one skeptic re-check. Fixed:
   it. A refusal that lists the options ("I cannot tell which of (A) ..., (B) ...") is not attempted, as the plan's
   refusal rule intends. Effect (70B): all 14 "several options" answers moved (12 to a single option, 2 to a
   refusal); regression tests pin the real cases.
-- Observed and reported: a strong position bias (70B starts with "A" in 59 % of answers; 8B 40 %).
+- Observed and reported: a strong position bias (70B starts with "A" in 58 % of answers; 8B 40 %).
 
 ## Comparison model E1 run (15 Oct, afternoon)
 - `google/gemma-4-31B-it:novita` answered all 5,420 items through the Hugging Face router with the shipped `run`
@@ -409,3 +409,14 @@ and one skeptic re-check. Fixed:
   fallback; `final_source` = code).
 - Total judge usage on 15 Oct for the extensions and Gemma: about 4.9M input / 1.5M output tokens; the exact cost
   is on the Hugging Face billing page.
+
+## Report check (15 Oct, ~15:00) and deviations of the extension runs
+- An independent numbers audit of the new report text found: Gemma's wrong-name range is 86–94 %, 70B starts its
+  multiple-choice answer with "A" in 58 % (not 59 %), about 22 % correct when the answer is not A; the judge–code
+  kappas apply to the 3,412 core items; the 8B model's caution also varies by language. Fixed in the report. The
+  multiple-choice confidence intervals are now cluster-bootstrap intervals over landmarks (70B 29.7–39.7 %).
+- **Deviation (additional data, nothing replaced):** the plan registered the second wording (E3) for Apertus 70B
+  only and Gemma (E1) on the 3,412 core items; both extensions were also run on 8B and Gemma, so every model
+  answered all 5,420 items. The 8B and Gemma second-wording results are reported as additional.
+- The re-reads of judge–code disagreements cover the core items of the Apertus models; the 40 new second-wording
+  disagreements (70B 15, 8B 25) and Gemma's are not re-read (stated in the report).
