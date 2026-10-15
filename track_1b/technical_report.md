@@ -3,13 +3,14 @@
 > Final labels are the frozen LLM judge's (`judge-v1`). Photos were screened by AI and the 20 % audit sample was
 > graded by a second AI system; no human audit of the grades was done (see Annotation and Limitations).
 
-> We built a four-language (FR/DE/IT/RM) benchmark of 3,412 questions about 251 Swiss heritage landmarks from the
-> federal inventory (KGS), stratified by language region and fame, with photo, second-view, text-only and trap
-> variants and per-item licences. Apertus 1.5 70B almost never recognises a landmark from its photo, and when it
-> commits to a name it is almost always wrong (360 of 364 committed names). Whether it commits at all depends on
-> the question's language: on the same photos it mostly declines in French (11 % of name answers confidently
-> wrong) but answers in Romansh (68 % of names and 97 % of places wrong), where it also relocates half of all
-> non-Graubünden landmarks to Graubünden. Shown a photo too generic to identify, it declines every time.
+> We built a four-language (FR/DE/IT/RM) benchmark of 5,420 questions about 251 Swiss heritage landmarks from the
+> federal inventory (KGS), stratified by language region and fame, with photo, second-view, multiple-choice,
+> text-only and trap variants and per-item licences. Apertus 1.5 70B almost never recognises a landmark from its
+> photo: given four named options it is right only 35 % of the time (chance 25 %; the open model Gemma-4-31B:
+> 61 %), equally in all four languages. What the language changes is whether it admits it: on the same photos
+> it mostly declines in French (11 % of names confidently wrong) but answers in Romansh (68 % of names and
+> 97 % of places wrong), where it also relocates half of all non-Graubünden landmarks to Graubünden, a pull
+> Gemma shares. Shown a photo too generic to identify, it declines every time; Gemma guesses.
 
 **Track:** Apertus Readiness - Track 1B (Swiss Voices), dimension: core-task intelligence (factuality)  
 **Event:** Online  
@@ -21,7 +22,8 @@ code `github.com/ChristoYusj/apertus-swiss-landmarks`
 
 ### Use of Apertus
 
-- **Model:** `swiss-ai/Apertus-v1.5-70B` (main), `swiss-ai/Apertus-v1.5-8B` (secondary comparison)
+- **Model:** `swiss-ai/Apertus-v1.5-70B` (main), `swiss-ai/Apertus-v1.5-8B` (secondary); comparison model
+  `google/gemma-4-31B-it` (open weights, via the Hugging Face router) on the same items
 - **How it is used:** evaluation (multimodal: photo + question)
 - **Where it runs:** hosted CSCS inference endpoint (OpenAI-compatible); the harness accepts any
   OpenAI-compatible endpoint via `LLM_NAME`, `LLM_BASE_URL`, `LLM_API_KEY`
@@ -51,7 +53,7 @@ question (H4)?
 | Fame tiers | Wikipedia articles: low 0, mid 1–2, high ≥ 3 (21–24 per cell; Romansh region: smaller pools, 12–18, the high-fame cell a census) |
 | Types | churches 108, castles 61, museums 30, civic 18, bridges 14, fountains 10, towers/gates 8, monuments 2 |
 | Photos | 251 main photos (Wikidata P18), 161 second views, 17 low-information photos; 500 px, EXIF stripped, per-image licence |
-| Questions | 3,412: `photo_main` 2,276 (each photo in 4 languages), `photo_alt` 732, `text_only` 322, `trap_premise` 48, `trap_lowinfo` 34 |
+| Questions | 5,420: core 3,412 (`photo_main` 2,276, each photo in 4 languages; `photo_alt` 732; `text_only` 322; `trap_premise` 48; `trap_lowinfo` 34) + registered extensions 2,008 (`photo_mc` 1,004; `photo_main_w2` 1,004) |
 | Question types | Q1 name, Q2 municipality + canton, Q3 year built (67 landmarks with a precise, unconflicted year) |
 | Languages | French, German, Italian, Romansh (Rumantsch Grischun); identical templates, explicit "if unsure, say so" |
 | Answer keys | Wikidata (CC0) + BFS municipality register: name aliases (flagged if only valid with the town), current/former municipality names, canton names in 5 languages, year windows |
@@ -62,6 +64,9 @@ question (H4)?
 from *knowledge*. `trap_premise`: the question asserts the town of a real look-alike in another municipality
 ("This building is in Rothrist. Which building is it?"). `photo_alt` (FR, DE): a second view of the same object,
 a memorisation hint. `trap_lowinfo` (FR, DE): a photo too generic to identify; declining is right.
+Extensions, registered before they were run (`docs/extensions_plan.md`): `photo_mc`, the main photo with four
+named options (the landmark and three of the same type, mostly from the same region; chance 25 %), in all four
+languages; `photo_main_w2` (FR, RM), the name and place questions with a second, independent wording.
 
 **Selection funnel** (seed 20261013): 13,417 heritage objects with a photo → 4,153 eligible (public landmark
 types, a current municipality, a specific label, one language region) → stratified sample of 264 + 83
@@ -73,35 +78,25 @@ same-cell reserves for replacements.
 administrative location; the Federal Statistical Office municipality register (01-10-2026) for municipality
 numbers, cantons and language regions; Wikimedia Commons for photos and their licences.
 
-**Answer-key construction and cleaning** (all rules in code, all decisions logged in `CHANGELOG.md`):
+**Answer keys** (rules in code, decisions in `CHANGELOG.md`). Names: Wikidata labels, aliases and sitelinks in
+six languages, without town-only or type-only aliases; a name is *non-distinctive* if nothing is left after
+removing type words, saints and the town ("Kapelle St. Antonius"), and then counts only with the right town.
+Places: the current municipality's names in all languages (16 district/region/former-municipality labels removed);
+shared town names need the canton. Years: unconflicted year- or decade-precision inception (window ±5), never a
+museum's founding date. An independent script re-checked 25 random landmarks against live Wikidata (25/25).
 
-- Name aliases from Wikidata labels/aliases/sitelinks in EN/FR/DE/IT/RM/GSW. Aliases that are only a town name
-  or only type words are dropped. A name is *non-distinctive* if, after removing type words, saints' names and
-  the town, nothing is left ("Kapelle St. Antonius", "Kunsthaus Zürich"): it then counts only together with the
-  right town. All 786 tokens that occur in the names were classified one by one (AI-assisted).
-- Place aliases: the names of the current municipality in all languages (a district, region or former
-  municipality is not the answer, 16 such Wikidata labels removed and logged); town names shared by two
-  municipalities (e.g. Gossau) require the canton.
-- Year: only preferred, unconflicted inception values with year precision (window ±5) or decade precision;
-  museum founding dates are not used as build years.
-- An independent script re-checked 25 random landmarks against live Wikidata (25/25).
-
-**Question validity rules** (decided from the question text only): a text-only "where is it?" question is kept
-only if the name shown is distinctive in both FR and DE and does not contain the town; a text-only year
-question is dropped if the shown name contains a year. 170 items were removed this way after the run; their
-responses are kept in `metadata/excluded_items.jsonl` with the reason.
+**Question validity rules** (from the question text only): text-only questions are dropped when the shown name
+is not distinctive or contains the town or a year; 170 items, kept with their answers in
+`metadata/excluded_items.jsonl`.
 
 **Annotation** (`docs/annotation_guidelines.md`; deviations from the plan are logged in `CHANGELOG.md`).
 
-- *Photo screening, done by AI (deviation: the plan had the team screen).* Rules: exclude recognisable people,
-  readable plates, private interiors, personal text (never blur); drop a main photo that does not show the object;
-  pick a second view of the same object; mark photos too generic to identify. Claude Opus 5.5 screened all 917
-  candidate photos; three further Claude instances re-checked, without the first reasons, the 491 photos the
-  screening proposed to ship (privacy flags disagreed on 2); a second AI agent (Hermes) reviewed them again under
-  the team lead's policy "if unsure, exclude"; the lead decided 6 edge-case photos on 4 landmarks (one revised
-  later). 429 photos were shipped. **No person reviewed every shipped photo.**
-  13 landmarks were removed (privacy 4, wrong object 4, unclear 5); their 120 answers per model are kept in
-  `metadata/excluded_items.jsonl`. No model answer was shown at any step.
+- *Photo screening, by AI (deviation: the plan had the team screen).* Exclude recognisable people, readable plates,
+  private interiors and personal text (never blur); drop a main photo that does not show the object; pick a second
+  view; mark too-generic photos. Claude Opus 5.5 screened all 917 candidates, three further instances re-checked
+  the 491 proposed for shipping, and a second AI agent (Hermes) reviewed them under the lead's "if unsure,
+  exclude" policy; the lead decided 6 edge cases. 13 landmarks were removed (privacy 4, wrong object 4, unclear 5;
+  answers kept in `metadata/excluded_items.jsonl`), 429 photos shipped. ⟨P1⟩
 - *Grading audit:* a seeded, stratified 20 % sample (546) of the 2,726 70B answers that existed before the
   screening (522 still in the dataset; the later `photo_alt`/`trap_lowinfo` items are not covered), with a blind
   labelling page (no grades shown; English machine gloss for non-French answers; 40 hidden repeats for
@@ -136,7 +131,7 @@ EXIF is stripped. Annotators sign the consent form in `docs/consent_form_templat
   pinned to one provider, temperature 0; prompt tuned on a 40-item dev set (labels proposed by Claude; the lead
   ruled on the 4 hard cases and accepted the other 36 without item-by-item review)
   (final prompt: 40/40 agreement, two runs identical) and frozen before the full run and the audit sample;
-  final label = judge's.
+  final label = judge's. Multiple choice is graded by code only (one option named by letter or text).
 - **Statistics:** cluster bootstrap over landmarks (2,000 resamples) for CIs; exact McNemar for paired
   contrasts; Holm correction across the registered tests; Wilson intervals for rates.
 
@@ -149,44 +144,49 @@ kept their label over four answers: the endpoint is not bit-for-bit deterministi
 
 ### Results
 
-**1. Recognition from a photo almost never succeeds, and committed answers are almost always wrong.**
+**1. The question's language decides whether the model answers, not what it recognises.**
 
-| photo_main (n per cell = 251) | FR | IT | DE | RM |
+| photo_main, Apertus 70B (n per cell = 251) | FR | IT | DE | RM |
 |---|---|---|---|---|
 | Name: not attempted (declines, or too vague to check) | 89 % | 76 % | 58 % | **32 %** |
 | Name: confidently wrong | 11 % | 24 % | 41 % | **68 %** |
 | Place: confidently wrong | 2 % | 2 % | 30 % | **97 %** |
 
-Overall, name correct 0.4 % (4 of 1,004), place correct 0.6 % (6 of 1,004), years almost never answered (2 of
-268, both wrong). Among committed name answers 98.9 % are wrong (360 of 364). The same instruction ("if you are
-not sure, say so") produces honest refusals in French and confident fabrication in Romansh, on identical images.
-Many Romansh name answers are only a building type ("Chasa da baselgia", a church building): not attempted when
-the type fits the landmark, incorrect when it does not (SimpleQA: not attempted means "without contradicting the
-gold").
+Only 4 of 1,004 names and 6 of 1,004 places are right; 360 of 364 committed names are wrong. The same instruction
+("if you are not sure, say so") gives honest refusals in French and confident fabrication in Romansh, on identical
+images. **With four named options** (`photo_mc`) the language gap disappears: 70B picks the right landmark in
+32–39 % in every language (34.7 % overall, 95 % CI 31.8–37.7; chance 25 %), 8B in 31–33 %. Part of the margin
+over chance is a position bias (70B starts with "A" in 59 % of answers; 74 % correct when the answer is A, about
+21 % otherwise, still above the ~14 % a pure "A" bias would give). So recognition is weak in every language; the
+language changes whether the model admits it. **A second, independent wording** (`photo_main_w2`, registered
+before the run) keeps the gap: Romansh names 93 % wrong vs French 20 % (70B); the 8B model is very sensitive to
+wording (French names wrong 78 % → 32 %) but Romansh stays its worst language (79 %). The comparison model, Gemma-4-31B, has no such gap: it rarely declines (names not attempted 5–10 %), gives a
+wrong name in 87–94 % of answers in every language, and with four options is right 61 % of the time, again in
+every language. It recognises far more than Apertus but does not say when it does not know; the
+language-dependent caution is specific to Apertus 70B.
 
-![Same 251 photos, four question languages (Apertus 1.5 70B, LLM judge).](docs/figures/fig1_languages.png){width=100%}
+![Free answer (left) vs multiple choice (right), same photos, by question language and model.](docs/figures/fig4_models.png){width=100%}
 
 **2. In Romansh the model moves landmarks to Graubünden** (exploratory, location extracted with the gazetteer).
 Of 190 landmarks outside Graubünden, the Romansh answer places **96** in Graubünden; the French and Italian
 answers for the same photos place none there and the German answers 14 (paired McNemar RM vs FR/IT/DE,
-p < 10⁻⁶). Overall 60 % of Romansh place answers say Graubünden (true share 24 %). The municipalities named are
-mostly German- and Italian-speaking Graubünden towns (93 of 137 named; e.g. Chur, Roveredo, Poschiavo): the pull is toward the canton
-associated with Romansh rather than toward Romansh-speaking villages. The 8B model shows the same pull, weaker: 35 %
-of its Romansh place answers say Graubünden, and it moves 54 of the 190 non-Graubünden landmarks there (70B: 96).
-
-![Share of place answers that say Graubünden, by question language (dashed: true share).](docs/figures/fig2_graubunden.png){width=62%}
+p < 10⁻⁶). Overall 60 % of Romansh place answers say Graubünden (true share 24 %), mostly German- and
+Italian-speaking towns (93 of 137 named; e.g. Chur, Roveredo, Poschiavo): the pull is toward the canton
+associated with Romansh, not toward Romansh-speaking villages. The 8B model shows the same pull, weaker (35 %).
+Gemma shows the same pull (58 % of its Romansh place answers say Graubünden; 95 of the 190 non-Graubünden
+landmarks), so this is a cross-model association of Romansh with Graubünden, not an Apertus quirk.
 
 **3. Famous names absorb unknown objects.** Eleven different landmarks, mostly castles, are called "Castel
-Tarasp" (the iconic Engadine castle), eight Swiss landmarks become "Castle Vaduz" (Liechtenstein), and castles in
-French and Italian answers become "Château de Chillon". Disentis Abbey becomes "Kloster Einsiedeln".
+Tarasp" (the iconic Engadine castle), eight become "Castle Vaduz" (Liechtenstein), and castles in French and
+Italian answers become "Château de Chillon". Disentis Abbey becomes "Kloster Einsiedeln".
 
 **4. A second view and an uninformative photo** (descriptive, FR + DE). On the 161 landmarks with a second view,
-70B names 2 landmarks correctly from the main photo and 1 other (in both languages) from the second view, and is wrong about as
-often (names 24 % on the second view vs 26 % on the main photo; places 11 % vs 16 %, McNemar p = 0.04). If the Wikidata main photos had been memorised, the model
-would do better on them than on other views; it does not (8B is even slightly better on the second view). On 17
-photos too generic to identify, 70B declined all 34 times and 8B 33 of 34, although on the main photos of the
-same landmarks they gave wrong names 7 and 26 times: the models can tell an uninformative image from a
-recognisable one, but a photo that *looks* identifiable triggers a confident guess.
+70B names 2 landmarks correctly from the main photo and 1 other (in both languages) from the second view, and is
+wrong about as often (names 24 % vs 26 %; places 11 % vs 16 %, McNemar p = 0.04): no advantage for the Wikidata
+main photos, so no sign that they were memorised. On 17 photos too generic to identify, 70B declined all 34
+times and 8B 33 of 34, although on the main photos of the same landmarks they gave wrong names 7 and 26 times: the
+models can tell an uninformative image from a recognisable one, but a photo that *looks* identifiable triggers
+a confident guess.
 
 **5. Registered hypotheses** (Holm-adjusted):
 
@@ -196,7 +196,7 @@ recognisable one, but a photo that *looks* identifiable triggers a confident gue
 | H1b fame cliff (place) | not supported (Δ = +2.3 pp, CI −1.0 to +6.4) |
 | H2 majority-region pull | not supported: wrong towns for non-DE landmarks are 59 % German-speaking vs 65 % of all municipalities (registered comparison points the other way, p_Holm = 0.10) |
 | H2b famous look-alike | not testable: 3 answers (1 landmark) name a look-alike's town |
-| H3 seeing vs knowing (place) | **supported in French** (text 8 vs photo 0 correct of 95 landmarks, p_Holm = 0.04), same direction in German (9 vs 1, p_Holm = 0.09). Fragile: before the photo screening removed 13 landmarks, French was 8 vs 1 (p_Holm = 0.13); the one photo-correct French answer was on a landmark dropped for privacy |
+| H3 seeing vs knowing (place) | **supported in French** (text 8 vs photo 0 correct of 95 landmarks, p_Holm = 0.04), same direction in German (9 vs 1, p_Holm = 0.09). Fragile: before the photo screening removed 13 landmarks, French was 8 vs 1 (p_Holm = 0.13) |
 | H4 false premise | **supported**: 79 % adopt the false town vs 29 % incorrect on the same photo asked plainly (p_Holm < 0.0001); counting a wrongly named building as incorrect too (team rule), 88 % |
 
 Knowing the name helps, and fame matters there: text-only place accuracy is 12.5 % for high-fame vs 3.7 % for
@@ -204,27 +204,25 @@ low-fame landmarks, while from the photo both are ≈ 0 %. The bottleneck is vis
 
 ![Left: municipality correct with the name given vs from the photo, by fame (H3). Right: incorrect on the plain photo question vs with a false town in the question (H4).](docs/figures/fig3_know_vs_see.png){width=100%}
 
-**6. Smaller model.** Apertus 1.5 8B declines less (name: 28 % not attempted vs 64 % for 70B) and is
-confidently wrong more often in every language (name wrong: FR 78 %, IT 48 %, DE 70 %, RM 90 %). Its fame effect
-on place questions points the expected way (H1b: 98.9 % vs 93.2 % hallucination, low vs high fame; bootstrap CI
-+1.3 to +10.4 pp) but is not significant after Holm (p_Holm = 0.07). Unlike 70B, 8B is not more misled by the
-false premise than by the plain question (71 % adopt the false town vs 83 % wrong on the control, n.s.): it is
-already wrong on the plain question. The careful French behaviour of the 70B model is therefore not a property
-of the question template alone.
+**6. Smaller model and comparison model.** Apertus 1.5 8B declines less (name: 28 % not attempted vs 64 % for
+70B) and is confidently wrong more often in every language (name wrong: FR 78 %, IT 48 %, DE 70 %, RM 90 %); it
+is not more misled by the false premise than by the plain question (71 % vs 83 %, n.s.) because it is already
+wrong on the plain question. Gemma-4-31B answers almost everything (names not attempted 9 %) and is wrong in 89 %; it names 26 of 1,004
+landmarks correctly (Apertus 70B: 4) and is the only model with a significant fame effect (H1: 99.7 % vs 93.2 %
+hallucination, low vs high fame; H1b likewise; p_Holm 0.01–0.02). It invents a name for 24 % of the too-generic
+photos (Apertus 70B: 0 %) and adopts the false town in 69 % of premise traps.
 
 **7. Agreement and judge errors.** Judge vs code grader: κ = 0.95 (70B; 97.9 % identical labels) and 0.94 (8B;
-96.8 %). Every disagreement (180 now; 236 re-reads over two rounds, 224 still in the dataset; `disagreement_adjudication.jsonl`) was re-read
-independently against the written rules, with a second blind read where the judge looked wrong (AI-assisted,
-not a human audit): of the 224, the judge was right in 86, the code grader in 131, neither in 1, and 6 stayed unsettled. The judge's main error
-is strictness on vague answers whose building type fits the landmark ("church building" for a church), plus saint
-names without a town; it also leaves vague centuries outside the year window as not attempted. Replacing the
-judge's label wherever the re-read settled it lowers the Romansh name-wrong rate from 68 % to 59 % (70B; 8B
-90 % → 81 %), raises the small Romansh year cell by 6 pp and lowers the premise-trap rate from 88 % to 83 %; no other
-70B language × question cell moves by more than about 1.5 pp, so
-the language pattern is not a grading artefact. The registered results keep the frozen judge's labels.
-*AI cross-check of the audit sample:* a second AI agent graded the 546 sampled answers (504 scored and still in the
-dataset): κ = 0.96 with the judge (98.2 % identical) and 0.99 with the code grader; lowest in Romansh (κ = 0.84).
-*Human audit:* not done, so the track's 20 % human check is not met (see Limitations).
+96.8 %). Every disagreement (236 re-reads over two rounds, 224 still in the dataset;
+`disagreement_adjudication.jsonl`) was re-read independently against the written rules, with a second blind read
+where the judge looked wrong (AI-assisted, not a human audit): of the 224, the judge was right in 86, the code
+grader in 131, neither in 1, and 6 stayed unsettled. The judge is too strict on vague answers whose building type
+fits the landmark and on saint names without a town, and leaves vague centuries outside the year window as not
+attempted. Replacing its label wherever the re-read settled it lowers the Romansh name-wrong rate from 68 % to
+59 % (70B; 8B 90 % → 81 %), raises the small Romansh year cell by 6 pp and lowers the premise-trap rate from 88 %
+to 83 %; no other 70B language × question cell moves by more than about 1.5 pp. The registered results keep the
+frozen judge's labels. *Human audit* ⟨H1⟩ *AI cross-check:* a second AI agent graded the same sample: κ = 0.96
+with the judge (98.2 % identical), 0.99 with the code grader.
 
 ## Dataset Limitations
 - Results are for one prompt template per language; Romansh templates were not reviewed by a native speaker
@@ -251,11 +249,10 @@ dataset): κ = 0.96 with the judge (98.2 % identical) and 0.99 with the code gra
   (see H3).
 
 ## Lessons Learnt and Recommendations
-- For Apertus: abstention behaviour is language-dependent; calibration training should include Romansh and
-  German, where the model guesses most. Visual recognition of Swiss heritage is the weakest link; grounding with
-  retrieval (e.g. KGS/Wikidata lookup from GPS or image search) would help more than more text knowledge. The
-  models already decline on uninformative photos; the risk is a photo that *looks* identifiable, so calibration
-  data should include recognisable-looking but unknown objects.
+- For Apertus: its visual knowledge of Swiss landmarks lags a comparable open model (multiple choice 35 % vs
+  61 % for Gemma-4-31B); its strength is calibration, declining instead of guessing in French and Italian, and
+  Romansh breaks it. Calibration training should include Romansh and German, and recognisable-looking but
+  unknown objects; retrieval (e.g. a KGS/Wikidata lookup) would help recognition more than more text.
 - For evaluators: score abstention separately from accuracy and compare languages on identical images; check
   hedged answers ("not sure, but it seems to be a church") — they are abstentions, not errors.
 

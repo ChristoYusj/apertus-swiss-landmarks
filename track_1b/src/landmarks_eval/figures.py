@@ -119,11 +119,12 @@ def make_figures(scores_path: Path, out: Path, compare: dict[str, Path] | None =
         axes[0].set_title("Free answer: name confidently wrong (%)", fontsize=10)
         axes[1].set_title("Multiple choice: right option (%)", fontsize=10)
         axes[1].axhline(25, ls="--", color="#555", lw=1, label="chance (25 %)")
-        axes[1].legend(frameon=False, fontsize=8, loc="upper left")
         for ax in axes:
             ax.set_xticks(range(len(LANGS)), [n for _, n in LANGS])
             ax.set_ylim(0, 100)
-        axes[0].legend(frameon=False, fontsize=8, loc="upper left")
+        handles, labels = axes[1].get_legend_handles_labels()       # one legend below both panels, clear of the bars
+        fig.legend(handles, labels, loc="lower center", ncol=len(labels), frameon=False, fontsize=8,
+                   bbox_to_anchor=(0.5, -0.06))
         fig.suptitle("Same photos, four question languages (free answer: LLM judge; multiple choice: code)", fontsize=10)
         fig.tight_layout()
         p = out / "fig4_models.png"

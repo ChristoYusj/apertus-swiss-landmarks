@@ -398,3 +398,14 @@ and one skeptic re-check. Fixed:
   refusal rule intends. Effect (70B): all 14 "several options" answers moved (12 to a single option, 2 to a
   refusal); regression tests pin the real cases.
 - Observed and reported: a strong position bias (70B starts with "A" in 59 % of answers; 8B 40 %).
+
+## Comparison model E1 run (15 Oct, afternoon)
+- `google/gemma-4-31B-it:novita` answered all 5,420 items through the Hugging Face router with the shipped `run`
+  (same request format and parameters): all `ok`; 1.04M input / 0.12M output tokens (≈ $0.19 at the provider's
+  listed prices). The provider throttled the requests (median latency 2.7 s, but long waits between batches).
+- Judged with the frozen `judge-v1` (4,416 answers; the main 3,412 on a snapshot copy while the extension items
+  ran, then merged through the cache). For 4 Romansh second-wording place answers the judge returned an empty
+  verdict twice ("sa chatta en tge chantun Grischun" echoes); they keep the code grader's label (the registered
+  fallback; `final_source` = code).
+- Total judge usage on 15 Oct for the extensions and Gemma: about 4.9M input / 1.5M output tokens; the exact cost
+  is on the Hugging Face billing page.
