@@ -540,3 +540,8 @@ and one skeptic re-check. Fixed:
   = the 70B scores of that revision. `verify` against the downloaded revision: ALL CHECKS PASSED (V1-V7).
 - Code: `main` fast-forwarded to `build`, tag `submission-v2`.
 
+
+## After the submission (16 Oct, afternoon; documentation only)
+- GitHub: README links the submitted version (tag `submission-v2`), repo homepage and topics set.
+- Hugging Face: dataset card only (commit `69e8bf2`): links to the submitted revision `3b58eb219120`, code tag and report,
+  key results, quick start. No data file changed; the submitted revision is unchanged and still pinned.
