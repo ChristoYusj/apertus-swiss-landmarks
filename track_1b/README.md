@@ -32,9 +32,9 @@ Method, hypotheses and limits: [`technical_report.md`](technical_report.md) (PDF
 - **Photos:** screened by AI (Claude Opus 5.5 with three re-checkers, then a second AI agent, Hermes); the team
   lead decided 6 photos on 4 landmarks. Then a Gemini agent reviewed all 429 shipped photos and flagged 14; the
   team lead accepted the flags (9 landmarks and 4 other photos removed). No person reviewed every shipped photo.
-- **Grading audit:** one annotator (the team lead) graded 522 Apertus-70B core answers blind (the pre-registered
-  20 % sample minus the landmarks the first screening removed); 499 are still in the dataset. On these,
-  judge–human κ = 0.76, code–human κ = 0.73. There is no second human; 8B, Gemma, the extension items,
+- **Grading audit:** one annotator (the team lead) graded 693 Apertus-70B core answers blind (the pre-registered
+  20 % sample plus a registered top-up to 20 % per stratum); 670 are in the dataset (20.5 % of the 3,274 core
+  answers). On these, judge–human κ = 0.79, code–human κ = 0.76. There is no second human; 8B, Gemma, the extension items,
   `photo_alt` and `trap_lowinfo` have no human audit. Hermes graded the same sample as an AI cross-check.
 - **AI-assisted:** the re-reads of judge–code disagreements and the code-grader reviews (Claude). Full list:
   [`docs/ai_use_statement.md`](docs/ai_use_statement.md).

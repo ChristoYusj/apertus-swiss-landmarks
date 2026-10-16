@@ -142,9 +142,13 @@ def build_card(ds: Path, extra: dict | None = None) -> str:
         n_overlap = len({a["item_id"] for a in audit if a.get("in_overlap")})
         sample_path = ref / "audit_sample.json"
         n_sample = json.loads(sample_path.read_text(encoding="utf-8")).get("n_sample") if sample_path.exists() else None
-        drawn = (f"of the {n_sample} in the seeded, stratified random sample; the {n_sample - n_items} on landmarks "
-                 "removed in the first photo screening were not shown" if n_sample and n_sample > n_items
-                 else "a seeded, stratified random sample")
+        n_top = len({a["item_id"] for a in audit if a.get("part") == "topup"})
+        n_first = n_items - n_top
+        drawn = ((f"{n_first} of the {n_sample} in the pre-registered, seeded, stratified 20 % sample (the "
+                  f"{n_sample - n_first} on landmarks removed in the first photo screening were not shown)"
+                  if n_sample and n_sample > n_first else "a seeded, stratified random sample")
+                 + (f", plus {n_top} drawn later (seed 20261020) so that every stratum of the current core answers is "
+                    "at least 20 % human-labelled" if n_top else ""))
         audit_block = (f"- **Human audit:** {n_items} `{ref.name}` answers ({drawn}) were "
                        "labelled blind by "
                        + (f"{len(who)} annotators ({', '.join(who)}), each alone" if len(who) > 1 else f"one annotator ({who[0]})")

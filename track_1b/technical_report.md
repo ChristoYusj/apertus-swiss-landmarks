@@ -3,7 +3,7 @@
 > A visitor points a phone at a Swiss chapel, castle or fountain and asks what it is: we test whether Apertus 1.5
 > answers truthfully or invents. Our benchmark has 5,210 questions in French, German, Italian and Romansh on 242
 > landmarks of the federal heritage inventory (KGS), with photo, multiple-choice, text-only and trap variants,
-> per-item licences, and a frozen LLM judge checked by a blind human audit (κ = 0.76). Apertus 1.5 70B rarely
+> per-item licences, and a frozen LLM judge checked by a blind human audit (κ = 0.79). Apertus 1.5 70B rarely
 > recognises a landmark (multiple choice 34 %, chance 25 %; Gemma-4-31B 60 %), and the question's language decides
 > whether it admits it: it declines in French (11 % of names wrong) but answers in Romansh (69 % of names and 97 %
 > of places wrong), moving half of the non-Graubünden landmarks to Graubünden.
@@ -98,10 +98,11 @@ is non-distinctive or contains the town or a year (170 items, kept with their an
   all 429 (answer-blind: photos only) and flagged 14; the lead accepted the flags: 9 main photos (landmark removed;
   one also with its second view flagged) and, on other landmarks, 3 second views and 1 too-generic photo (only the
   photo removed). 210 questions went (answers kept); the rest are unchanged. No person reviewed every shipped photo.
-- *Grading audit (human, blind):* one annotator (A1, the team lead) graded 522 70B answers: the pre-registered,
-  stratified 20 % sample (546 of 2,726) minus 24 on landmarks screened out; 499 are still in the dataset and give
-  the agreement: 19.5 % of the 2,554 current 70B items in these arms, 15 % of all 70B core items (not covered:
-  `photo_alt`, `trap_lowinfo`, extensions, 8B, Gemma). The three blind PDF forms hid the judge's and code grader's
+- *Grading audit (human, blind):* one annotator (A1, the team lead) graded 693 70B answers: the pre-registered,
+  stratified 20 % sample (546 of 2,726) minus 24 on landmarks screened out (522), plus a top-up of 171 registered
+  before labelling (seed 20261020) that brings every stratum (arm × language × judge label) of the current core to
+  at least 20 %. 670 are in the dataset and give the agreement: 20.5 % of the 3,274 70B core answers (not
+  covered: extensions, 8B, Gemma). The three blind PDF forms hid the judge's and code grader's
   labels; non-French answers had an English machine gloss. A1 did all three planned annotators' parts (30 shared
   items, a known overlap), so no agreement between people. Hermes graded the sample as an AI cross-check. Full
   AI-use disclosure: `docs/ai_use_statement.md`.
@@ -113,7 +114,7 @@ EXIF is stripped. Annotator consent form: `docs/consent_form_template.md` (pseud
 
 - **Quality metrics:** answer-key audit (above), selection funnel, per-cell counts, question validity rules,
   stability of answers at temperature 0 (below), judge–code agreement, an AI-assisted re-read of every core
-  Apertus disagreement, a blind human audit of 499 70B answers (one annotator) and an AI cross-check.
+  Apertus disagreement, a blind human audit of 670 70B answers (one annotator, 20.5 %) and an AI cross-check.
 - **Diversity / edge cases:** four languages incl. Romansh; fame tiers; same-photo language contrast; text vs
   photo; false-premise traps with real look-alikes; too-generic photos; ambiguous town names; non-distinctive
   names.
@@ -228,11 +229,11 @@ type fits the landmark and on saint names without a town, and labels vague centu
 not attempted. Replacing its label wherever the re-read settled it lowers the Romansh name-wrong rate from 69 %
 to 60 % (70B; 8B 90 % → 81 %), raises the small Romansh year cell by 5 pp and lowers the false-premise trap rate
 from 89 % to 84 %; no other 70B language × question cell moves by more than 1.7 pp. The registered results
-keep the frozen judge's labels. *Human audit* (blind, one annotator, 499 answers): judge vs human κ = 0.76 (89 %
-identical), code grader vs human κ = 0.73 (87 %). Most disagreements are answers the judge counted as declines
-but the annotator marked incorrect (29), and answers the annotator marked correct but the judge did not (18). 27 of
-the 30 shared items are still in the dataset; each got the same label all three times. *AI cross-check* (Hermes;
-481 of the 499, 18 left unscored): κ = 0.96 with the judge (98.3 % identical), 0.99 with the code grader.
+keep the frozen judge's labels. *Human audit* (blind, one annotator, 670 answers): judge vs human κ = 0.79 (91 %
+identical), code grader vs human κ = 0.76 (90 %). Most disagreements are answers the judge counted as declines
+but the annotator marked incorrect (31), and answers the annotator marked correct but the judge did not (19). 27 of
+the 30 shared items are still in the dataset; each got the same label all three times. *AI cross-check* (Hermes, on the first sample;
+481 of its 499, 18 left unscored): κ = 0.96 with the judge (98.3 % identical), 0.99 with the code grader.
 
 ## Dataset Limitations
 - Results use one template per language (plus a second wording in FR and RM). The Romansh templates were not

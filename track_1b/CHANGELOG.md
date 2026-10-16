@@ -521,3 +521,12 @@ and one skeptic re-check. Fixed:
   (no grade shown; English machine gloss for the 91 non-French answers, generated with the judge model), one
   annotator (A1), on an online page that saves every click with its time.
 
+## Grading audit top-up done (16 Oct, ~10:45)
+- A1 graded all 171 top-up answers on the blind PDF (saved 10:43; 136 not attempted, 29 incorrect, 6 correct; no
+  "unsure" or "used translation" ticks). Merged with `build_audit_topup.py merge` (protocol "audit-v4 top-up").
+- Human audit now: 693 labels, 670 in the dataset = 20.5 % of the 3,274 70B core answers (every stratum >= 20 %).
+  Judge vs human κ 0.756 -> 0.790 (90.7 % identical), code vs human 0.727 -> 0.761 (89.6 %); judge declines the
+  annotator marked incorrect 29 -> 31, answers the annotator marked correct and the judge did not 18 -> 19. The AI
+  cross-check stays on the first sample (481 items). No other score changed.
+- The photo-check page (409 photos) got no clicks: no person reviewed every shipped photo (unchanged).
+

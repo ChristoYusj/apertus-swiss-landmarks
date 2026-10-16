@@ -121,3 +121,9 @@ AI cross-check, never as Task G.
 answers, of which 499 are still in the dataset after the third photo check; judge–human agreement is computed on
 these 499, and there is no agreement between people. The second and third labels of the 30 shared items (27 still
 in the dataset) are kept as repeats (the overlap was known, so this is not a blind test-retest).
+
+**Top-up (16 Oct, registered before labelling):** after items were removed and `photo_alt`/`trap_lowinfo` added,
+the 499 covered 15 % of the 70B core answers. `tools/audit_online/build_audit_topup.py` (seed 20261020) drew 171
+more, stratum by stratum (arm × language × judge label), until every stratum is at least 20 % human-labelled; A1
+graded them on one blind PDF (same layout, English gloss for non-French answers; read with `read_topup_pdf.py`).
+Now 670 labelled answers in the dataset (20.5 %).

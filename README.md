@@ -12,8 +12,8 @@ but answers in Romansh (69 % of names and 97 % of places wrong).
 **Who checked what.** Photos: screened by AI (Claude, then a second AI agent, Hermes; the team lead decided 6
 edge cases), then reviewed again by a Gemini agent, whose 14 flags the team lead accepted; no person reviewed every
 shipped photo. Grading:
-one human annotator (the team lead) graded 522 Apertus-70B answers blind (499 still in the dataset; judge–human
-κ = 0.76). Details: `track_1b/docs/ai_use_statement.md`.
+one human annotator (the team lead) graded 693 Apertus-70B answers blind (670 in the dataset = 20.5 % of the
+70B core answers; judge–human κ = 0.79). Details: `track_1b/docs/ai_use_statement.md`.
 
 | | |
 |---|---|
