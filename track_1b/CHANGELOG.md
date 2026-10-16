@@ -532,3 +532,11 @@ and one skeptic re-check. Fixed:
 - Registered for an online page; at the lead's request it was graded on a blind PDF of the same items instead
   (same layout as the audit-v4 PDFs; read with `read_topup_pdf.py`). The `protocol` field says "blind PDF".
 
+## Re-release (16 Oct, ~11:10)
+- Hugging Face: `work/dataset` uploaded (442 files; the 20 images of removed photos deleted from the repo), then the
+  history squashed to one commit at the lead's decision; the 20 removed photos were also permanently deleted from
+  the repository's file storage, so earlier revisions no longer serve them. New revision
+  `3b58eb219120b01304b1b13d24171c703d81a604`, pinned in `config.json`; `src/landmarks_eval/expected/reference.scores.json`
+  = the 70B scores of that revision. `verify` against the downloaded revision: ALL CHECKS PASSED (V1-V7).
+- Code: `main` fast-forwarded to `build`, tag `submission-v2`.
+

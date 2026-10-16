@@ -277,9 +277,8 @@ reproduces every stored code label, final-label rule, recomputed scores equal th
 sample (`FULL=1` for all items), graded by the judge if `JUDGE_MODEL=openai/gpt-oss-120b:groq`,
 `JUDGE_BASE_URL=https://router.huggingface.co/v1` and `JUDGE_API_KEY` are set (else by the code grader alone). Hardware: any CPU; runtime ≈ 1 min for verification, under an hour for a full
 70B run at 4 parallel requests. Seeds: selection 20261013, sampling 7, bootstrap 20261015, stability 20261016,
-audit 20261017, audit top-up 20261020. Dataset revision `26d86b35d1a6` (pinned in `config.json`; the first release, 3,412 core items; the re-release
-with the extensions and the photo review is pending); code: branch `build` (the `main` branch and a new tag
-follow at the re-release).
+audit 20261017, audit top-up 20261020. Dataset revision `3b58eb219120` (pinned in `config.json`); code: the `main` branch, tag
+`submission-v2`.
 
 ## License
 Code: Apache-2.0. Dataset: CDLA-Permissive-2.0 (photos under their own CC licences, listed per item).

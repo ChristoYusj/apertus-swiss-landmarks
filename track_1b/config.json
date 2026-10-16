@@ -1,5 +1,5 @@
 {
- "dataset": "hf:chrizzto/swiss-heritage-factuality@26d86b35d1a6c157b55cf331cdc4daf249257a49",
+ "dataset": "hf:chrizzto/swiss-heritage-factuality@3b58eb219120b01304b1b13d24171c703d81a604",
  "reference_model_dir": "apertus-v1.5-70b",
- "note": "dataset revision pinned to the release commit on Hugging Face (15 Oct 2026)"
+ "note": "dataset revision pinned to the re-release on Hugging Face (16 Oct 2026; history squashed, earlier revisions removed)"
 }

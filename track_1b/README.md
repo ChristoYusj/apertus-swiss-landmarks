@@ -42,10 +42,9 @@ Method, hypotheses and limits: [`technical_report.md`](technical_report.md) (PDF
 
 ## Status
 
-The pinned dataset revision (`26d86b35`, in `config.json`) is the first release: the 3,412 core items from
-before the third photo check (it still contains the 14 flagged photos). The multiple-choice, second-wording and
-Gemma results are not in it. The photo screening is done, including the third check. Pending: a re-release with
-all 5,210 items and a new pinned revision, then `main` fast-forwarded with a new tag, and the final report PDF.
+Released (16 Oct): dataset revision `3b58eb219120` (pinned in `config.json`) with all 5,210 items, the three
+models' graded responses and the human audit; code: `main`, tag `submission-v2`. The Hugging Face history was
+squashed and the removed photos deleted, so earlier revisions are not served.
 
 ## Run
 

@@ -22,9 +22,8 @@ one human annotator (the team lead) graded 693 Apertus-70B answers blind (670 in
 | Dataset | Hugging Face `chrizzto/swiss-heritage-factuality` (CDLA-Permissive-2.0; photos keep their CC licences) |
 | Decisions and corrections | [`track_1b/CHANGELOG.md`](track_1b/CHANGELOG.md) |
 
-**Status.** The pinned dataset revision (`26d86b35`) is the first release: the 3,412 core items from before the
-third photo check (it still contains the 14 flagged photos). The photo screening is done. Pending: a re-release
-with all 5,210 items and a new pinned revision, `main` fast-forwarded with a new tag, and the final report PDF.
+**Status.** Released (16 Oct): dataset revision `3b58eb219120` (pinned in `track_1b/config.json`), code tag
+`submission-v2`. Earlier dataset revisions were removed from the Hugging Face history.
 
 **Run** (Docker, clean checkout):
 
