@@ -510,3 +510,14 @@ and one skeptic re-check. Fixed:
   - the online audit page no longer pairs the pseudonyms with first names.
 - Open, for the release decision: the first Hugging Face revision (26d86b35) still holds the 14 flagged photos;
   either squash the repository history or say on the card that earlier revisions hold removed photos.
+
+## Grading audit top-up registered (16 Oct, ~08:20, before any top-up label exists)
+- The human audit covered 499 of the 3,274 current 70B core answers (15 %; 19.5 % of the arms first sampled):
+  the 20 % sample was drawn before photos and items were removed and before `photo_alt`/`trap_lowinfo` existed.
+- Top-up (`tools/audit_online/build_audit_topup.py`, seed 20261020): in every original stratum (arm x language x
+  judge label) of the current 70B core answers, answers not yet human-labelled are drawn until the stratum's
+  human-labelled share reaches 20 % (rounded up). 171 answers drawn (photo_alt 140, photo_main 20,
+  trap_lowinfo 8, text_only 2, trap_premise 1); after labelling, 670 of 3,274 (20.5 %). Same blind protocol
+  (no grade shown; English machine gloss for the 91 non-French answers, generated with the judge model), one
+  annotator (A1), on an online page that saves every click with its time.
+
