@@ -65,8 +65,9 @@ def main(items_path: Path, out: Path, blind: bool = False) -> None:
     y = para(f"Grading {'Audit' if blind else 'Check'} ({who}): {len(items)} answers of Apertus 1.5 70B", y, 24, True)
     y = para(f"Annotator {who}. One answer per page. " + (
         "No grade is shown: read the model answer against the gold answer and pick a value in the \"Your grade\" box "
-        "at the bottom of the page. Work alone, without looking anything up and without discussing items with the "
-        "others until all three have finished." if blind else
+        "at the bottom of the page. Work alone, without looking anything up" + (
+            "." if data.get("single") else " and without discussing items with the others until all three have "
+            "finished.") if blind else
         "A second AI already proposed a grade: judge each answer yourself, then pick a value in the \"Your grade\" "
         "box at the bottom of the page."), y - 6, 15)
     for line in (
