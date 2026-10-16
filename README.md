@@ -1,5 +1,8 @@
 # Swiss Heritage Factuality — Hack Apertus 2026, Track 1B (Red Pandas)
 
+> **Submitted version:** tag [`submission-v2`](https://github.com/ChristoYusj/apertus-swiss-landmarks/tree/submission-v2) · dataset [`chrizzto/swiss-heritage-factuality`](https://huggingface.co/datasets/chrizzto/swiss-heritage-factuality) (revision `3b58eb219120`) · [report PDF](track_1b/RedPandas_Report.pdf).
+> Later commits on `main` change documentation only.
+
 Does Apertus 1.5 recognise Switzerland's heritage landmarks, and does it say so when it does not? A
 four-language (FR/DE/IT/RM) benchmark: 5,210 questions on 242 landmarks of the Swiss inventory of cultural
 property (KGS), with 409 photos. Models: Apertus 1.5 70B and 8B, with Gemma-4-31B as a comparison. The harness
@@ -11,15 +14,14 @@ but answers in Romansh (69 % of names and 97 % of places wrong).
 
 **Who checked what.** Photos: screened by AI (Claude, then a second AI agent, Hermes; the team lead decided 6
 edge cases), then reviewed again by a Gemini agent, whose 14 flags the team lead accepted; no person reviewed every
-shipped photo. Grading:
-one human annotator (the team lead) graded 693 Apertus-70B answers blind (670 in the dataset = 20.5 % of the
+shipped photo. Grading: one human annotator (the team lead) graded 693 Apertus-70B answers blind (670 in the dataset = 20.5 % of the
 70B core answers; judge–human κ = 0.79). Details: `track_1b/docs/ai_use_statement.md`.
 
 | | |
 |---|---|
 | Project | [`track_1b/`](track_1b/): overview, results, layout and commands in its README |
-| Report | [`track_1b/technical_report.md`](track_1b/technical_report.md) (PDF: `track_1b/RedPandas_Report.pdf`) |
-| Dataset | Hugging Face `chrizzto/swiss-heritage-factuality` (CDLA-Permissive-2.0; photos keep their CC licences) |
+| Report | [`track_1b/technical_report.md`](track_1b/technical_report.md) ([PDF](track_1b/RedPandas_Report.pdf), 6 pages) |
+| Dataset | [huggingface.co/datasets/chrizzto/swiss-heritage-factuality](https://huggingface.co/datasets/chrizzto/swiss-heritage-factuality) (CDLA-Permissive-2.0; photos keep their CC licences) |
 | Decisions and corrections | [`track_1b/CHANGELOG.md`](track_1b/CHANGELOG.md) |
 
 **Status.** Released (16 Oct): dataset revision `3b58eb219120` (pinned in `track_1b/config.json`), code tag
