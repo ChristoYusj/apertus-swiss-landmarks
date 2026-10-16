@@ -17,6 +17,9 @@ One annotator (A1, the team lead) graded all three blind parts; no second human.
 4. `merge_audit_v4.py --one-annotator A1 <assignment.json> <results> <label files>`: writes `human_audit.jsonl`
    (one row per item, all under A1) and `human_audit_repeat.jsonl` (the second and third labels of the 30 shared
    items; the overlap was known, so not a blind test-retest).
+5. Top-up (16 Oct): `build_audit_topup.py draw` (seed 20261020) draws 171 more 70B core answers so that every stratum
+   is at least 20 % human-labelled; `build_check_pdf.py ... --blind` makes one blind PDF; A1 graded it;
+   `read_topup_pdf.py` reads it and `build_audit_topup.py merge` appends the labels (670 in the dataset, 20.5 %).
 
 `import_ai_crosscheck.py`: writes the second AI's (Hermes) grades of the audit sample as
 `ai_crosscheck_audit.jsonl`, scored as an AI cross-check, not a human audit.

@@ -102,9 +102,9 @@ is non-distinctive or contains the town or a year (170 items, kept with their an
   stratified 20 % sample (546 of 2,726) minus 24 on landmarks screened out (522), plus a top-up of 171 registered
   before labelling (seed 20261020) that brings every stratum (arm × language × judge label) of the current core to
   at least 20 %. 670 are in the dataset and give the agreement: 20.5 % of the 3,274 70B core answers (not
-  covered: extensions, 8B, Gemma). The three blind PDF forms hid the judge's and code grader's
+  covered: extensions, 8B, Gemma). The blind PDF forms (three parts and the top-up) hid the judge's and code grader's
   labels; non-French answers had an English machine gloss. A1 did all three planned annotators' parts (30 shared
-  items, a known overlap), so no agreement between people. Hermes graded the sample as an AI cross-check. Full
+  items, a known overlap), so no agreement between people. Hermes graded the first sample (481 of its 499) as an AI cross-check. Full
   AI-use disclosure: `docs/ai_use_statement.md`.
 
 **Consent and personal data.** No person is a data subject: photos with recognisable people are excluded and
@@ -277,7 +277,7 @@ reproduces every stored code label, final-label rule, recomputed scores equal th
 sample (`FULL=1` for all items), graded by the judge if `JUDGE_MODEL=openai/gpt-oss-120b:groq`,
 `JUDGE_BASE_URL=https://router.huggingface.co/v1` and `JUDGE_API_KEY` are set (else by the code grader alone). Hardware: any CPU; runtime ≈ 1 min for verification, under an hour for a full
 70B run at 4 parallel requests. Seeds: selection 20261013, sampling 7, bootstrap 20261015, stability 20261016,
-audit 20261017. Dataset revision `26d86b35d1a6` (pinned in `config.json`; the first release, 3,412 core items; the re-release
+audit 20261017, audit top-up 20261020. Dataset revision `26d86b35d1a6` (pinned in `config.json`; the first release, 3,412 core items; the re-release
 with the extensions and the photo review is pending); code: branch `build` (the `main` branch and a new tag
 follow at the re-release).
 

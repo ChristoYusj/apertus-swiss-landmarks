@@ -126,8 +126,8 @@ def build_card(ds: Path, extra: dict | None = None) -> str:
     in_ds = {c["item_id"] for c in cases}
     ai_in = [a for a in ai_check if a["item_id"] in in_ds]
     ai_line = (f"\n- **AI cross-check (not a human audit):** a second AI system "
-               f"({', '.join(sorted({a['annotator_id'] for a in ai_check}))}) graded the same sample: "
-               f"{sum(1 for a in ai_in if a.get('label'))} of the {len(ai_in)} items still in the dataset (it left the "
+               f"({', '.join(sorted({a['annotator_id'] for a in ai_check}))}) graded the first, pre-registered sample (not the top-up): "
+               f"{sum(1 for a in ai_in if a.get('label'))} of its {len(ai_in)} items still in the dataset (it left the "
                "rest unscored as uncertain). Its agreement with the judge and the code grader is in `scores.json`."
                if ai_check else "")
     machine_annotators = (" Machine annotators (not people): the LLM judge (`openai/gpt-oss-120b`) and the code grader "

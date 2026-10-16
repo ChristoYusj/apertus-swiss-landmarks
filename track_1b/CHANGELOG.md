@@ -529,4 +529,6 @@ and one skeptic re-check. Fixed:
   annotator marked incorrect 29 -> 31, answers the annotator marked correct and the judge did not 18 -> 19. The AI
   cross-check stays on the first sample (481 items). No other score changed.
 - The photo-check page (409 photos) got no clicks: no person reviewed every shipped photo (unchanged).
+- Registered for an online page; at the lead's request it was graded on a blind PDF of the same items instead
+  (same layout as the audit-v4 PDFs; read with `read_topup_pdf.py`). The `protocol` field says "blind PDF".
 

@@ -109,7 +109,7 @@ def merge(out: Path, results: Path, sources: list[Path]) -> dict:
                 best[r["item"]] = r
     new = [{"item_id": i, "annotator_id": "A1", "label": r["label"], "used_translation": bool(r.get("used_translation")),
             "unsure": bool(r.get("unsure")), "in_overlap": False, "part": "topup", "labelled_at": r.get("t"),
-            "protocol": "audit-v4 top-up (16 Oct): one annotator, blind, online page"}
+            "protocol": "audit-v4 top-up (16 Oct): one annotator, blind PDF"}
            for i, r in sorted(best.items()) if i not in have]
     with open(results / "human_audit.jsonl", "a", encoding="utf-8", newline="\n") as f:
         for r in new:
