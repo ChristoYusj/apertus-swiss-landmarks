@@ -46,6 +46,13 @@ Released (16 Oct): dataset revision `3b58eb219120` (pinned in `config.json`) wit
 models' graded responses and the human audit; code: `main`, tag `submission-v2`. The Hugging Face history was
 squashed and the removed photos deleted, so earlier revisions are not served.
 
+Result: 2nd runner-up (3rd place) in Track 1B, announced 23 Oct 2026.
+
+Picking this up later: everything needed to check or extend the results is public. `make run` downloads the
+pinned dataset and re-verifies every stored grade; with `LLM_*` set it evaluates a new model on the same items.
+Every decision and correction, with its date and effect, is in `CHANGELOG.md`. The build caches and review
+files under `work/` are local only (git-ignored) and are not needed to reproduce the published results.
+
 ## Run
 
 From the repo root or this folder (Docker, clean checkout):

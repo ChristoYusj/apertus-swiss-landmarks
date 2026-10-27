@@ -1,5 +1,7 @@
 # Swiss Heritage Factuality — Hack Apertus 2026, Track 1B (Red Pandas)
 
+**Result:** 2nd runner-up (3rd place) in Track 1B, Swiss Voices (announced 23 Oct 2026); showcase spot at the Grand Finals.
+
 > **Submitted version:** tag [`submission-v2`](https://github.com/ChristoYusj/apertus-swiss-landmarks/tree/submission-v2) · dataset [`chrizzto/swiss-heritage-factuality`](https://huggingface.co/datasets/chrizzto/swiss-heritage-factuality) (revision `3b58eb219120`) · [report PDF](track_1b/RedPandas_Report.pdf).
 > Later commits on `main` change documentation only.
 
@@ -25,7 +27,8 @@ shipped photo. Grading: one human annotator (the team lead) graded 693 Apertus-7
 | Decisions and corrections | [`track_1b/CHANGELOG.md`](track_1b/CHANGELOG.md) |
 
 **Status.** Released (16 Oct): dataset revision `3b58eb219120` (pinned in `track_1b/config.json`), code tag
-`submission-v2`. Earlier dataset revisions were removed from the Hugging Face history.
+`submission-v2`. Earlier dataset revisions were removed from the Hugging Face history. The project is complete; `main` changes
+only in documentation.
 
 **Run** (Docker, clean checkout):
 
